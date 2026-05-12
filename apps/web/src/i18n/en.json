@@ -1,0 +1,5 @@
+{
+  "app": { "name": "Vitalis", "tagline": "Bio-logistics command access" },
+  "auth": { "signIn": "Sign in", "email": "Email", "password": "Password" },
+  "citizen": { "sos": "SOS", "broadcasting": "BROADCASTING…" }
+}

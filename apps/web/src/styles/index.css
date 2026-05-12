@@ -1,0 +1,44 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: dark; }
+html, body, #root { height: 100%; }
+body {
+  @apply text-slate-100 antialiased;
+  font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  background:
+    radial-gradient(900px 600px at 10% -10%, rgba(70,230,255,0.08), transparent 60%),
+    radial-gradient(900px 700px at 110% 10%, rgba(255,77,141,0.08), transparent 60%),
+    radial-gradient(700px 500px at 50% 120%, rgba(166,255,77,0.05), transparent 60%),
+    #060912;
+  background-attachment: fixed;
+}
+
+* { -webkit-tap-highlight-color: transparent; }
+.font-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+.glass { @apply bg-white/[0.04] backdrop-blur-md border border-white/10 rounded-2xl; }
+.glass-strong { @apply bg-white/[0.08] backdrop-blur-xl border border-white/15 rounded-2xl; }
+.neon-text { text-shadow: 0 0 12px rgba(70,230,255,.55); }
+.neon-text-pink { text-shadow: 0 0 12px rgba(255,77,141,.55); }
+
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+@keyframes grid-pan { from { background-position: 0 0 } to { background-position: 48px 48px } }
+.bg-grid {
+  background-image:
+    linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+  animation: grid-pan 20s linear infinite;
+}
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(255,77,141,0.5); }
+  70% { box-shadow: 0 0 0 28px rgba(255,77,141,0); }
+  100% { box-shadow: 0 0 0 0 rgba(255,77,141,0); }
+}
+.pulse-ring { animation: pulse-ring 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
