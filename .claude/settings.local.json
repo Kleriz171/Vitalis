@@ -16,7 +16,30 @@
       "Bash(npx tsc *)",
       "Bash(npx vite *)",
       "PowerShell(Start-Process \"http://localhost:5173/\")",
-      "PowerShell(Start-Process \"http://localhost:5174/\")"
+      "PowerShell(Start-Process \"http://localhost:5174/\")",
+      "Bash(mkdir -p /Users/aleks/Vitalis/apps/mobile/src/components/ui /Users/aleks/Vitalis/apps/web/src/components/ui)",
+      "Bash([ -f \"$f.tsx\" ])",
+      "Bash(cp __TRACKED_VAR__.tsx /Users/aleks/Vitalis/apps/mobile/src/components/ui/)",
+      "Bash(cp __TRACKED_VAR__.tsx /Users/aleks/Vitalis/apps/web/src/components/ui/)",
+      "Bash(echo \"exit=$?\")",
+      "Bash(echo \"mobile_exit=$?\")",
+      "Bash(echo \"api_exit=$?\")",
+      "Bash(echo \"web_exit=$?\")",
+      "Bash(rm -rf app/\\\\\\(tabs\\\\\\)/index.tsx app/\\\\\\(tabs\\\\\\)/explore.tsx app/modal.tsx components/themed-text.tsx components/themed-view.tsx components/hello-wave.tsx components/parallax-scroll-view.tsx components/external-link.tsx components/haptic-tab.tsx components/ui/icon-symbol.tsx components/ui/icon-symbol.ios.tsx components/ui/collapsible.tsx hooks scripts)",
+      "Bash(rmdir components/ui)",
+      "Bash(rm -rf constants)",
+      "Bash(npm view *)",
+      "Bash(npx --yes expo client:install:ios)",
+      "Read(//Users/aleks/.expo/ios-simulator-app-cache/**)",
+      "Read(//Users/aleks/Library/Caches/**)",
+      "Bash(xcrun simctl *)",
+      "Bash(pkill -f \"expo start\")",
+      "Bash(pkill -f \"node.*metro\")",
+      "Bash(node *)",
+      "Bash(lsof -ti:8081)",
+      "Bash(kill 48958 48940 49251)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('exports',{}\\), indent=2\\)\\)\")",
+      "Read(//tmp/**)"
     ]
   }
 }

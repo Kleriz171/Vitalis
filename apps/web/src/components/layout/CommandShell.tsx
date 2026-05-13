@@ -1,14 +1,21 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { useSelector, useDispatch } from 'react-redux';
-import { motion } from 'framer-motion';
-import { RootState, logout } from '../../store';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  Activity, Plane, Boxes, BarChart3, LogOut, Heart,
+} from 'lucide-react';
 import { ReactNode } from 'react';
+import { RootState, logout } from '../../store';
+import { Avatar, AvatarFallback } from '../ui/avatar';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '../ui/dropdown-menu';
+import { cn } from '../../lib/utils';
 
 const navItems = [
-  { to: '/command', label: 'Logistics', icon: <PulseIcon />, end: true },
-  { to: '/command/drones', label: 'Drones', icon: <DroneIcon /> },
-  { to: '/command/ledger', label: 'Ledger', icon: <BlockIcon /> },
-  { to: '/command/analytics', label: 'Analytics', icon: <ChartIcon /> },
+  { to: '/command', label: 'Logistics', icon: Activity, end: true },
+  { to: '/command/drones', label: 'Drones', icon: Plane },
+  { to: '/command/ledger', label: 'Ledger', icon: Boxes },
+  { to: '/command/analytics', label: 'Analytics', icon: BarChart3 },
 ];
 
 export const CommandShell = () => {
@@ -16,63 +23,66 @@ export const CommandShell = () => {
   const dispatch = useDispatch();
   const nav = useNavigate();
 
+  const signOut = () => { dispatch(logout()); nav('/login'); };
+
   return (
-    <div className="min-h-screen flex">
-      <aside className="w-60 shrink-0 border-r border-white/5 p-5 flex flex-col gap-1 bg-ink-900/40 backdrop-blur-xl">
-        <div className="flex items-center gap-2 mb-8 px-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-neon-cyan to-neon-pink shadow-glow" />
+    <div className="min-h-screen flex bg-background">
+      <aside className="w-60 shrink-0 border-r border-sidebar-border bg-sidebar flex flex-col">
+        <div className="flex items-center gap-3 px-5 h-16 border-b border-sidebar-border">
+          <div className="w-9 h-9 rounded-xl bg-primary text-primary-foreground grid place-items-center shadow-sm">
+            <Heart size={18} fill="currentColor" />
+          </div>
           <div>
-            <div className="font-bold tracking-wider neon-text">VITALIS</div>
-            <div className="text-[10px] text-slate-500 uppercase tracking-widest">Command</div>
+            <div className="font-extrabold tracking-wide text-sidebar-foreground">VITALIS</div>
+            <div className="text-[10px] text-muted-foreground uppercase tracking-widest -mt-0.5">Command</div>
           </div>
         </div>
 
-        <nav className="flex flex-col gap-1">
-          {navItems.map(item => (
+        <nav className="flex flex-col gap-0.5 p-3">
+          {navItems.map(({ to, label, icon: Icon, end }) => (
             <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition relative ${
-                  isActive
-                    ? 'bg-white/10 text-neon-cyan'
-                    : 'text-slate-400 hover:text-slate-100 hover:bg-white/5'
-                }`
-              }
+              key={to}
+              to={to}
+              end={end}
+              className={({ isActive }) => cn(
+                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition relative',
+                isActive
+                  ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                  : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground'
+              )}
             >
               {({ isActive }) => (
                 <>
-                  {isActive && (
-                    <motion.div
-                      layoutId="navHighlight"
-                      className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-neon-cyan rounded-r-full"
-                    />
-                  )}
-                  <span className="w-4 h-4">{item.icon}</span>
-                  <span>{item.label}</span>
+                  {isActive && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full" />}
+                  <Icon size={16} className={isActive ? 'text-primary' : ''} />
+                  <span>{label}</span>
                 </>
               )}
             </NavLink>
           ))}
         </nav>
 
-        <div className="mt-auto pt-4 border-t border-white/5">
-          <div className="flex items-center gap-3 px-2 py-2">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-neon-violet to-neon-cyan grid place-items-center text-xs font-bold text-ink-900">
-              {(user?.name ?? '?').slice(0, 1).toUpperCase()}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm truncate">{user?.name ?? 'Guest'}</div>
-              <div className="text-[10px] uppercase tracking-wider text-slate-500">{user?.role}</div>
-            </div>
-          </div>
-          <button
-            onClick={() => { dispatch(logout()); nav('/login'); }}
-            className="w-full text-left text-xs text-slate-500 hover:text-neon-pink px-2 py-2"
-          >
-            Sign out
-          </button>
+        <div className="mt-auto p-3 border-t border-sidebar-border">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-3 w-full p-2 rounded-lg hover:bg-sidebar-accent/50 transition text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <Avatar className="h-9 w-9">
+                  <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                    {(user?.name ?? '?').slice(0, 1).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium truncate">{user?.name ?? 'Guest'}</div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{user?.role}</div>
+                </div>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={signOut} className="text-destructive focus:text-destructive cursor-pointer">
+                <LogOut size={14} /> Sign out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </aside>
 
@@ -84,24 +94,11 @@ export const CommandShell = () => {
 };
 
 export const PageHeader = ({ title, subtitle, actions }: { title: string; subtitle?: string; actions?: ReactNode }) => (
-  <header className="flex items-end justify-between px-8 pt-7 pb-4 border-b border-white/5">
+  <header className="flex items-end justify-between px-8 pt-6 pb-4 border-b border-border bg-card/40">
     <div>
       <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
-      {subtitle && <p className="text-sm text-slate-400 mt-1">{subtitle}</p>}
+      {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
     </div>
     {actions}
   </header>
 );
-
-function PulseIcon() {
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>;
-}
-function DroneIcon() {
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>;
-}
-function BlockIcon() {
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12"/></svg>;
-}
-function ChartIcon() {
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>;
-}

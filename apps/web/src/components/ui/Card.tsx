@@ -1,37 +1,114 @@
-import { HTMLAttributes, ReactNode } from 'react';
-import { motion, HTMLMotionProps } from 'framer-motion';
+import * as React from "react"
 
-interface Props extends Omit<HTMLMotionProps<'div'>, 'children'> {
-  tone?: 'soft' | 'strong' | 'flat';
-  glow?: boolean;
-  children?: ReactNode;
+import { cn } from "@/lib/utils"
+
+type CardProps = React.ComponentProps<"div"> & {
+  /** Legacy: pre-shadcn density flag. Ignored; removed after Phase 4. */
+  tone?: string
+  /** Legacy: pre-shadcn glow flag. Ignored; removed after Phase 4. */
+  glow?: boolean
 }
 
-const tones = {
-  soft: 'bg-white/[0.04] backdrop-blur-md border border-white/10',
-  strong: 'bg-white/[0.08] backdrop-blur-xl border border-white/15',
-  flat: 'bg-ink-800/80 border border-white/5',
-};
+function Card({ className, tone: _tone, glow: _glow, ...props }: CardProps) {
+  return (
+    <div
+      data-slot="card"
+      className={cn(
+        "bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm",
+        className
+      )}
+      {...props}
+    />
+  )
+}
 
-export const Card = ({ tone = 'soft', glow, className = '', children, ...rest }: Props) => (
-  <motion.div
-    className={`rounded-2xl ${tones[tone]} ${glow ? 'shadow-glow' : ''} ${className}`}
-    {...rest}
-  >
-    {children}
-  </motion.div>
-);
+type CardHeaderProps = React.ComponentProps<"div"> & {
+  /** Legacy: pre-shadcn header title text. Rendered above children. Removed after Phase 4. */
+  title?: React.ReactNode
+  /** Legacy: pre-shadcn header subtitle text. Removed after Phase 4. */
+  subtitle?: React.ReactNode
+}
 
-export const CardHeader = ({ title, subtitle, action }: { title: ReactNode; subtitle?: ReactNode; action?: ReactNode }) => (
-  <div className="flex items-start justify-between p-5 pb-3">
-    <div>
-      <h3 className="text-sm font-semibold text-slate-100 tracking-wide">{title}</h3>
-      {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
+function CardHeader({ className, title, subtitle, children, ...props }: CardHeaderProps) {
+  return (
+    <div
+      data-slot="card-header"
+      className={cn(
+        "@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-2 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6",
+        className
+      )}
+      {...props}
+    >
+      {title ? <div className="leading-none font-semibold">{title}</div> : null}
+      {subtitle ? <div className="text-muted-foreground text-sm">{subtitle}</div> : null}
+      {children}
     </div>
-    {action}
-  </div>
-);
+  )
+}
 
-export const CardBody = ({ children, className = '' }: { children: ReactNode; className?: string }) => (
-  <div className={`px-5 pb-5 ${className}`}>{children}</div>
-);
+function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-title"
+      className={cn("leading-none font-semibold", className)}
+      {...props}
+    />
+  )
+}
+
+function CardDescription({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-description"
+      className={cn("text-muted-foreground text-sm", className)}
+      {...props}
+    />
+  )
+}
+
+function CardAction({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-action"
+      className={cn(
+        "col-start-2 row-span-2 row-start-1 self-start justify-self-end",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function CardContent({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-content"
+      className={cn("px-6", className)}
+      {...props}
+    />
+  )
+}
+
+function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-footer"
+      className={cn("flex items-center px-6 [.border-t]:pt-6", className)}
+      {...props}
+    />
+  )
+}
+
+// Legacy alias retained until feature files are migrated (Phase 2-4).
+const CardBody = CardContent
+
+export {
+  Card,
+  CardHeader,
+  CardFooter,
+  CardTitle,
+  CardAction,
+  CardDescription,
+  CardContent,
+  CardBody,
+}

@@ -5,9 +5,9 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../../api/client';
 import { socket } from '../../realtime/socket';
 import { RootState, logout } from '../../store';
-import { Card } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
-import { StatusBadge, Badge } from '../../components/ui/Badge';
+import { Card } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { StatusBadge, Badge } from '../../components/ui/badge';
 import { pushToast } from '../../components/toast/toast';
 import { timeAgo, shortId, formatEta } from '../../lib/format';
 

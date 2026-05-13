@@ -1,7 +1,8 @@
 import { io } from 'socket.io-client';
 import { store } from '../store';
 
-const url = import.meta.env.VITE_SOCKET_URL ?? 'http://localhost:4000';
+const defaultUrl = () => `http://${window.location.hostname}:4000`;
+const url = import.meta.env.VITE_SOCKET_URL ?? defaultUrl();
 
 export const socket = io(url, {
   autoConnect: false,

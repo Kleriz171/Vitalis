@@ -1,8 +1,12 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import path from 'node:path';
 
 export default defineConfig({
+  resolve: {
+    alias: { '@': path.resolve(__dirname, './src') },
+  },
   plugins: [
     react(),
     VitePWA({
@@ -11,8 +15,8 @@ export default defineConfig({
       manifest: {
         name: 'Vitalis',
         short_name: 'Vitalis',
-        theme_color: '#0b0f1a',
-        background_color: '#0b0f1a',
+        theme_color: '#f7f5f0',
+        background_color: '#f7f5f0',
         display: 'standalone',
         icons: [
           { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },

@@ -1,31 +1,61 @@
-import { ReactNode } from 'react';
+import * as React from "react"
+import { Slot } from "@radix-ui/react-slot"
+import { cva, type VariantProps } from "class-variance-authority"
 
-type Tone = 'cyan' | 'pink' | 'amber' | 'emerald' | 'violet' | 'slate';
+import { cn } from "@/lib/utils"
 
-const tones: Record<Tone, string> = {
-  cyan: 'bg-neon-cyan/15 text-neon-cyan ring-1 ring-neon-cyan/30',
-  pink: 'bg-neon-pink/15 text-neon-pink ring-1 ring-neon-pink/30',
-  amber: 'bg-amber-400/15 text-amber-300 ring-1 ring-amber-400/30',
-  emerald: 'bg-emerald-400/15 text-emerald-300 ring-1 ring-emerald-400/30',
-  violet: 'bg-violet-400/15 text-violet-300 ring-1 ring-violet-400/30',
-  slate: 'bg-slate-400/15 text-slate-300 ring-1 ring-slate-400/30',
-};
+const badgeVariants = cva(
+  "inline-flex items-center justify-center rounded-full border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden",
+  {
+    variants: {
+      variant: {
+        default:
+          "border-transparent bg-primary text-primary-foreground [a&]:hover:bg-primary/90",
+        secondary:
+          "border-transparent bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90",
+        destructive:
+          "border-transparent bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+        outline:
+          "text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  }
+)
 
-const statusToTone: Record<string, Tone> = {
-  pending: 'amber',
-  assigned: 'cyan',
-  en_route: 'violet',
-  on_scene: 'pink',
-  resolved: 'emerald',
-  cancelled: 'slate',
-};
+type BadgeProps = React.ComponentProps<"span"> &
+  VariantProps<typeof badgeVariants> & {
+    asChild?: boolean
+    /** Legacy: pre-shadcn color hint. Ignored; removed after Phase 4. */
+    tone?: string
+  }
 
-export const Badge = ({ tone = 'slate', children }: { tone?: Tone; children: ReactNode }) => (
-  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${tones[tone]}`}>
-    {children}
-  </span>
-);
+function Badge({
+  className,
+  variant,
+  asChild = false,
+  tone: _tone,
+  ...props
+}: BadgeProps) {
+  const Comp = asChild ? Slot : "span"
 
-export const StatusBadge = ({ status }: { status: string }) => (
-  <Badge tone={statusToTone[status] ?? 'slate'}>{status.replace('_', ' ')}</Badge>
-);
+  return (
+    <Comp
+      data-slot="badge"
+      className={cn(badgeVariants({ variant }), className)}
+      {...props}
+    />
+  )
+}
+
+function StatusBadge({ status, className, ...props }: { status?: string; className?: string } & React.ComponentProps<"span">) {
+  const variant: VariantProps<typeof badgeVariants>["variant"] =
+    status === "resolved" || status === "delivered" ? "secondary" :
+    status === "critical" || status === "urgent" ? "destructive" :
+    "default"
+  return <Badge variant={variant} className={className} {...props}>{status ?? "—"}</Badge>
+}
+
+export { Badge, StatusBadge, badgeVariants }

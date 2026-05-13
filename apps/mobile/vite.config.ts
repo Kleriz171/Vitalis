@@ -1,8 +1,12 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import path from 'node:path';
 
 export default defineConfig({
+  resolve: {
+    alias: { '@': path.resolve(__dirname, './src') },
+  },
   plugins: [
     react(),
     VitePWA({
@@ -12,8 +16,8 @@ export default defineConfig({
         name: 'Vitalis',
         short_name: 'Vitalis',
         description: 'Emergency response for citizens & responders',
-        theme_color: '#060912',
-        background_color: '#060912',
+        theme_color: '#f7f5f0',
+        background_color: '#f7f5f0',
         display: 'standalone',
         orientation: 'portrait',
         icons: [

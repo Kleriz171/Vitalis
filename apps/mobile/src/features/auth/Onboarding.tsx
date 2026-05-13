@@ -1,82 +1,65 @@
-import { motion } from 'framer-motion';
 import { Link, Navigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
+import { Heart, MapPin, ShieldCheck } from 'lucide-react';
 import { RootState } from '../../store';
-import { Button } from '../../components/ui/Button';
+import { Button } from '../../components/ui/button';
 
 export const Onboarding = () => {
   const token = useSelector((s: RootState) => s.auth.accessToken);
   if (token) return <Navigate to="/app" replace />;
 
   return (
-    <div className="min-h-screen flex flex-col px-6 pt-16 pb-10 relative overflow-hidden">
-      <motion.div
-        className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-neon-pink/30 blur-3xl"
-        animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.5, 0.3] }}
-        transition={{ duration: 6, repeat: Infinity }}
-      />
-      <motion.div
-        className="absolute -bottom-32 -left-32 w-96 h-96 rounded-full bg-neon-cyan/30 blur-3xl"
-        animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
-        transition={{ duration: 8, repeat: Infinity, delay: 1 }}
-      />
+    <div className="mobile-container">
+      <div className="mobile-content scrollbar-hide" style={{ height: '100vh', paddingBottom: 0 }}>
+        <div className="min-h-full flex flex-col px-6 pt-12 pb-10">
+          <header className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-primary text-primary-foreground grid place-items-center shadow-sm">
+              <Heart size={20} fill="currentColor" />
+            </div>
+            <div>
+              <div className="font-extrabold tracking-wide text-foreground">VITALIS</div>
+              <div className="text-xs text-muted-foreground">Mobile · citizen + responder</div>
+            </div>
+          </header>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative space-y-6 mb-auto"
-      >
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-neon-cyan to-neon-pink shadow-glow" />
-          <div>
-            <div className="font-extrabold tracking-widest neon-text text-xl">VITALIS</div>
-            <div className="text-[11px] text-slate-400 uppercase tracking-wider">Mobile</div>
+          <div className="flex-1 flex flex-col justify-center py-12 space-y-6">
+            <div className="space-y-3">
+              <h1 className="text-3xl font-extrabold leading-tight tracking-tight">
+                Help is one<br />
+                <span className="text-primary">tap away.</span>
+              </h1>
+              <p className="text-muted-foreground text-base leading-relaxed">
+                SOS broadcasts, rare-medicine radar, and your medical passport — wherever you go.
+              </p>
+            </div>
+
+            <ul className="space-y-3">
+              <Bullet icon={<Heart size={18} />}>One-tap emergency broadcast</Bullet>
+              <Bullet icon={<MapPin size={18} />}>Live responder ETA + tracking</Bullet>
+              <Bullet icon={<ShieldCheck size={18} />}>QR-secured Bio Passport</Bullet>
+            </ul>
+          </div>
+
+          <div className="space-y-2">
+            <Link to="/login?mode=register" className="block">
+              <Button size="lg" className="w-full">Create account</Button>
+            </Link>
+            <Link to="/login" className="block">
+              <Button size="lg" variant="outline" className="w-full">I already have one</Button>
+            </Link>
+            <p className="text-[11px] text-muted-foreground text-center pt-3">
+              Operators: open the <span className="text-primary font-medium">desktop portal</span> instead.
+            </p>
           </div>
         </div>
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="relative space-y-6"
-      >
-        <h1 className="text-4xl font-extrabold leading-tight">
-          Help is one<br />
-          <span className="bg-gradient-to-r from-neon-cyan to-neon-pink bg-clip-text text-transparent">
-            tap away.
-          </span>
-        </h1>
-        <p className="text-slate-400 text-base leading-relaxed">
-          SOS broadcasts, rare-medicine radar, and your medical passport — wherever you go.
-        </p>
-
-        <ul className="space-y-2 text-sm text-slate-300">
-          <Bullet>One-tap emergency broadcast</Bullet>
-          <Bullet>Live responder ETA + tracking</Bullet>
-          <Bullet>QR-secured Bio Passport</Bullet>
-        </ul>
-
-        <div className="space-y-2 pt-4">
-          <Link to="/login?mode=register" className="block">
-            <Button size="lg" className="w-full">Create account</Button>
-          </Link>
-          <Link to="/login" className="block">
-            <Button size="lg" variant="ghost" className="w-full">I already have one</Button>
-          </Link>
-        </div>
-
-        <p className="text-[11px] text-slate-500 text-center pt-2">
-          Operators: open the <span className="text-neon-cyan">desktop portal</span> instead.
-        </p>
-      </motion.div>
+      </div>
     </div>
   );
 };
 
-const Bullet = ({ children }: { children: React.ReactNode }) => (
-  <li className="flex items-center gap-2">
-    <span className="w-1.5 h-1.5 rounded-full bg-neon-cyan" />
+const Bullet = ({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) => (
+  <li className="flex items-center gap-3 text-sm text-foreground">
+    <span className="w-9 h-9 rounded-full bg-accent text-accent-foreground grid place-items-center">{icon}</span>
     {children}
   </li>
 );

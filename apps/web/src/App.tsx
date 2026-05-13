@@ -9,6 +9,8 @@ import { Drones } from './features/command/pages/Drones';
 import { Ledger } from './features/command/pages/Ledger';
 import { Analytics } from './features/command/pages/Analytics';
 import { ToastHost } from './components/toast/ToastHost';
+import { Toaster } from './components/ui/sonner';
+import { Smartphone } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 const Protected = ({ children }: { children: JSX.Element }) => {
@@ -31,17 +33,21 @@ const MobileBanner = () => {
   if (!shown) return null;
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 p-3">
-      <div className="glass-strong p-4 max-w-md mx-auto text-sm">
-        <div className="font-semibold mb-1">You're on a phone</div>
-        <p className="text-slate-400 text-xs mb-3">This portal is built for desktop. Citizens & responders should use the Vitalis mobile app.</p>
+      <div className="p-4 max-w-md mx-auto text-sm bg-card border border-border rounded-2xl shadow-lg">
+        <div className="flex items-center gap-2 font-semibold mb-1">
+          <Smartphone size={16} className="text-primary" /> You're on a phone
+        </div>
+        <p className="text-muted-foreground text-xs mb-3">
+          This portal is built for desktop. Citizens & responders should use the Vitalis mobile app.
+        </p>
         <div className="flex gap-2">
           <a
             href="http://localhost:5174"
-            className="flex-1 text-center bg-neon-cyan text-ink-900 font-semibold py-2 rounded-lg"
+            className="flex-1 text-center bg-primary text-primary-foreground font-medium py-2 rounded-lg hover:bg-primary/90 transition"
           >
             Open mobile app
           </a>
-          <button onClick={dismiss} className="px-3 text-slate-400 hover:text-slate-100">Dismiss</button>
+          <button onClick={dismiss} className="px-3 text-muted-foreground hover:text-foreground">Dismiss</button>
         </div>
       </div>
     </div>
@@ -51,6 +57,7 @@ const MobileBanner = () => {
 export const App = () => (
   <>
     <ToastHost />
+    <Toaster position="top-center" />
     <MobileBanner />
     <Routes>
       <Route path="/" element={<Landing />} />

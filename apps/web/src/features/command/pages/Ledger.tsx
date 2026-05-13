@@ -1,25 +1,43 @@
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { CheckCircle2, AlertTriangle } from 'lucide-react';
 import { api } from '../../../api/client';
-import { Card, CardHeader, CardBody } from '../../../components/ui/Card';
-import { Badge } from '../../../components/ui/Badge';
-import { Button } from '../../../components/ui/Button';
+import { Card, CardHeader, CardContent } from '../../../components/ui/card';
+import { Badge } from '../../../components/ui/badge';
+import { Button } from '../../../components/ui/button';
+import { Skeleton } from '../../../components/ui/skeleton';
 import { PageHeader } from '../../../components/layout/CommandShell';
 import { pushToast } from '../../../components/toast/toast';
 
+interface Block {
+  _id: string;
+  index: number;
+  hash: string;
+  prevHash: string;
+  nonce: number;
+  timestamp: string;
+  payload?: { action?: string; entity?: string };
+}
+
+interface VerifyResult {
+  valid: boolean;
+  length: number;
+  brokenAt?: number;
+}
+
 export const Ledger = () => {
-  const [blocks, setBlocks] = useState<any[]>([]);
-  const [verify, setVerify] = useState<any>(null);
+  const [blocks, setBlocks] = useState<Block[]>([]);
+  const [verify, setVerify] = useState<VerifyResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingBlocks, setLoadingBlocks] = useState(true);
 
-  const load = () => api.get('/blockchain').then(r => setBlocks(r.data)).catch(() => {});
-
+  const load = () =>
+    api.get('/blockchain').then(r => setBlocks(r.data)).catch(() => {}).finally(() => setLoadingBlocks(false));
   useEffect(() => { load(); }, []);
 
   const runVerify = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get('/blockchain/verify');
+      const { data } = await api.get<VerifyResult>('/blockchain/verify');
       setVerify(data);
       pushToast({
         tone: data.valid ? 'success' : 'error',
@@ -32,13 +50,14 @@ export const Ledger = () => {
   return (
     <>
       <PageHeader
-        title="Blockchain Ledger"
+        title="Blockchain ledger"
         subtitle="Immutable audit trail · SHA-256 chained"
         actions={
           <div className="flex items-center gap-3">
             {verify && (
-              <Badge tone={verify.valid ? 'emerald' : 'pink'}>
-                {verify.valid ? `✓ ${verify.length} blocks` : `✗ broken @ ${verify.brokenAt}`}
+              <Badge variant={verify.valid ? 'secondary' : 'destructive'} className="gap-1.5">
+                {verify.valid ? <CheckCircle2 size={12} /> : <AlertTriangle size={12} />}
+                {verify.valid ? `${verify.length} blocks` : `Broken @ ${verify.brokenAt}`}
               </Badge>
             )}
             <Button loading={loading} onClick={runVerify}>Verify chain</Button>
@@ -46,39 +65,55 @@ export const Ledger = () => {
         }
       />
       <div className="p-6 max-w-4xl">
-        <Card tone="strong" className="overflow-hidden">
-          <CardHeader title={`${blocks.length} blocks`} subtitle="Append-only · difficulty 2" />
-          <CardBody className="space-y-2">
-            {blocks.length === 0 && (
-              <p className="text-xs text-slate-500 text-center py-12">No blocks yet — trigger an emergency to mint the first one.</p>
+        <Card className="overflow-hidden gap-0 py-0">
+          <CardHeader className="px-5 py-4 border-b">
+            <div className="font-semibold">{blocks.length} blocks</div>
+            <div className="text-xs text-muted-foreground">Append-only · difficulty 2</div>
+          </CardHeader>
+          <CardContent className="space-y-2 p-3">
+            {loadingBlocks && Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="p-4 rounded-xl bg-muted/30 border border-border space-y-2">
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-6 w-12" />
+                  <Skeleton className="h-5 w-20" />
+                </div>
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-2/3" />
+              </div>
+            ))}
+            {!loadingBlocks && blocks.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-12">
+                No blocks yet — trigger an emergency to mint the first one.
+              </p>
             )}
-            {blocks.map((b, i) => (
-              <motion.div
+            {blocks.map(b => (
+              <div
                 key={b._id}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.02 }}
-                className="p-4 rounded-xl bg-white/[0.03] border border-white/5 hover:border-neon-cyan/30 transition"
+                className="p-4 rounded-xl bg-muted/30 border border-border hover:border-primary/40 transition"
               >
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-3">
-                    <div className="text-2xl font-mono text-neon-cyan/60">#{b.index}</div>
+                    <div className="text-2xl font-mono text-primary/70">#{b.index}</div>
                     <div>
-                      <div className="text-xs text-slate-300 capitalize">{b.payload?.action} · {b.payload?.entity}</div>
-                      <div className="text-[10px] text-slate-500 font-mono">{new Date(b.timestamp).toLocaleString()}</div>
+                      <div className="text-xs capitalize font-medium">
+                        {b.payload?.action} · {b.payload?.entity}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground font-mono">
+                        {new Date(b.timestamp).toLocaleString()}
+                      </div>
                     </div>
                   </div>
-                  <Badge tone="violet">nonce {b.nonce}</Badge>
+                  <Badge variant="outline" className="font-mono">nonce {b.nonce}</Badge>
                 </div>
-                <div className="font-mono text-[10px] text-slate-500 break-all">
-                  <span className="text-slate-600">hash:</span> {b.hash}
+                <div className="font-mono text-[10px] text-muted-foreground break-all">
+                  <span className="opacity-60">hash:</span> {b.hash}
                 </div>
-                <div className="font-mono text-[10px] text-slate-600 break-all mt-1">
-                  <span className="text-slate-700">prev:</span> {b.prevHash}
+                <div className="font-mono text-[10px] text-muted-foreground/70 break-all mt-1">
+                  <span className="opacity-60">prev:</span> {b.prevHash}
                 </div>
-              </motion.div>
+              </div>
             ))}
-          </CardBody>
+          </CardContent>
         </Card>
       </div>
     </>

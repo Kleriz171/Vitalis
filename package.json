@@ -10,6 +10,17 @@
     "dev:api": "npm run dev -w @vitalis/api",
     "dev:web": "npm run dev -w @vitalis/web",
     "dev:mobile": "npm run dev -w @vitalis/mobile",
+    "dev:native": "npm run start -w @vitalis/native",
+    "dev:ios": "npm run ios -w @vitalis/native",
+    "seed": "npm run seed -w @vitalis/api",
     "build": "npm run build -w @vitalis/api && npm run build -w @vitalis/web && npm run build -w @vitalis/mobile"
+  },
+  "overrides": {
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-reanimated": "~4.1.1",
+    "react-native-worklets": "0.5.1",
+    "react-native-css-interop": "0.1.22"
   }
 }
