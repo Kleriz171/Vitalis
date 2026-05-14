@@ -39,7 +39,14 @@
       "Bash(lsof -ti:8081)",
       "Bash(kill 48958 48940 49251)",
       "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('exports',{}\\), indent=2\\)\\)\")",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(npx expo *)",
+      "WebFetch(domain:ui-ux-pro-max-skill.nextlevelbuilder.io)",
+      "WebFetch(domain:github.com)",
+      "WebSearch",
+      "Bash(uipro init *)",
+      "Skill(ui-ux-pro-max)",
+      "Bash(git fetch *)"
     ]
   }
 }
