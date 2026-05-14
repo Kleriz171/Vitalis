@@ -3,7 +3,7 @@ import { TextInput, TextInputProps, StyleSheet } from 'react-native';
 import { colors, radius } from '@/lib/theme';
 
 export const Input = forwardRef<TextInput, TextInputProps>(
-  ({ style, placeholderTextColor = '#94A3B8', ...props }, ref) => (
+  ({ style, placeholderTextColor = colors.mutedForeground, ...props }, ref) => (
     <TextInput
       ref={ref}
       placeholderTextColor={placeholderTextColor}
