@@ -48,7 +48,9 @@
       "Skill(ui-ux-pro-max)",
       "Bash(git fetch *)",
       "Bash(git stash *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(start *)",
+      "Bash(git restore *)"
     ]
   }
 }
