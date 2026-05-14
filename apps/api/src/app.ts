@@ -4,6 +4,7 @@ import cors from 'cors';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import { env } from './config/env';
+import { logger } from './config/logger';
 import { errorHandler } from './middleware/error';
 
 import authRoutes from './modules/auth/auth.routes';
@@ -33,6 +34,16 @@ export function buildApp() {
   app.use(compression());
   app.use(express.json({ limit: '1mb' }));
   app.use(rateLimit({ windowMs: 60_000, max: 200 }));
+
+  if (env.nodeEnv !== 'test') {
+    app.use((req, res, next) => {
+      const start = Date.now();
+      res.on('finish', () => {
+        logger.info(`${req.method} ${req.originalUrl} ${res.statusCode} ${Date.now() - start}ms`);
+      });
+      next();
+    });
+  }
 
   app.get('/health', (_req, res) => res.json({ status: 'ok', ts: Date.now() }));
   app.use('/api/auth', authRoutes);
