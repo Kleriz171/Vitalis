@@ -108,15 +108,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   scroll: {
-    paddingHorizontal: 16,
     paddingTop: 10,
     paddingBottom: 136,
   },
   body: {
     gap: 18,
+    paddingHorizontal: 16,
   },
   hero: {
-    borderRadius: radius.xl,
+    borderRadius: radius.lg,
     padding: 20,
     gap: 16,
     ...shadows.card,

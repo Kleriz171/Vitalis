@@ -35,15 +35,46 @@ const resolveBaseUrl = () => {
 
 export const API_BASE_URL = resolveBaseUrl();
 
-export const api = axios.create({ baseURL: API_BASE_URL });
-const refreshClient = axios.create({ baseURL: API_BASE_URL });
+const DEBUG_NET = process.env.EXPO_PUBLIC_DEBUG_NET !== 'false';
+
+if (DEBUG_NET) {
+  console.log('[api] base URL =', API_BASE_URL, 'platform =', Platform.OS);
+  if (Platform.OS !== 'web' && /localhost|127\.0\.0\.1/.test(API_BASE_URL)) {
+    console.warn(
+      '[api] base URL points at localhost on a device build — a phone cannot reach your laptop via "localhost".',
+      'Set EXPO_PUBLIC_API_URL to http://<your-LAN-ip>:4000/api'
+    );
+  }
+}
+
+export const api = axios.create({ baseURL: API_BASE_URL, timeout: 15000 });
+const refreshClient = axios.create({ baseURL: API_BASE_URL, timeout: 15000 });
 let refreshPromise: Promise<string | null> | null = null;
 
 api.interceptors.request.use(cfg => {
   const t = store.getState().auth.accessToken;
   if (t) cfg.headers.Authorization = `Bearer ${t}`;
+  if (DEBUG_NET) {
+    console.log('[api] →', (cfg.method ?? 'GET').toUpperCase(), `${cfg.baseURL ?? ''}${cfg.url ?? ''}`);
+  }
   return cfg;
 });
+
+api.interceptors.response.use(
+  res => {
+    if (DEBUG_NET) console.log('[api] ←', res.status, res.config.url);
+    return res;
+  },
+  err => {
+    if (DEBUG_NET) {
+      const status = err.response?.status;
+      const url = err.config?.url;
+      const body = err.response?.data;
+      console.warn('[api] ✕', status ?? 'NETWORK', url, body ?? err.message);
+    }
+    return Promise.reject(err);
+  }
+);
 
 api.interceptors.response.use(
   response => response,
