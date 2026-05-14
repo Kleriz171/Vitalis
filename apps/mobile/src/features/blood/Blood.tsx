@@ -65,12 +65,12 @@ export const Blood = () => {
 
   return (
     <div className="min-h-full bg-background">
-      <header className="bg-gradient-to-br from-destructive to-red-700 text-white px-5 pt-6 pb-8">
-        <h1 className="text-2xl font-bold">Blood & emergency</h1>
+      <header className="hero-header bg-gradient-to-br from-destructive to-red-700">
+        <h1 className="text-2xl font-bold tracking-tight">Blood & emergency</h1>
         <p className="text-white/80 text-sm mt-1">Donate blood, save lives.</p>
       </header>
 
-      <div className="px-4 -mt-4 pb-8 space-y-4">
+      <div className="px-5 mt-4 pb-8 space-y-4">
         <Card className="p-4">
           <p className="text-xs font-medium text-muted-foreground mb-3">YOUR BLOOD TYPE</p>
           <div className="grid grid-cols-4 gap-2">

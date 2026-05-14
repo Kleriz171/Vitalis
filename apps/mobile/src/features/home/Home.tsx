@@ -104,7 +104,7 @@ export const Home = () => {
 
   return (
     <div className="min-h-full bg-background">
-      <header className="bg-gradient-to-br from-primary to-teal-700 text-primary-foreground px-5 pt-6 pb-10 rounded-b-[2rem] relative overflow-hidden">
+      <header className="hero-header bg-gradient-to-br from-primary to-teal-700 text-primary-foreground">
         <div className="absolute inset-0 opacity-10 pointer-events-none">
           <div className="absolute -top-8 -right-8 w-40 h-40 border-2 border-white rounded-full" />
           <div className="absolute -bottom-6 left-6 w-24 h-24 border border-white rounded-full" />
@@ -135,7 +135,7 @@ export const Home = () => {
         </div>
       </header>
 
-      <div className="px-4 -mt-6 relative z-10 pb-8 space-y-4">
+      <div className="px-4 mt-4 pb-8 space-y-4">
         <SOSHero state={sos} eta={eta} onTrigger={triggerSOS} onCancel={cancelSOS} onOpenPanel={openSOS} />
 
         <QuickActions onNav={nav} />

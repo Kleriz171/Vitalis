@@ -78,7 +78,7 @@ export const Profile = () => {
 
   return (
     <div className="min-h-full bg-background">
-      <header className="bg-gradient-to-br from-slate-800 to-slate-900 text-white px-5 pt-6 pb-10 rounded-b-[2rem]">
+      <header className="bg-gradient-to-br from-slate-800 to-slate-900 text-white px-5 pt-6 pb-8 rounded-2xl mx-5 mt-3">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-xl font-bold">My profile</h1>
           <button onClick={signOut} className="w-9 h-9 bg-white/10 rounded-xl grid place-items-center">
@@ -106,7 +106,7 @@ export const Profile = () => {
         </div>
       </header>
 
-      <div className="px-4 -mt-6 pb-6 space-y-4">
+      <div className="px-5 mt-4 pb-6 space-y-4">
         <button onClick={() => setShowDonorCard(v => !v)} className="block w-full text-left">
           <Card className="p-4 bg-gradient-to-br from-destructive/5 to-card">
             <div className="flex items-center justify-between">

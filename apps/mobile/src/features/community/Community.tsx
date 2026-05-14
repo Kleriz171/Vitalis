@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Users, MessageCircle, Heart, Send, Eye, Shield, ChevronRight, ArrowLeft } from 'lucide-react';
+import {
+  Users, MessageCircle, Heart, Send, Eye, Shield, ChevronRight, ArrowLeft,
+  Stethoscope, Ribbon, Brain, Baby, GraduationCap, FlaskConical, MessagesSquare,
+  type LucideIcon,
+} from 'lucide-react';
 import { api } from '../../api/client';
 import { Card } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -27,9 +31,20 @@ interface Post {
   createdAt: string;
 }
 
-const categoryIcons: Record<string, string> = {
-  diabetes: '🩺', cancer: '🎗️', anxiety: '🧠', parents: '👨‍👩‍👧',
-  students: '📚', heart: '❤️', autoimmune: '🛡️', rare: '🔬',
+const categoryIcons: Record<string, LucideIcon> = {
+  diabetes: Stethoscope,
+  cancer: Ribbon,
+  anxiety: Brain,
+  parents: Baby,
+  students: GraduationCap,
+  heart: Heart,
+  autoimmune: Shield,
+  rare: FlaskConical,
+};
+
+const CategoryIcon = ({ category, className }: { category: string; className?: string }) => {
+  const Icon = categoryIcons[category] ?? MessagesSquare;
+  return <Icon className={className} aria-hidden />;
 };
 
 const categoryColors: Record<string, string> = {
@@ -78,13 +93,13 @@ export const Community = () => {
   if (selectedGroup) {
     return (
       <div className="min-h-full bg-background">
-        <header className="bg-gradient-to-br from-purple-500 to-purple-600 text-white px-5 pt-6 pb-6">
+        <header className="bg-gradient-to-br from-purple-500 to-purple-600 text-white px-5 pt-6 pb-6 rounded-2xl mx-4 mt-3">
           <button onClick={() => setSelectedGroup(null)} className="text-white/80 text-sm mb-3 flex items-center gap-1">
             <ArrowLeft size={14} /> Back
           </button>
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-white/20 rounded-2xl grid place-items-center text-2xl">
-              {categoryIcons[selectedGroup.category] || '💬'}
+            <div className="w-12 h-12 bg-white/20 rounded-2xl grid place-items-center backdrop-blur">
+              <CategoryIcon category={selectedGroup.category} className="w-6 h-6" />
             </div>
             <div>
               <h1 className="text-lg font-bold">{selectedGroup.name}</h1>
@@ -176,12 +191,12 @@ export const Community = () => {
 
   return (
     <div className="min-h-full bg-background">
-      <header className="bg-gradient-to-br from-purple-500 to-purple-600 text-white px-5 pt-6 pb-8">
-        <h1 className="text-2xl font-bold">Community</h1>
+      <header className="hero-header bg-gradient-to-br from-purple-500 to-purple-600">
+        <h1 className="text-2xl font-bold tracking-tight">Community</h1>
         <p className="text-white/80 text-sm mt-1">Support, advice, hope</p>
       </header>
 
-      <div className="px-4 -mt-4 pb-6 space-y-3">
+      <div className="px-4 mt-4 pb-6 space-y-3">
         <Card className="p-4 bg-gradient-to-br from-purple-50 to-card">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-purple-100 rounded-2xl grid place-items-center">
@@ -198,8 +213,8 @@ export const Community = () => {
           <button key={g.id} onClick={() => setSelectedGroup(g)} className="block w-full text-left">
             <Card className="p-4 hover:bg-muted/40 transition-colors">
               <div className="flex items-center gap-4">
-                <div className={cn('w-14 h-14 rounded-2xl grid place-items-center text-2xl', categoryColors[g.category] || 'bg-muted text-muted-foreground')}>
-                  {categoryIcons[g.category] || '💬'}
+                <div className={cn('w-14 h-14 rounded-2xl grid place-items-center', categoryColors[g.category] || 'bg-muted text-muted-foreground')}>
+                  <CategoryIcon category={g.category} className="w-6 h-6" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold">{g.name}</h3>

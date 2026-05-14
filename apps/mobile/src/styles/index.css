@@ -48,13 +48,33 @@
   min-height: 100vh;
   height: 100vh;
   overflow: hidden;
+  /* iOS safe areas */
+  padding-top: env(safe-area-inset-top);
 }
 
 .mobile-content {
   @apply overflow-y-auto;
-  height: calc(100vh - 64px);
-  padding-bottom: 80px;
+  height: calc(100vh - 64px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  padding-bottom: calc(80px + env(safe-area-inset-bottom));
   -webkit-overflow-scrolling: touch;
+}
+
+/* Full-height variant for auth screens (no bottom nav) */
+.mobile-content-full {
+  @apply overflow-y-auto;
+  height: calc(100vh - env(safe-area-inset-top));
+  padding-bottom: env(safe-area-inset-bottom);
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Shared hero header — inset gradient card */
+.hero-header {
+  position: relative;
+  overflow: hidden;
+  margin: 0.75rem 1.25rem 0 1.25rem;
+  padding: 1.5rem 1.25rem 2rem 1.25rem;
+  border-radius: 1rem;
+  color: white;
 }
 
 /* SOS floating button */
@@ -66,7 +86,7 @@
   letter-spacing: 1px;
   animation: pulse-red 2s infinite;
   right: max(calc(50% - 195px), 16px);
-  bottom: 88px;
+  bottom: calc(88px + env(safe-area-inset-bottom));
 }
 
 @keyframes pulse-red {
@@ -88,12 +108,14 @@
   width: 100%;
   left: 50%;
   transform: translateX(-50%);
-  height: 64px;
+  height: calc(64px + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .nav-item {
-  @apply flex flex-col items-center justify-center gap-0.5 text-muted-foreground transition-colors;
+  @apply flex flex-col items-center justify-center gap-0.5 text-muted-foreground transition-colors cursor-pointer;
   min-width: 60px;
+  min-height: 44px;
 }
 
 .nav-item.active { @apply text-primary; }

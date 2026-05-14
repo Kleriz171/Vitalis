@@ -77,7 +77,7 @@ export const Login = () => {
 
   return (
     <div className="mobile-container">
-      <div className="mobile-content scrollbar-hide" style={{ height: '100vh', paddingBottom: 0 }}>
+      <div className="mobile-content-full scrollbar-hide">
         <div className="min-h-full px-6 pt-6 pb-10 flex flex-col">
           <Link
             to="/"

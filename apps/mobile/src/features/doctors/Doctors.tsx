@@ -50,12 +50,12 @@ export const Doctors = () => {
 
   return (
     <div className="min-h-full bg-background">
-      <header className="bg-gradient-to-br from-blue-500 to-blue-600 text-white px-5 pt-6 pb-8">
-        <h1 className="text-2xl font-bold">Doctors & hospitals</h1>
+      <header className="hero-header bg-gradient-to-br from-blue-500 to-blue-600">
+        <h1 className="text-2xl font-bold tracking-tight">Doctors & hospitals</h1>
         <p className="text-white/80 text-sm mt-1">Find your specialist</p>
       </header>
 
-      <div className="px-4 -mt-4 pb-6 space-y-4">
+      <div className="px-4 mt-4 pb-6 space-y-4">
         <Card className="p-3">
           <div className="flex items-center gap-3">
             <div className="flex-1 flex items-center gap-2 bg-muted rounded-xl px-3 py-2.5">

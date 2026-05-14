@@ -125,13 +125,13 @@ export const HealthAssistant = () => {
 
   return (
     <div className="min-h-full bg-background flex flex-col">
-      <header className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white px-5 pt-6 pb-6">
+      <header className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white px-5 pt-6 pb-6 rounded-2xl mx-4 mt-3">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 bg-white/20 rounded-2xl grid place-items-center backdrop-blur">
-            <Sparkles size={24} />
+            <Sparkles size={24} aria-hidden />
           </div>
           <div>
-            <h1 className="text-xl font-bold">Health assistant</h1>
+            <h1 className="text-xl font-bold tracking-tight">Health assistant</h1>
             <p className="text-white/80 text-xs">AI · not a doctor, but a helper</p>
           </div>
         </div>

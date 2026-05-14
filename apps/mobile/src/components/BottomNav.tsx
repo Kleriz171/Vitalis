@@ -21,10 +21,10 @@ export const BottomNav = () => (
       >
         {({ isActive }) => (
           <>
-            <Icon size={22} strokeWidth={isActive ? 2.4 : 1.6} />
-            <span className="text-[10px] font-medium mt-0.5">{label}</span>
+            <Icon size={22} strokeWidth={isActive ? 2.4 : 1.6} aria-hidden />
+            <span className="text-[11px] font-medium mt-0.5">{label}</span>
             {isActive && (
-              <span className="absolute -bottom-0 w-8 h-0.5 bg-primary rounded-full" />
+              <span className="absolute bottom-1 w-8 h-0.5 bg-primary rounded-full" aria-hidden />
             )}
           </>
         )}

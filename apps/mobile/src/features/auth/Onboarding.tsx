@@ -10,7 +10,7 @@ export const Onboarding = () => {
 
   return (
     <div className="mobile-container">
-      <div className="mobile-content scrollbar-hide" style={{ height: '100vh', paddingBottom: 0 }}>
+      <div className="mobile-content-full scrollbar-hide">
         <div className="min-h-full flex flex-col px-6 pt-12 pb-10">
           <header className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-2xl bg-primary text-primary-foreground grid place-items-center shadow-sm">
