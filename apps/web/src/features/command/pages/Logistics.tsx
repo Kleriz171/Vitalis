@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { X } from 'lucide-react';
+import { Award, X } from 'lucide-react';
 import { api } from '../../../api/client';
 import { socket } from '../../../realtime/socket';
 import { Card, CardHeader, CardContent } from '../../../components/ui/card';
@@ -20,6 +20,12 @@ const MapFallback = () => (
   </div>
 );
 
+interface CallerCertification {
+  badgeLabel: string;
+  courseSlug: string;
+  expiresAt: string;
+}
+
 interface Emergency {
   _id: string;
   type: string;
@@ -29,6 +35,7 @@ interface Emergency {
   etaSeconds?: number;
   description?: string;
   timeline?: { status: string; at: string }[];
+  callerCertifications?: CallerCertification[];
 }
 
 export const Logistics = () => {
@@ -130,6 +137,18 @@ export const Logistics = () => {
                     <span className="text-xs text-muted-foreground font-mono">P{e.priority}</span>
                   </div>
                   <div className="text-[10px] text-muted-foreground mt-0.5">{timeAgo(e.createdAt)}</div>
+                  {e.callerCertifications && e.callerCertifications.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {e.callerCertifications.map((c) => (
+                        <span
+                          key={c.courseSlug}
+                          className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700"
+                        >
+                          <Award size={10} /> {c.badgeLabel}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </button>
               ))}
             </CardContent>
@@ -165,6 +184,26 @@ const IncidentDrawer = ({ incident, onClose }: { incident: Emergency; onClose: (
         {incident.etaSeconds != null && <Row label="ETA" value={formatEta(incident.etaSeconds)} mono />}
         <Row label="Created" value={new Date(incident.createdAt).toLocaleString()} />
         {incident.description && <Row label="Description" value={incident.description} />}
+
+        {incident.callerCertifications && incident.callerCertifications.length > 0 && (
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Caller training</div>
+            <div className="flex flex-wrap gap-1.5">
+              {incident.callerCertifications.map((c) => (
+                <span
+                  key={c.courseSlug}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-700"
+                  title={`Valid until ${new Date(c.expiresAt).toLocaleDateString()}`}
+                >
+                  <Award size={12} /> {c.badgeLabel}
+                </span>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-2">
+              Caller is trained — they may be able to start care before responders arrive.
+            </p>
+          </div>
+        )}
 
         <div>
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Timeline</div>

@@ -11,7 +11,7 @@ import {
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useDispatch, useSelector } from 'react-redux';
 import { useRouter } from 'expo-router';
-import { AlertTriangle, Calendar, Heart, LogOut, Pill, QrCode, ShieldCheck, Syringe, UserCircle, X } from 'lucide-react-native';
+import { AlertTriangle, Award, Calendar, Heart, LogOut, Pill, QrCode, ShieldCheck, Syringe, UserCircle, X } from 'lucide-react-native';
 import { toast } from 'sonner-native';
 import { api } from '@/lib/api';
 import { AppScreen } from '@/components/AppScreen';
@@ -19,7 +19,8 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
-import { logout, RootState, setSession } from '@/lib/store';
+import { logout, RootState, setSession, setTraining } from '@/lib/store';
+import type { TrainingCertification, TrainingEnrollment } from '@/lib/store';
 import { colors, radius } from '@/lib/theme';
 
 type Severity = 'mild' | 'moderate' | 'severe';
@@ -96,6 +97,11 @@ export default function Profile() {
   const dispatch = useDispatch();
   const router = useRouter();
   const auth = useSelector((state: RootState) => state.auth);
+  const certifications = useSelector((state: RootState) => state.training.certifications);
+  const activeCertifications = useMemo(
+    () => certifications.filter((c) => new Date(c.expiresAt).getTime() > Date.now()),
+    [certifications]
+  );
 
   const [profile, setProfile] = useState<HealthProfile | null>(null);
   const [passport, setPassport] = useState<BioPassport | null>(null);
@@ -136,11 +142,17 @@ export default function Profile() {
   }, []);
 
   const load = useCallback(async () => {
-    const [profileRes, passportRes] = await Promise.all([api.get('/health/profile'), api.get('/biopassport/me')]);
+    const [profileRes, passportRes, enrollmentsRes, certsRes] = await Promise.all([
+      api.get('/health/profile'),
+      api.get('/biopassport/me'),
+      api.get<TrainingEnrollment[]>('/training/enrollments'),
+      api.get<TrainingCertification[]>('/training/certifications'),
+    ]);
     const nextProfile = profileRes.data as HealthProfile;
     setProfile(nextProfile);
     setPassport(passportRes.data as BioPassport);
     syncEditableFields(nextProfile);
+    dispatch(setTraining({ enrollments: enrollmentsRes.data ?? [], certifications: certsRes.data ?? [] }));
 
     if (auth.accessToken && auth.refreshToken) {
       dispatch(
@@ -379,6 +391,30 @@ export default function Profile() {
             </View>
           </Card>
         </Animated.View>
+
+        {activeCertifications.length ? (
+          <Card style={styles.certCard}>
+            <View style={styles.certHeader}>
+              <Award size={18} color={colors.primary} />
+              <Text style={styles.sectionTitle}>First aid certifications</Text>
+            </View>
+            <Text style={styles.sectionBody}>Visible to dispatchers during emergencies.</Text>
+            <View style={styles.certRow}>
+              {activeCertifications.map((cert: TrainingCertification) => (
+                <Pressable
+                  key={cert.id}
+                  onPress={() => router.push({ pathname: '/training/certificate/[id]', params: { id: cert.id } } as never)}
+                  style={styles.certBadge}
+                >
+                  <Text style={styles.certBadgeText}>{cert.badgeLabel}</Text>
+                  <Text style={styles.certBadgeMeta}>
+                    Valid until {new Date(cert.expiresAt).toLocaleDateString()}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </Card>
+        ) : null}
 
         <Card style={styles.editorCard}>
           <Text style={styles.sectionTitle}>Core health profile</Text>
@@ -835,5 +871,36 @@ const styles = StyleSheet.create({
   },
   loadingCard: {
     padding: 18,
+  },
+  certCard: {
+    padding: 18,
+    gap: 12,
+  },
+  certHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  certRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  certBadge: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: radius.lg,
+    backgroundColor: colors.accent,
+    gap: 4,
+  },
+  certBadgeText: {
+    color: colors.accentForeground,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  certBadgeMeta: {
+    color: colors.primaryStrong,
+    fontSize: 10,
+    fontWeight: '600',
   },
 });

@@ -1,7 +1,24 @@
 import { Emergency } from '../../models/Emergency';
 import { User } from '../../models/User';
+import { Certification } from '../../models/Training';
 import { nearQuery, haversineKm } from '../../utils/geo';
 import { blockchainService } from '../blockchain/blockchain.service';
+
+export const fetchActiveCertifications = async (userIds: string[]) => {
+  if (!userIds.length) return new Map<string, { badgeLabel: string; courseSlug: string; expiresAt: Date }[]>();
+  const certs = await Certification.find({
+    user: { $in: userIds },
+    expiresAt: { $gt: new Date() },
+  }).lean();
+  const grouped = new Map<string, { badgeLabel: string; courseSlug: string; expiresAt: Date }[]>();
+  for (const c of certs) {
+    const key = String(c.user);
+    const list = grouped.get(key) ?? [];
+    list.push({ badgeLabel: c.badgeLabel, courseSlug: c.courseSlug, expiresAt: c.expiresAt });
+    grouped.set(key, list);
+  }
+  return grouped;
+};
 
 export const emergencyService = {
   async create(citizenId: string, body: any) {
@@ -57,6 +74,20 @@ export const emergencyService = {
     });
     return e;
   },
-  list: (query: any = {}) =>
-    Emergency.find(query).populate('citizen responder', 'name role').sort('-createdAt').limit(100),
+  async list(query: any = {}) {
+    const emergencies = await Emergency.find(query)
+      .populate('citizen responder', 'name role')
+      .sort('-createdAt')
+      .limit(100)
+      .lean();
+    const callerIds = emergencies
+      .map((e: any) => e.citizen?._id ?? e.citizen)
+      .filter(Boolean)
+      .map(String);
+    const certs = await fetchActiveCertifications(callerIds);
+    return emergencies.map((e: any) => ({
+      ...e,
+      callerCertifications: certs.get(String(e.citizen?._id ?? e.citizen)) ?? [],
+    }));
+  },
 };

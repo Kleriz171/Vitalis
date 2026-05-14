@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Home, Droplets, Stethoscope, Users, UserCircle } from 'lucide-react';
+import { Home, Droplets, Stethoscope, Users, UserCircle, GraduationCap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const items = [
@@ -7,6 +7,7 @@ const items = [
   { path: '/app/blood', label: 'Blood', icon: Droplets },
   { path: '/app/doctors', label: 'Doctors', icon: Stethoscope },
   { path: '/app/community', label: 'Community', icon: Users },
+  { path: '/app/training', label: 'Training', icon: GraduationCap },
   { path: '/app/profile', label: 'Profile', icon: UserCircle },
 ];
 

@@ -19,6 +19,7 @@ import doctorsRoutes from './modules/doctors/doctors.routes';
 import communityRoutes from './modules/community/community.routes';
 import healthRoutes from './modules/health/health.routes';
 import supplyRoutes from './modules/supply/supply.routes';
+import trainingRoutes from './modules/training/training.routes';
 
 export function buildApp() {
   const app = express();
@@ -58,6 +59,7 @@ export function buildApp() {
   app.use('/api/community', communityRoutes);
   app.use('/api/health', healthRoutes);
   app.use('/api/supply', supplyRoutes);
+  app.use('/api/training', trainingRoutes);
 
   app.use(errorHandler);
   return app;

@@ -16,6 +16,12 @@ import { Doctors } from './features/doctors/Doctors';
 import { Community } from './features/community/Community';
 import { Profile } from './features/profile/Profile';
 import { HealthAssistant } from './features/assistant/HealthAssistant';
+import { Training } from './features/training/Training';
+import { CourseDetail } from './features/training/CourseDetail';
+import { LessonPage } from './features/training/Lesson';
+import { Quiz } from './features/training/Quiz';
+import { Certificate } from './features/training/Certificate';
+import { Verify } from './features/training/Verify';
 
 const RESPONDER_ROLES = ['doctor', 'nurse', 'student_responder', 'blood_donor'];
 
@@ -77,7 +83,13 @@ export const App = () => {
           <Route path="community" element={<Community />} />
           <Route path="profile" element={<Profile />} />
           <Route path="assistant" element={<HealthAssistant />} />
+          <Route path="training" element={<Training />} />
+          <Route path="training/:slug" element={<CourseDetail />} />
+          <Route path="training/lesson/:slug/:lessonId" element={<LessonPage />} />
+          <Route path="training/quiz/:slug" element={<Quiz />} />
+          <Route path="training/certificate/:id" element={<Certificate />} />
         </Route>
+        <Route path="verify/:token" element={<Verify />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>

@@ -11,6 +11,8 @@ import { CommunityGroup } from '../models/CommunityGroup';
 import { CommunityPost } from '../models/CommunityPost';
 import { MedicineInventory } from '../models/MedicineInventory';
 import { SupplyRequest } from '../models/SupplyRequest';
+import { Course, Enrollment, Certification } from '../models/Training';
+import { trainingCourses } from './trainingCourses';
 
 const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] as const;
 
@@ -32,6 +34,9 @@ async function seed() {
     CommunityPost.deleteMany({}),
     MedicineInventory.deleteMany({}),
     SupplyRequest.deleteMany({}),
+    Course.deleteMany({}),
+    Enrollment.deleteMany({}),
+    Certification.deleteMany({}),
   ]);
 
   // Demo users (idempotent on email)
@@ -204,6 +209,9 @@ async function seed() {
     });
   });
   await CommunityPost.insertMany(posts);
+
+  logger.info('Seeding training courses…');
+  await Course.insertMany(trainingCourses);
 
   logger.info('✅ Seed complete.');
   await mongoose.disconnect();

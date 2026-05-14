@@ -89,12 +89,69 @@ const auth = createSlice({
       void storage.deleteItem('at');
       void storage.deleteItem('rt');
       void storage.deleteItem('user');
+      store.dispatch(clearTraining());
     },
   },
 });
 
 export const { hydrate, setSession, logout } = auth.actions;
-export const store = configureStore({ reducer: { auth: auth.reducer } });
+
+export interface TrainingEnrollment {
+  id: string;
+  courseId: string;
+  completedLessonIds: string[];
+  lastScore?: number;
+  attempts?: number;
+  completedAt?: string;
+}
+
+export interface TrainingCertification {
+  id: string;
+  courseId: string;
+  courseSlug: string;
+  badgeLabel: string;
+  score: number;
+  issuedAt: string;
+  expiresAt: string;
+  shareToken: string;
+}
+
+interface TrainingState {
+  enrollments: TrainingEnrollment[];
+  certifications: TrainingCertification[];
+  loaded: boolean;
+}
+
+const training = createSlice({
+  name: 'training',
+  initialState: { enrollments: [], certifications: [], loaded: false } as TrainingState,
+  reducers: {
+    setTraining(s, a: PayloadAction<{ enrollments: TrainingEnrollment[]; certifications: TrainingCertification[] }>) {
+      s.enrollments = a.payload.enrollments;
+      s.certifications = a.payload.certifications;
+      s.loaded = true;
+    },
+    upsertEnrollment(s, a: PayloadAction<TrainingEnrollment>) {
+      const idx = s.enrollments.findIndex((e) => e.courseId === a.payload.courseId);
+      if (idx >= 0) s.enrollments[idx] = a.payload;
+      else s.enrollments.push(a.payload);
+    },
+    upsertCertification(s, a: PayloadAction<TrainingCertification>) {
+      const idx = s.certifications.findIndex((c) => c.courseId === a.payload.courseId);
+      if (idx >= 0) s.certifications[idx] = a.payload;
+      else s.certifications.unshift(a.payload);
+    },
+    clearTraining(s) {
+      s.enrollments = [];
+      s.certifications = [];
+      s.loaded = false;
+    },
+  },
+});
+
+export const { setTraining, upsertEnrollment, upsertCertification, clearTraining } = training.actions;
+
+export const store = configureStore({ reducer: { auth: auth.reducer, training: training.reducer } });
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;

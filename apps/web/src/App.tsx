@@ -8,6 +8,7 @@ import { Logistics } from './features/command/pages/Logistics';
 import { Drones } from './features/command/pages/Drones';
 import { Ledger } from './features/command/pages/Ledger';
 import { Analytics } from './features/command/pages/Analytics';
+import { Verify } from './features/verify/Verify';
 import { ToastHost } from './components/toast/ToastHost';
 import { Toaster } from './components/ui/sonner';
 import { Smartphone } from 'lucide-react';
@@ -62,6 +63,7 @@ export const App = () => (
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/verify/:token" element={<Verify />} />
       <Route path="/command" element={<Protected><CommandShell /></Protected>}>
         <Route index element={<Logistics />} />
         <Route path="drones" element={<Drones />} />

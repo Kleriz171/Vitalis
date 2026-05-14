@@ -1,6 +1,6 @@
 import { Response, NextFunction } from 'express';
 import { AuthReq } from '../../middleware/auth';
-import { emergencyService } from './emergency.service';
+import { emergencyService, fetchActiveCertifications } from './emergency.service';
 import { getIO } from '../../realtime/socket';
 
 export const emergencyController = {
@@ -8,9 +8,14 @@ export const emergencyController = {
     try {
       const e = await emergencyService.create(req.user!.id, req.body);
       const nearby = await emergencyService.findNearbyResponders((e.location as any).coordinates);
-      getIO().to('responders').emit('emergency:new', { emergency: e, nearby: nearby.map(r => r._id) });
-      getIO().to('dispatchers').emit('dashboard:emergency', e);
-      res.status(201).json({ emergency: e, nearbyCount: nearby.length });
+      const certs = await fetchActiveCertifications([req.user!.id]);
+      const payload = {
+        ...e.toObject(),
+        callerCertifications: certs.get(req.user!.id) ?? [],
+      };
+      getIO().to('responders').emit('emergency:new', { emergency: payload, nearby: nearby.map(r => r._id) });
+      getIO().to('dispatchers').emit('dashboard:emergency', payload);
+      res.status(201).json({ emergency: payload, nearbyCount: nearby.length });
     } catch (err) { next(err); }
   },
   accept: async (req: AuthReq, res: Response, next: NextFunction) => {
