@@ -11,7 +11,7 @@ import {
 } from '../ui/dropdown-menu';
 import { cn } from '../../lib/utils';
 
-const navItems = [
+const baseNav = [
   { to: '/command', label: 'Logistics', icon: Activity, end: true },
   { to: '/command/drones', label: 'Drones', icon: Plane },
   { to: '/command/ledger', label: 'Ledger', icon: Boxes },
@@ -20,6 +20,13 @@ const navItems = [
 
 export const CommandShell = () => {
   const user = useSelector((s: RootState) => s.auth.user);
+  const navItems = user?.role === 'admin'
+    ? [
+        ...baseNav,
+        { to: '/command/admin/users', label: 'Users', icon: Heart },
+        { to: '/command/admin/doctor-applications', label: 'Doctor apps', icon: Heart },
+      ]
+    : baseNav;
   const dispatch = useDispatch();
   const nav = useNavigate();
 

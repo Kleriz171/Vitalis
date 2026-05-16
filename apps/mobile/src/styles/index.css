@@ -104,6 +104,7 @@
 /* Bottom nav */
 .bottom-nav {
   @apply fixed bottom-0 z-40 bg-card/95 backdrop-blur border-t border-border;
+  box-sizing: border-box;
   max-width: 430px;
   width: 100%;
   left: 50%;

@@ -74,7 +74,7 @@ export const Button = forwardRef<View, ButtonProps>(
           styles.base,
           variantBox[variant],
           sizeBox[size],
-          isDisabled && { opacity: 0.5 },
+          isDisabled && { opacity: 0.75 },
           pressed && { opacity: 0.8 },
           style,
         ]}

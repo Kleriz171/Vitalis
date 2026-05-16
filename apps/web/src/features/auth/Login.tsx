@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Heart } from 'lucide-react';
 import { api } from '../../api/client';
 import { setSession } from '../../store';
@@ -9,28 +9,13 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Card, CardContent } from '../../components/ui/card';
 import { Alert, AlertDescription } from '../../components/ui/alert';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '../../components/ui/select';
 import { pushToast } from '../../components/toast/toast';
-import { cn } from '../../lib/utils';
-
-type Mode = 'login' | 'register';
-
-const ROLES = [
-  { value: 'dispatcher', label: 'Dispatcher' },
-  { value: 'admin', label: 'Admin' },
-];
 
 const OPERATOR_ROLES = ['dispatcher', 'admin'];
 
 export const Login = () => {
-  const [params] = useSearchParams();
-  const [mode, setMode] = useState<Mode>(params.get('mode') === 'register' ? 'register' : 'login');
-  const [email, setEmail] = useState('dispatcher@vitalis.dev');
-  const [password, setPassword] = useState('demo1234');
-  const [name, setName] = useState('');
-  const [role, setRole] = useState('dispatcher');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const dispatch = useDispatch();
@@ -41,26 +26,20 @@ export const Login = () => {
     setLoading(true);
     setErr(null);
     try {
-      const endpoint = mode === 'login' ? '/auth/login' : '/auth/register';
-      const body = mode === 'login' ? { email, password } : { email, password, name, role };
-      const { data } = await api.post(endpoint, body);
+      const { data } = await api.post('/auth/login', { email, password });
 
       if (!OPERATOR_ROLES.includes(data.user.role)) {
         setErr('This portal is for operators. Use the mobile app instead.');
-        pushToast({ tone: 'warn', title: 'Wrong portal', body: 'Citizens & responders use the mobile app.' });
+        pushToast({ tone: 'warn', title: 'Wrong portal', body: 'Citizens use the mobile app.' });
         setLoading(false);
         return;
       }
 
       dispatch(setSession(data));
-      pushToast({
-        tone: 'success',
-        title: mode === 'login' ? 'Welcome back' : 'Account created',
-        body: data.user.email,
-      });
-      nav('/command');
+      pushToast({ tone: 'success', title: 'Welcome back', body: data.user.email });
+      nav(data.user.role === 'admin' ? '/command/admin/users' : '/command');
     } catch (e: any) {
-      const msg = e.response?.data?.error ?? `${mode} failed`;
+      const msg = e.response?.data?.error ?? 'Sign in failed';
       setErr(msg);
       pushToast({ tone: 'error', title: 'Error', body: msg });
     } finally {
@@ -87,41 +66,7 @@ export const Login = () => {
 
         <Card className="shadow-sm">
           <CardContent className="space-y-5">
-            <div className="flex bg-muted rounded-xl p-1 text-sm">
-              {(['login', 'register'] as Mode[]).map(m => (
-                <button
-                  type="button"
-                  key={m}
-                  onClick={() => { setMode(m); setErr(null); }}
-                  className={cn(
-                    'flex-1 py-2 rounded-lg transition capitalize font-medium',
-                    mode === m ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
-                  )}
-                >
-                  {m === 'login' ? 'Sign in' : 'Register'}
-                </button>
-              ))}
-            </div>
-
             <form onSubmit={submit} className="space-y-4">
-              {mode === 'register' && (
-                <>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="name">Name</Label>
-                    <Input id="name" value={name} onChange={e => setName(e.target.value)} placeholder="Jane Doe" required />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Role</Label>
-                    <Select value={role} onValueChange={setRole}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {ROLES.map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </>
-              )}
-
               <div className="space-y-1.5">
                 <Label htmlFor="email">Email</Label>
                 <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} required />
@@ -135,15 +80,15 @@ export const Login = () => {
               {err && <Alert variant="destructive"><AlertDescription>{err}</AlertDescription></Alert>}
 
               <Button type="submit" size="lg" loading={loading} className="w-full">
-                {mode === 'login' ? 'Sign in' : 'Create account'}
+                Sign in
               </Button>
             </form>
+
+            <p className="text-[11px] text-muted-foreground text-center">
+              Accounts are issued by an administrator. Contact your admin if you need access.
+            </p>
           </CardContent>
         </Card>
-
-        <p className="text-[11px] text-muted-foreground text-center mt-6">
-          By continuing you agree to the prototype terms — no real medical decisions.
-        </p>
       </div>
     </div>
   );

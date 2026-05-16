@@ -6,6 +6,7 @@ interface SeedLesson {
   summary: string;
   body: string;
   durationMin: number;
+  videoUrl?: string;
 }
 interface SeedQuestion {
   prompt: string;
@@ -43,6 +44,7 @@ export const trainingCourses: SeedCourse[] = [
         title: 'Recognising cardiac arrest',
         summary: 'How to tell quickly that someone needs CPR.',
         durationMin: 4,
+        videoUrl: 'https://www.youtube.com/embed/BQNNOh8c8ks',
         body:
           'An adult in cardiac arrest is unresponsive and not breathing normally. Gasping (agonal breathing) is not normal breathing — treat it as cardiac arrest. Tap their shoulders, shout, and check breathing for no more than 10 seconds. If absent or abnormal, call emergency services and start CPR immediately.',
       },
@@ -57,6 +59,7 @@ export const trainingCourses: SeedCourse[] = [
         title: 'Quality chest compressions',
         summary: 'Rate, depth, recoil, and minimal interruptions.',
         durationMin: 5,
+        videoUrl: 'https://www.youtube.com/embed/cosVBV96E2g',
         body:
           'Place the heel of one hand on the center of the chest, lace the other on top, lock your elbows. Press 5–6 cm deep, 100–120 times per minute (think of the beat of "Stayin\' Alive"). Allow full chest recoil between compressions and minimise pauses to under 10 seconds.',
       },

@@ -13,7 +13,7 @@ import { StatusBar } from 'expo-status-bar';
 import Animated, { FadeIn, FadeInDown, FadeInRight, FadeOutLeft } from 'react-native-reanimated';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useDispatch } from 'react-redux';
-import { ArrowLeft, Check, Heart, LogIn, ShieldCheck } from 'lucide-react-native';
+import { ArrowLeft, Check, Heart, ShieldCheck } from 'lucide-react-native';
 import { toast } from 'sonner-native';
 
 import { Button } from '@/components/ui/Button';
@@ -47,7 +47,6 @@ interface VaccinationDraft {
   provider?: string;
 }
 
-const OPERATOR_ROLES = ['dispatcher', 'admin'];
 const BLOOD_TYPES: BloodType[] = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 const GENDERS: Array<{ value: Gender; label: string }> = [
   { value: 'female', label: 'Female' },
@@ -58,8 +57,8 @@ const GENDERS: Array<{ value: Gender; label: string }> = [
 ];
 const passwordRule = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 const isoDateRule = /^\d{4}-\d{2}-\d{2}$/;
-const DEMO_EMAIL = 'demo@vitalis.dev';
-const DEMO_PASSWORD = 'demo1234';
+const DEMO_EMAIL = '';
+const DEMO_PASSWORD = '';
 
 export default function Login() {
   const { mode: modeParam } = useLocalSearchParams<{ mode?: string }>();
@@ -149,8 +148,8 @@ export default function Login() {
     setLoading(true);
     try {
       const { data } = await api.post('/auth/login', { email, password });
-      if (OPERATOR_ROLES.includes(data.user.role)) {
-        toast.error('Wrong app', { description: 'Operators should use the desktop portal.' });
+      if (data.user.role === 'admin' || data.user.role === 'dispatcher') {
+        toast.error('Use the desktop portal', { description: 'This account type is for the web dashboard.' });
         return;
       }
       dispatch(setSession(data));
@@ -388,10 +387,6 @@ export default function Login() {
                   </View>
                   <Pressable onPress={() => switchMode('register')} style={styles.secondaryLink}>
                     <Text style={styles.secondaryLinkText}>Need a new account? Register</Text>
-                  </Pressable>
-                  <Pressable onPress={() => { setEmail(DEMO_EMAIL); setPassword(DEMO_PASSWORD); }} style={styles.demoLink}>
-                    <LogIn size={15} color={colors.primaryStrong} />
-                    <Text style={styles.demoLinkText}>Use demo credentials</Text>
                   </Pressable>
                 </View>
               </View>

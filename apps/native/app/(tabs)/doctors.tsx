@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Filter, Search, Star, Stethoscope, Video } from 'lucide-react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Filter, MessageCircle, Search, Star, Stethoscope, UserPlus, Video } from 'lucide-react-native';
 import { toast } from 'sonner-native';
 import { api } from '@/lib/api';
 import { AppScreen } from '@/components/AppScreen';
@@ -22,9 +23,25 @@ interface Doctor {
   rating?: number;
   reviewCount?: number;
   availableOnline?: boolean;
+  phone?: string;
 }
 
+const openWhatsApp = async (phone: string, name: string) => {
+  const cleaned = phone.replace(/[^\d]/g, '');
+  if (!cleaned) {
+    toast.error('No phone number on file for this doctor.');
+    return;
+  }
+  const url = `https://wa.me/${cleaned}?text=${encodeURIComponent(`Hello ${name}, I am reaching out via Vitalis.`)}`;
+  try {
+    await Linking.openURL(url);
+  } catch {
+    toast.error('Could not open WhatsApp');
+  }
+};
+
 export default function Doctors() {
+  const router = useRouter();
   const [search, setSearch] = useState('');
   const [specialty, setSpecialty] = useState('All');
   const [onlineOnly, setOnlineOnly] = useState(false);
@@ -69,6 +86,16 @@ export default function Doctors() {
         </View>
       }
     >
+      <Pressable onPress={() => router.push('/doctor-application')}>
+        <Card style={styles.applyCard}>
+          <View style={styles.applyIcon}><UserPlus size={20} color={colors.info} /></View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.applyTitle}>Are you a doctor?</Text>
+            <Text style={styles.applyBody}>Apply to join Vitalis — upload your specialty certification for admin review.</Text>
+          </View>
+        </Card>
+      </Pressable>
+
       <Card style={styles.searchCard}>
         <View style={styles.searchRow}>
           <View style={styles.searchBox}>
@@ -149,22 +176,24 @@ export default function Doctors() {
               </View>
             </View>
             <View style={styles.buttonRow}>
-              <Button
-                size="sm"
-                style={styles.bookButton}
-                onPress={() => toast('Booking soon', { description: `Appointment flow for ${doctor.name} is next on the roadmap.` })}
-              >
-                Request booking
-              </Button>
-              {doctor.availableOnline ? (
+              {doctor.phone ? (
+                <Button
+                  size="sm"
+                  style={styles.bookButton}
+                  onPress={() => void openWhatsApp(doctor.phone!, doctor.name)}
+                >
+                  <MessageCircle size={14} color="#fff" />
+                  Contact on WhatsApp
+                </Button>
+              ) : (
                 <Button
                   size="sm"
                   variant="outline"
-                  onPress={() => toast('Online consult soon', { description: `${doctor.name} can be exposed to video visits once the backend is wired.` })}
+                  onPress={() => toast('No contact number', { description: `${doctor.name} hasn't shared a WhatsApp number yet.` })}
                 >
-                  Start online consult
+                  Contact unavailable
                 </Button>
-              ) : null}
+              )}
             </View>
           </Card>
         ))
@@ -350,4 +379,17 @@ const styles = StyleSheet.create({
   bookButton: {
     backgroundColor: colors.info,
   },
+  applyCard: {
+    padding: 16,
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
+  },
+  applyIcon: {
+    width: 44, height: 44, borderRadius: radius.lg,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.infoSoft,
+  },
+  applyTitle: { color: colors.foreground, fontSize: 14, fontWeight: '800' },
+  applyBody: { color: colors.mutedForeground, fontSize: 12, lineHeight: 17, marginTop: 2 },
 });

@@ -10,4 +10,5 @@ export const env = {
   corsOrigin: process.env.CORS_ORIGIN ?? 'http://localhost:5173,http://localhost:5174',
   nodeEnv: process.env.NODE_ENV ?? 'development',
   publicWebUrl: process.env.PUBLIC_WEB_URL ?? 'http://localhost:5173',
+  geminiApiKey: process.env.GEMINI_API_KEY ?? '',
 };

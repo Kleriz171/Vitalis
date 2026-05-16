@@ -89,7 +89,6 @@ const auth = createSlice({
       void storage.deleteItem('at');
       void storage.deleteItem('rt');
       void storage.deleteItem('user');
-      store.dispatch(clearTraining());
     },
   },
 });
@@ -146,6 +145,13 @@ const training = createSlice({
       s.certifications = [];
       s.loaded = false;
     },
+  },
+  extraReducers: (builder) => {
+    builder.addCase(auth.actions.logout, (s) => {
+      s.enrollments = [];
+      s.certifications = [];
+      s.loaded = false;
+    });
   },
 });
 

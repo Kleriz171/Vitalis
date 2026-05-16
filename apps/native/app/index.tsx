@@ -207,7 +207,7 @@ export default function Onboarding() {
               </Text>
             </Pressable>
 
-            <Text style={styles.operatorText}>For operators, use the desktop portal.</Text>
+            <Text style={styles.operatorText}>Your health, ready when you need it.</Text>
           </Animated.View>
         </ScrollView>
       </SafeAreaView>

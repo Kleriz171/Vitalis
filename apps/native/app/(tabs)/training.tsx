@@ -3,7 +3,7 @@ import { Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useDispatch, useSelector } from 'react-redux';
-import { Award, GraduationCap, Heart, ShieldCheck } from 'lucide-react-native';
+import { Award, BookOpen, Clock3, GraduationCap, Heart, ShieldCheck } from 'lucide-react-native';
 import { toast } from 'sonner-native';
 
 import { AppScreen } from '@/components/AppScreen';
@@ -159,21 +159,35 @@ export default function Training() {
             <Animated.View key={course.id} entering={FadeInDown.delay(40 * index).duration(280)}>
               <Pressable onPress={() => router.push({ pathname: '/training/[slug]', params: { slug: course.slug } } as never)}>
                 <Card style={styles.courseCard}>
-                  <View style={styles.emojiBadge}>
-                    <Text style={styles.emoji}>{course.heroEmoji}</Text>
-                  </View>
-                  <View style={{ flex: 1, gap: 6 }}>
-                    <View style={styles.titleRow}>
-                      <Text style={styles.courseTitle}>{course.title}</Text>
-                      {cert ? <View style={styles.miniBadge}><Text style={styles.miniBadgeText}>Certified</Text></View> : null}
+                  <View style={styles.courseTop}>
+                    <View style={styles.emojiBadge}>
+                      <Text style={styles.emoji}>{course.heroEmoji}</Text>
                     </View>
-                    <Text style={styles.courseDesc} numberOfLines={2}>{course.shortDescription}</Text>
-                    <View style={styles.metaRow}>
-                      <Text style={styles.metaText}>{course.estimatedMinutes} min</Text>
-                      <Text style={styles.metaDot}>•</Text>
-                      <Text style={styles.metaText}>{course.lessonCount} lessons</Text>
-                      <Text style={styles.metaDot}>•</Text>
-                      <Text style={styles.metaText}>{course.level}</Text>
+                    <View style={styles.courseMain}>
+                      <View style={styles.titleRow}>
+                        <Text style={styles.courseTitle}>{course.title}</Text>
+                        {cert ? <View style={styles.miniBadge}><Text style={styles.miniBadgeText}>Certified</Text></View> : null}
+                      </View>
+                      <Text style={styles.courseDesc} numberOfLines={2}>{course.shortDescription}</Text>
+                      <View style={styles.badgeRowMeta}>
+                        <View style={styles.metaBadge}>
+                          <Clock3 size={11} color={colors.foreground} />
+                          <Text style={styles.metaBadgeText}>{course.estimatedMinutes} min</Text>
+                        </View>
+                        <View style={styles.metaBadge}>
+                          <BookOpen size={11} color={colors.foreground} />
+                          <Text style={styles.metaBadgeText}>{course.lessonCount} lessons</Text>
+                        </View>
+                        <View style={styles.metaBadge}>
+                          <Text style={styles.metaBadgeText}>{course.level}</Text>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                  <View style={styles.progressBlock}>
+                    <View style={styles.progressHeader}>
+                      <Text style={styles.progressLabel}>{progress > 0 ? 'Progress' : 'Ready to start'}</Text>
+                      <Text style={styles.progressValue}>{progress}%</Text>
                     </View>
                     <View style={styles.progressTrack}>
                       <View style={[styles.progressFill, { width: `${progress}%` }]} />
@@ -209,9 +223,9 @@ const styles = StyleSheet.create({
   badgePillText: { color: colors.accentForeground, fontSize: 12, fontWeight: '700' },
   courseCard: {
     padding: 16, gap: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
   },
+  courseTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
+  courseMain: { flex: 1, gap: 8 },
   emojiBadge: {
     width: 52, height: 52, borderRadius: radius.lg,
     alignItems: 'center', justifyContent: 'center',
@@ -227,11 +241,23 @@ const styles = StyleSheet.create({
   },
   miniBadgeText: { color: colors.success, fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.6 },
   courseDesc: { color: colors.mutedForeground, fontSize: 12, lineHeight: 18 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  metaText: { color: colors.primary, fontSize: 11, fontWeight: '700', textTransform: 'capitalize' },
-  metaDot: { color: colors.mutedForeground, fontSize: 11 },
+  badgeRowMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  metaBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: colors.soft,
+    borderColor: colors.border,
+  },
+  metaBadgeText: { color: colors.foreground, fontSize: 11, fontWeight: '700', letterSpacing: 0, textTransform: 'capitalize' },
+  progressBlock: { gap: 8 },
+  progressHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  progressLabel: { color: colors.mutedForeground, fontSize: 11, fontWeight: '700' },
+  progressValue: { color: colors.primary, fontSize: 11, fontWeight: '800' },
   progressTrack: {
-    height: 6, backgroundColor: colors.muted, borderRadius: radius.full, overflow: 'hidden', marginTop: 4,
+    height: 7, backgroundColor: colors.muted, borderRadius: radius.full, overflow: 'hidden',
   },
   progressFill: { height: '100%', backgroundColor: colors.primary, borderRadius: radius.full },
 });

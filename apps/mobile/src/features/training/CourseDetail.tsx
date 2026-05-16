@@ -1,43 +1,36 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, BookOpen, Check, PlayCircle } from 'lucide-react';
+import { ArrowLeft, BookOpen, Check, Clock3, PlayCircle, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '../../api/client';
 import { Card } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Skeleton } from '../../components/ui/skeleton';
+import { Badge } from '../../components/ui/badge';
+import { Progress } from '../../components/ui/progress';
+import { resolveLessonTutorial, type TrainingCourseDetail, type TrainingLesson } from './shared';
 
-interface Lesson {
-  id: string;
-  title: string;
-  summary?: string;
-  body: string;
-  durationMin: number;
-}
-interface CourseDetail {
-  id: string;
-  slug: string;
-  title: string;
-  shortDescription: string;
-  heroEmoji: string;
-  badgeLabel: string;
-  passingScore: number;
-  estimatedMinutes: number;
-  lessons: Lesson[];
+interface CourseDetail extends TrainingCourseDetail {
+ shortDescription: string;
+ heroEmoji: string;
+ passingScore: number;
+ estimatedMinutes: number;
+ lessons: TrainingLesson[];
 }
 interface Enrollment { id: string; courseId: string; completedLessonIds: string[] }
 
 export const CourseDetail = () => {
-  const { slug } = useParams<{ slug: string }>();
-  const nav = useNavigate();
-  const [course, setCourse] = useState<CourseDetail | null>(null);
-  const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
-  const [busy, setBusy] = useState(false);
+ const { slug } = useParams<{ slug: string }>();
+ const nav = useNavigate();
+ const [course, setCourse] = useState<CourseDetail | null>(null);
+ const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
+ const [busy, setBusy] = useState(false);
+ const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const [c, e] = await Promise.all([
+ useEffect(() => {
+   (async () => {
+     try {
+       const [c, e] = await Promise.all([
           api.get<CourseDetail>(`/training/courses/${slug}`),
           api.get<Enrollment[]>('/training/enrollments'),
         ]);
@@ -45,6 +38,8 @@ export const CourseDetail = () => {
         setEnrollment(e.data.find((x) => x.courseId === c.data.id) ?? null);
       } catch (err: any) {
         toast.error(err.response?.data?.error ?? 'Could not load course');
+      } finally {
+        setLoading(false);
       }
     })();
   }, [slug]);
@@ -65,14 +60,17 @@ export const CourseDetail = () => {
     }
   };
 
-  if (!course) {
+  if (loading) {
     return (
       <div className="px-4 pt-4 space-y-3">
         <Skeleton className="h-32 rounded-xl" />
-        <Skeleton className="h-20 rounded-xl" />
+        <Skeleton className="h-32 rounded-xl" />
+        <Skeleton className="h-28 rounded-xl" />
       </div>
     );
   }
+
+  if (!course) return <div className="px-4 pt-6 text-sm text-muted-foreground">Course unavailable.</div>;
 
   const completed = new Set(enrollment?.completedLessonIds ?? []);
   const allDone = course.lessons.every((l) => completed.has(l.id));
@@ -94,40 +92,75 @@ export const CourseDetail = () => {
               {course.title}
             </div>
             <div className="text-sm opacity-90 mt-1">{course.shortDescription}</div>
+            <div className="flex flex-wrap gap-2 mt-3">
+              <Badge variant="secondary" className="bg-white/15 text-white border-transparent">
+                <BookOpen size={12} /> {course.lessons.length} lessons
+              </Badge>
+              <Badge variant="secondary" className="bg-white/15 text-white border-transparent">
+                <Clock3 size={12} /> {course.estimatedMinutes} min
+              </Badge>
+              <Badge variant="secondary" className="bg-white/15 text-white border-transparent">
+                <Sparkles size={12} /> {course.passingScore}% to pass
+              </Badge>
+            </div>
           </div>
         </div>
-        <div className="mt-4">
-          <div className="text-xs font-bold mb-1">{progress}% complete · {course.estimatedMinutes} min total</div>
-          <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
-            <div className="h-full bg-white" style={{ width: `${progress}%` }} />
+        <div className="mt-4 space-y-1.5">
+          <div className="flex items-center justify-between text-xs font-bold">
+            <span>{progress}% complete</span>
+            <span>{completed.size}/{course.lessons.length} lessons done</span>
           </div>
+          <Progress value={progress} className="h-2 bg-white/20 [&_[data-slot=progress-indicator]]:bg-white" />
         </div>
       </Card>
 
       <Card className="p-5">
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex items-center gap-2 mb-4">
           <BookOpen size={18} className="text-primary" />
           <div className="font-bold">Lessons</div>
         </div>
-        <div className="space-y-1">
+        <div className="space-y-3">
           {course.lessons.map((lesson, idx) => {
             const done = completed.has(lesson.id);
+            const tutorial = resolveLessonTutorial(course.slug, lesson.videoUrl);
             return (
               <button
                 key={lesson.id}
                 onClick={() => startLesson(lesson.id)}
                 disabled={busy}
-                className="w-full flex items-center gap-3 py-2.5 text-left hover:bg-muted/40 rounded-lg px-1"
+                className="w-full rounded-2xl border bg-background px-4 py-4 text-left transition hover:bg-muted/20 disabled:opacity-70"
               >
-                <div className={`w-8 h-8 rounded-full grid place-items-center text-xs font-bold ${done ? 'bg-success text-white' : 'bg-muted text-foreground'}`}>
-                  {done ? <Check size={14} /> : idx + 1}
+                <div className="flex items-start gap-3">
+                  <div className={`w-10 h-10 rounded-2xl grid place-items-center text-xs font-bold shrink-0 ${done ? 'bg-success text-white' : 'bg-muted text-foreground'}`}>
+                    {done ? <Check size={16} /> : idx + 1}
+                  </div>
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold">{lesson.title}</div>
+                        {lesson.summary && (
+                          <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                            {lesson.summary}
+                          </div>
+                        )}
+                      </div>
+                      <PlayCircle size={20} className="text-primary shrink-0 mt-0.5" />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Badge variant="outline" className="text-[10px]">
+                        <Clock3 size={10} /> {lesson.durationMin} min
+                      </Badge>
+                      {tutorial && (
+                        <Badge variant="outline" className="text-[10px]">
+                          Video tutorial
+                        </Badge>
+                      )}
+                      <Badge variant={done ? 'secondary' : 'outline'} className="text-[10px]">
+                        {done ? 'Completed' : idx === 0 && progress === 0 ? 'Start here' : 'Open lesson'}
+                      </Badge>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <div className="text-sm font-semibold">{lesson.title}</div>
-                  {lesson.summary && <div className="text-xs text-muted-foreground">{lesson.summary}</div>}
-                  <div className="text-[11px] font-bold text-primary mt-0.5">{lesson.durationMin} min</div>
-                </div>
-                <PlayCircle size={20} className="text-primary" />
               </button>
             );
           })}

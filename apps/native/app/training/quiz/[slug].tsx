@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Award, Check, X } from 'lucide-react-native';
+import { ArrowLeft, Award, Check, CircleHelp, ClipboardCheck, X } from 'lucide-react-native';
 import { useDispatch } from 'react-redux';
 import { toast } from 'sonner-native';
 
 import { AppScreen } from '@/components/AppScreen';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { api } from '@/lib/api';
 import { upsertCertification, upsertEnrollment } from '@/lib/store';
 import { colors, radius } from '@/lib/theme';
@@ -61,7 +63,8 @@ export default function Quiz() {
   if (!course) {
     return (
       <AppScreen tone="primary" title="Loading quiz" action={<BackBtn />}>
-        <Card style={{ padding: 18 }}><Text>Loading…</Text></Card>
+        <Skeleton style={{ height: 150, borderRadius: radius.xl }} />
+        <Skeleton style={{ height: 240, borderRadius: radius.xl }} />
       </AppScreen>
     );
   }
@@ -103,7 +106,7 @@ export default function Quiz() {
         icon={<Award size={22} color="#fff" />}
         action={<BackBtn />}
         footer={
-          <View style={styles.footerRow}>
+          <View style={styles.footerColumn}>
             {result.passed && result.certification ? (
               <Button onPress={() => router.replace({ pathname: '/training/certificate/[id]', params: { id: result.certification!.id } } as never)}>
                 View certificate
@@ -149,36 +152,51 @@ export default function Quiz() {
       subtitle={`Pass with ${course.passingScore}% or higher.`}
       icon={<Award size={22} color="#fff" />}
       action={<BackBtn />}
+      headerContent={
+        <View style={styles.heroContent}>
+          <View style={styles.heroChip}>
+            <ClipboardCheck size={14} color="#fff" />
+            <Text style={styles.heroChipText}>{course.quiz.length} questions</Text>
+          </View>
+          <View style={styles.heroChip}>
+            <CircleHelp size={14} color="#fff" />
+            <Text style={styles.heroChipText}>One answer per question</Text>
+          </View>
+        </View>
+      }
       footer={
         <Button onPress={submit} loading={submitting} disabled={!allAnswered}>
           {allAnswered ? 'Submit answers' : 'Answer every question'}
         </Button>
       }
     >
-      <ScrollView>
-        {course.quiz.map((q, idx) => (
-          <Card key={q.id} style={styles.qCard}>
-            <Text style={styles.qPrompt}>{idx + 1}. {q.prompt}</Text>
-            <View style={styles.choiceList}>
-              {q.choices.map((choice, choiceIdx) => {
-                const active = answers[q.id] === choiceIdx;
-                return (
-                  <Pressable
-                    key={choiceIdx}
-                    onPress={() => setAnswers((current) => ({ ...current, [q.id]: choiceIdx }))}
-                    style={[styles.choice, active && styles.choiceActive]}
-                  >
-                    <View style={[styles.choiceDot, active && styles.choiceDotActive]}>
-                      {active ? <View style={styles.choiceDotInner} /> : null}
-                    </View>
-                    <Text style={[styles.choiceText, active && styles.choiceTextActive]}>{choice}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </Card>
-        ))}
-      </ScrollView>
+      {course.quiz.map((q, idx) => (
+        <Card key={q.id} style={styles.qCard}>
+          <View style={styles.questionHeader}>
+            <Badge variant="outline" style={styles.indexBadge} textStyle={styles.indexBadgeText}>
+              Question {idx + 1}
+            </Badge>
+          </View>
+          <Text style={styles.qPrompt}>{q.prompt}</Text>
+          <View style={styles.choiceList}>
+            {q.choices.map((choice, choiceIdx) => {
+              const active = answers[q.id] === choiceIdx;
+              return (
+                <Pressable
+                  key={choiceIdx}
+                  onPress={() => setAnswers((current) => ({ ...current, [q.id]: choiceIdx }))}
+                  style={[styles.choice, active && styles.choiceActive]}
+                >
+                  <View style={[styles.choiceDot, active && styles.choiceDotActive]}>
+                    {active ? <View style={styles.choiceDotInner} /> : null}
+                  </View>
+                  <Text style={[styles.choiceText, active && styles.choiceTextActive]}>{choice}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </Card>
+      ))}
     </AppScreen>
   );
 }
@@ -198,7 +216,21 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.16)',
   },
+  heroContent: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  heroChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: radius.full,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+  },
+  heroChipText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   qCard: { padding: 18, gap: 14, marginBottom: 12 },
+  questionHeader: { flexDirection: 'row', justifyContent: 'flex-start' },
+  indexBadge: { backgroundColor: colors.soft, borderColor: colors.border, paddingHorizontal: 10, paddingVertical: 6 },
+  indexBadgeText: { color: colors.primary, fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
   qPrompt: { color: colors.foreground, fontSize: 15, fontWeight: '700', lineHeight: 22 },
   choiceList: { gap: 10 },
   choice: {
@@ -222,5 +254,5 @@ const styles = StyleSheet.create({
   reviewText: { fontSize: 13, fontWeight: '700', flex: 1 },
   reviewCorrect: { color: colors.success, fontSize: 12, fontWeight: '700' },
   reviewExplain: { color: colors.mutedForeground, fontSize: 12, fontStyle: 'italic' },
-  footerRow: { flexDirection: 'row', gap: 10 },
+  footerColumn: { flexDirection: 'column', gap: 10 },
 });

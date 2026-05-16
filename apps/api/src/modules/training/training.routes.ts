@@ -34,6 +34,7 @@ const courseToDetail = (c: any) => ({
     summary: l.summary,
     body: l.body,
     imageUrl: l.imageUrl,
+    videoUrl: l.videoUrl,
     durationMin: l.durationMin,
   })),
   quiz: (c.quiz ?? []).map((q: any) => ({

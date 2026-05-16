@@ -8,6 +8,9 @@ import { Logistics } from './features/command/pages/Logistics';
 import { Drones } from './features/command/pages/Drones';
 import { Ledger } from './features/command/pages/Ledger';
 import { Analytics } from './features/command/pages/Analytics';
+import { AdminUsers } from './features/command/pages/admin/AdminUsers';
+import { AdminUserDetail } from './features/command/pages/admin/AdminUserDetail';
+import { AdminDoctorApplications } from './features/command/pages/admin/AdminDoctorApplications';
 import { Verify } from './features/verify/Verify';
 import { ToastHost } from './components/toast/ToastHost';
 import { Toaster } from './components/ui/sonner';
@@ -69,6 +72,9 @@ export const App = () => (
         <Route path="drones" element={<Drones />} />
         <Route path="ledger" element={<Ledger />} />
         <Route path="analytics" element={<Analytics />} />
+        <Route path="admin/users" element={<AdminUsers />} />
+        <Route path="admin/users/:id" element={<AdminUserDetail />} />
+        <Route path="admin/doctor-applications" element={<AdminDoctorApplications />} />
       </Route>
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>

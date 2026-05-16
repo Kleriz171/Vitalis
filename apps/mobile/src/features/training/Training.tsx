@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Award, GraduationCap, ShieldCheck } from 'lucide-react';
+import { Award, BookOpen, GraduationCap, ShieldCheck } from 'lucide-react';
 import { api } from '../../api/client';
 import { Card } from '../../components/ui/card';
 import { Skeleton } from '../../components/ui/skeleton';
 import { Badge } from '../../components/ui/badge';
+import { Progress } from '../../components/ui/progress';
 
 interface CourseSummary {
   id: string;
@@ -114,22 +115,46 @@ export const Training = () => {
                 onClick={() => nav(`/app/training/${course.slug}`)}
                 className="w-full text-left"
               >
-                <Card className="p-4 flex flex-row items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-accent grid place-items-center text-2xl shrink-0">
-                    {course.heroEmoji}
+                <Card className="p-4 gap-4">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-accent grid place-items-center text-2xl shrink-0">
+                      {course.heroEmoji}
+                    </div>
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="font-bold text-sm">{course.title}</div>
+                          <div className="text-xs text-muted-foreground line-clamp-2 mt-1">
+                            {course.shortDescription}
+                          </div>
+                        </div>
+                        {cert && (
+                          <Badge variant="secondary" className="text-[10px] uppercase shrink-0">
+                            Certified
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Badge variant="outline" className="text-[10px] uppercase">
+                          {course.level}
+                        </Badge>
+                        <Badge variant="outline" className="text-[10px]">
+                          <BookOpen size={10} /> {course.lessonCount} lessons
+                        </Badge>
+                        <Badge variant="outline" className="text-[10px]">
+                          {course.estimatedMinutes} min
+                        </Badge>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <div className="font-bold text-sm">{course.title}</div>
-                      {cert && <Badge variant="secondary" className="text-[10px] uppercase">Certified</Badge>}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px] font-semibold">
+                      <span className="text-muted-foreground">
+                        {progress > 0 ? 'Progress' : 'Ready to start'}
+                      </span>
+                      <span className="text-primary">{progress}%</span>
                     </div>
-                    <div className="text-xs text-muted-foreground line-clamp-2 mt-1">{course.shortDescription}</div>
-                    <div className="text-[11px] font-bold text-primary mt-1 uppercase tracking-wide">
-                      {course.estimatedMinutes} min · {course.lessonCount} lessons · {course.level}
-                    </div>
-                    <div className="h-1.5 mt-2 bg-muted rounded-full overflow-hidden">
-                      <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${progress}%` }} />
-                    </div>
+                    <Progress value={progress} className="h-2" />
                   </div>
                 </Card>
               </button>

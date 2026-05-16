@@ -1,7 +1,8 @@
 node_modules/
 .expo/
 .env
-.env.local
+.env.*
+!.env.example
 dist/
 build/
 .DS_Store

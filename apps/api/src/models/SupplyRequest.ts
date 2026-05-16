@@ -1,6 +1,8 @@
 import { Schema, model } from 'mongoose';
 
 export const SUPPLY_CATEGORIES = ['blood', 'organ', 'tissue', 'medicine'] as const;
+export const SUPPLY_REQUEST_MODES = ['exchange', 'queue'] as const;
+export const SUPPLY_REQUEST_STATUSES = ['open', 'queued', 'matched', 'fulfilled', 'cancelled'] as const;
 
 const SupplyRequestSchema = new Schema({
   category: { type: String, enum: SUPPLY_CATEGORIES, required: true, index: true },
@@ -8,10 +10,14 @@ const SupplyRequestSchema = new Schema({
   resourceType: { type: String, required: true, index: true },
   urgency: { type: String, enum: ['normal', 'urgent', 'critical'], default: 'normal', index: true },
   quantityLabel: { type: String, required: true },
-  facilityName: { type: String, required: true },
+  facilityName: String,
+  requestMode: { type: String, enum: SUPPLY_REQUEST_MODES, default: 'exchange', index: true },
   notes: String,
-  status: { type: String, enum: ['open', 'fulfilled', 'cancelled'], default: 'open', index: true },
+  status: { type: String, enum: SUPPLY_REQUEST_STATUSES, default: 'open', index: true },
   createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
+  requesterName: String,
+  matchedAt: Date,
+  matchSummary: String,
   inquiryCount: { type: Number, default: 0 },
 }, { timestamps: true });
 

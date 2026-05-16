@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { ArrowLeft, Bot, Send, Sparkles, User } from 'lucide-react-native';
 import { AppScreen } from '@/components/AppScreen';
 import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
+import { api } from '@/lib/api';
 import { colors, radius } from '@/lib/theme';
 
 interface Message {
@@ -14,28 +14,11 @@ interface Message {
 }
 
 const QUICK = [
-  'I have a headache',
-  'How much water should I drink?',
-  'Symptoms of the flu',
+  'How does the SOS button work?',
+  'CPR basics',
+  'How do I update my Bio Passport?',
   'When should I see a doctor?',
 ];
-
-const respond = (query: string): string => {
-  const text = query.toLowerCase();
-  if (text.includes('headache') || text.includes('migraine')) {
-    return 'Rest in a quiet room, hydrate, and consider a cold compress. If the pain is sudden, severe, or paired with fever, confusion, or numbness, seek urgent care.';
-  }
-  if (text.includes('water') || text.includes('hydrat')) {
-    return 'A good general target is around 2 litres daily, more if you are active or in hot weather. Dark urine is often a sign you need more fluids.';
-  }
-  if (text.includes('flu') || text.includes('fever')) {
-    return 'Flu symptoms often include fever, body aches, fatigue, cough, and sore throat. Rest, fluids, and symptom relief help, but worsening breathing or persistent fever deserves medical attention.';
-  }
-  if (text.includes('doctor') || text.includes('emergency')) {
-    return 'See a clinician for persistent, worsening, or worrying symptoms. For chest pain, breathing issues, sudden weakness, major bleeding, or severe allergic reactions, use SOS immediately.';
-  }
-  return 'I can help with general wellness guidance, but I am not a doctor. For anything urgent or specific to your health, please speak with a clinician.';
-};
 
 export default function Assistant() {
   const router = useRouter();
@@ -54,19 +37,23 @@ export default function Assistant() {
     return () => clearTimeout(timer);
   }, [messages.length]);
 
-  const send = (raw?: string) => {
+  const send = async (raw?: string) => {
     const content = (raw ?? input).trim();
     if (!content) return;
 
     setMessages((current) => [...current, { id: `u-${Date.now()}`, role: 'user', content }]);
     setInput('');
 
-    setTimeout(() => {
-      setMessages((current) => [
-        ...current,
-        { id: `b-${Date.now()}`, role: 'bot', content: respond(content) },
-      ]);
-    }, 350);
+    try {
+      const { data } = await api.post<{ reply: string }>('/ai/chat', { message: content });
+      setMessages((current) => [...current, { id: `b-${Date.now()}`, role: 'bot', content: data.reply }]);
+    } catch (e: any) {
+      setMessages((current) => [...current, {
+        id: `b-${Date.now()}`,
+        role: 'bot',
+        content: e.response?.data?.error ?? 'I could not reach the assistant. Please try again.',
+      }]);
+    }
   };
 
   return (
@@ -97,9 +84,13 @@ export default function Assistant() {
                   style={styles.input}
                 />
               </View>
-              <Button size="icon" onPress={() => send()} disabled={!input.trim()} style={styles.sendButton}>
-                <Send size={16} color="#fff" />
-              </Button>
+              <Pressable
+                onPress={() => void send()}
+                disabled={!input.trim()}
+                style={[styles.sendButton, !input.trim() && styles.sendButtonDisabled]}
+              >
+                <Send size={20} color="#fff" />
+              </Pressable>
             </View>
             <Text style={styles.disclaimer}>Not a substitute for a real doctor or emergency service.</Text>
           </>
@@ -131,7 +122,7 @@ export default function Assistant() {
               <Text style={styles.quickTitle}>Try a quick question</Text>
               <View style={styles.quickWrap}>
                 {QUICK.map((question) => (
-                  <Pressable key={question} onPress={() => send(question)} style={styles.quickPill}>
+                  <Pressable key={question} onPress={() => void send(question)} style={styles.quickPill}>
                     <Text style={styles.quickPillText}>{question}</Text>
                   </Pressable>
                 ))}
@@ -244,9 +235,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 10,
+    width: '100%',
   },
   inputWrap: {
     flex: 1,
+    minWidth: 0,
     minHeight: 52,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -263,6 +256,15 @@ const styles = StyleSheet.create({
   },
   sendButton: {
     backgroundColor: colors.success,
+    width: 52,
+    height: 52,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  sendButtonDisabled: {
+    opacity: 0.65,
   },
   disclaimer: {
     color: colors.mutedForeground,

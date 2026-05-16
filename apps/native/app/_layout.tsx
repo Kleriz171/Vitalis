@@ -25,6 +25,7 @@ export default function RootLayout() {
               <Stack.Screen name="sos" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
               <Stack.Screen name="assistant" options={{ animation: 'slide_from_right' }} />
               <Stack.Screen name="training" options={{ animation: 'slide_from_right' }} />
+              <Stack.Screen name="doctor-application" options={{ animation: 'slide_from_right' }} />
             </Stack>
           </AuthGate>
           <Toaster position="top-center" />

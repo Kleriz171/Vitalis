@@ -20,6 +20,9 @@ import communityRoutes from './modules/community/community.routes';
 import healthRoutes from './modules/health/health.routes';
 import supplyRoutes from './modules/supply/supply.routes';
 import trainingRoutes from './modules/training/training.routes';
+import aiRoutes from './modules/ai/ai.routes';
+import adminRoutes from './modules/admin/admin.routes';
+import doctorApplicationsRoutes from './modules/doctorApplications/doctorApplications.routes';
 
 export function buildApp() {
   const app = express();
@@ -60,6 +63,9 @@ export function buildApp() {
   app.use('/api/health', healthRoutes);
   app.use('/api/supply', supplyRoutes);
   app.use('/api/training', trainingRoutes);
+  app.use('/api/ai', aiRoutes);
+  app.use('/api/admin', adminRoutes);
+  app.use('/api/doctor-applications', doctorApplicationsRoutes);
 
   app.use(errorHandler);
   return app;

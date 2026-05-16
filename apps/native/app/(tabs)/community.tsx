@@ -199,7 +199,7 @@ export default function Community() {
       headerContent={
         <View style={styles.safeBanner}>
           <Shield size={16} color="#fff" />
-          <Text style={styles.safeBannerText}>Anonymous posting is available across support spaces.</Text>
+          <Text style={styles.safeBannerText}>Tap a group to read posts and share your own message — anonymous posting is available.</Text>
         </View>
       }
     >

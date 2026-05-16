@@ -12,6 +12,7 @@ const LessonSchema = new Schema({
   summary: String,
   body: { type: String, required: true },
   imageUrl: String,
+  videoUrl: String,
   durationMin: { type: Number, default: 5 },
 }, { _id: true });
 

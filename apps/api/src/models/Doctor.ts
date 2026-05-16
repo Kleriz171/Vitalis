@@ -7,6 +7,7 @@ const DoctorSchema = new Schema({
   hospital: { type: Schema.Types.ObjectId, ref: 'Hospital' },
   imageUrl: String,
   biography: String,
+  phone: String,
   experience: { type: Number, default: 0 },
   rating: { type: Number, default: 4.5, min: 0, max: 5 },
   reviewCount: { type: Number, default: 0 },
