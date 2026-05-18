@@ -15,8 +15,14 @@ import { cn } from '../../../lib/utils';
 const MapView = lazy(() => import('../../../components/map/MapView'));
 
 const MapFallback = () => (
-  <div className="w-full h-full min-h-[60vh] rounded-2xl grid place-items-center text-muted-foreground text-sm animate-pulse">
-    Loading map…
+  <div className="relative w-full h-full min-h-[60vh] rounded-2xl overflow-hidden border border-border bg-gradient-to-br from-health-mint/30 via-card to-accent/30">
+    <Skeleton className="absolute inset-0" />
+    <div className="absolute inset-0 grid place-items-center">
+      <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-muted-foreground">
+        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+        Loading map
+      </div>
+    </div>
   </div>
 );
 

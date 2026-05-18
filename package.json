@@ -22,5 +22,8 @@
     "react-native-reanimated": "~4.1.1",
     "react-native-worklets": "0.5.1",
     "react-native-css-interop": "0.1.22"
+  },
+  "dependencies": {
+    "framer-motion": "^12.38.0"
   }
 }

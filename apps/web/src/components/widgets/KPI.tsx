@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion';
 import { Card } from '../ui/card';
 import { cn } from '../../lib/utils';
 
@@ -29,14 +30,29 @@ interface KPIProps {
 }
 
 export const KPI = ({ label, value, tone = 'teal', hint }: KPIProps) => (
-  <Card className="p-5">
-    <div className="flex items-start justify-between gap-3">
-      <div className="min-w-0">
-        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
-        <div className={cn('text-3xl font-bold mt-1 tabular-nums', toneAccent[tone])}>{value}</div>
-        {hint && <div className="text-[11px] text-muted-foreground mt-1">{hint}</div>}
+  <motion.div
+    initial={{ opacity: 0, y: 12 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+    whileHover={{ y: -2 }}
+  >
+    <Card className="p-5 transition-shadow hover:shadow-[0_10px_30px_-12px_hsl(173_80%_40%/0.25)]">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+          <motion.div
+            key={String(value)}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35 }}
+            className={cn('text-3xl font-bold mt-1 tabular-nums', toneAccent[tone])}
+          >
+            {value}
+          </motion.div>
+          {hint && <div className="text-[11px] text-muted-foreground mt-1">{hint}</div>}
+        </div>
+        <span className={cn('w-2 h-10 rounded-full', toneBar[tone])} />
       </div>
-      <span className={cn('w-2 h-10 rounded-full', toneBar[tone])} />
-    </div>
-  </Card>
+    </Card>
+  </motion.div>
 );

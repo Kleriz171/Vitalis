@@ -46,7 +46,7 @@ const MobileBanner = () => {
         </p>
         <div className="flex gap-2">
           <a
-            href="http://localhost:5174"
+            href={import.meta.env.VITE_MOBILE_URL ?? 'http://localhost:5174'}
             className="flex-1 text-center bg-primary text-primary-foreground font-medium py-2 rounded-lg hover:bg-primary/90 transition"
           >
             Open mobile app
