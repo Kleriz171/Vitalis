@@ -35,7 +35,7 @@ const resolveBaseUrl = () => {
 
 export const API_BASE_URL = resolveBaseUrl();
 
-const DEBUG_NET = process.env.EXPO_PUBLIC_DEBUG_NET !== 'false';
+const DEBUG_NET = process.env.EXPO_PUBLIC_DEBUG_NET === 'true' && __DEV__;
 
 if (DEBUG_NET) {
   console.log('[api] base URL =', API_BASE_URL, 'platform =', Platform.OS);

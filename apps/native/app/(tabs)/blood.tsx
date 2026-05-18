@@ -327,9 +327,15 @@ export default function SupplyScreen() {
       </ScrollView>
 
       {loading && !exchangeRequests.length && !queueRequests.length && !bloodCritical.length && !medicines.length ? (
-        <Card style={styles.loadingCard}>
-          <Text style={styles.sectionBody}>Loading supply network…</Text>
-        </Card>
+        <View style={{ gap: 12 }}>
+          {[0, 1, 2].map(i => (
+            <Card key={i} style={[styles.loadingCard, { opacity: 0.6 }]}>
+              <View style={{ height: 14, width: '40%', borderRadius: 7, backgroundColor: colors.muted, marginBottom: 10 }} />
+              <View style={{ height: 10, width: '80%', borderRadius: 5, backgroundColor: colors.muted, marginBottom: 6 }} />
+              <View style={{ height: 10, width: '60%', borderRadius: 5, backgroundColor: colors.muted }} />
+            </Card>
+          ))}
+        </View>
       ) : null}
 
       {tab === 'request' ? (

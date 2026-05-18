@@ -186,7 +186,16 @@ export default function Login() {
       toast.success('Account created');
       router.replace('/(tabs)/home');
     } catch (e: any) {
-      toast.error(e.response?.data?.error ?? 'register failed');
+      const body = e.response?.data;
+      const detail =
+        body?.error ??
+        (Array.isArray(body?.issues) && body.issues[0]?.message) ??
+        (Array.isArray(body?.errors) && (body.errors[0]?.message ?? body.errors[0])) ??
+        e.message ??
+        'Please try again';
+      const code = e.response?.status ? `HTTP ${e.response.status}` : (e.code ?? 'network');
+      toast.error('Register failed', { description: `${code} · ${detail}` });
+      if (__DEV__) console.warn('[register] failed', { code, body, message: e.message });
     } finally {
       setLoading(false);
     }

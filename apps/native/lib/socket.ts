@@ -2,7 +2,11 @@ import { io } from 'socket.io-client';
 import { API_BASE_URL } from './api';
 import { store } from './store';
 
-const socketUrl = API_BASE_URL.replace(/\/api\/?$/, '');
+// Allow an explicit override (e.g. for prod or a different socket port).
+// Otherwise strip the `/api` suffix off the REST base URL.
+const socketUrl =
+  process.env.EXPO_PUBLIC_SOCKET_URL?.replace(/\/$/, '') ??
+  API_BASE_URL.replace(/\/api\/?$/, '');
 
 export const socket = io(socketUrl, {
   autoConnect: false,

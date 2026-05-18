@@ -100,7 +100,10 @@ export default function Home() {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         setSos('idle');
-        toast.error('Location needed', { description: 'Enable location to broadcast your SOS.' });
+        toast.error('Location needed', {
+          description: 'Enable location to broadcast your SOS, then tap again.',
+          action: { label: 'Try again', onClick: () => triggerSOS() },
+        });
         return;
       }
 
@@ -120,7 +123,10 @@ export default function Home() {
       });
     } catch (error: any) {
       setSos('idle');
-      toast.error('SOS failed', { description: error.response?.data?.error ?? 'Please try again.' });
+      toast.error('SOS failed', {
+        description: error.response?.data?.error ?? 'Please try again.',
+        action: { label: 'Retry', onClick: () => triggerSOS() },
+      });
     }
   };
 
@@ -129,7 +135,19 @@ export default function Home() {
     router.replace('/');
   };
 
+  const isResponder = ['doctor', 'nurse', 'student_responder'].includes(user?.role ?? '');
+
   const quickActions = [
+    ...(isResponder
+      ? ([
+          {
+            label: 'Inbox',
+            hint: 'Live SOS broadcasts',
+            icon: <Siren size={18} color={colors.primary} />,
+            path: '/responder-inbox' as const,
+          },
+        ] as const)
+      : []),
     { label: 'Doctors', hint: 'Find specialists', icon: <Stethoscope size={18} color={colors.info} />, path: '/(tabs)/doctors' as const },
     { label: 'Supply', hint: 'Blood, organs, medicine', icon: <Heart size={18} color={colors.destructive} />, path: '/(tabs)/blood' as const },
     { label: 'Community', hint: 'Support groups', icon: <Users size={18} color={colors.purple} />, path: '/(tabs)/community' as const },

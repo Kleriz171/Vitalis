@@ -152,6 +152,29 @@ async function seed() {
     role: 'citizen',
   });
 
+  await User.create({
+    email: 'doctor@vitalis.com',
+    password: 'Doctor1!',
+    firstName: 'Sara',
+    lastName: 'Doctor',
+    name: 'Sara Doctor',
+    role: 'doctor',
+    bloodType: 'A+',
+    age: 38,
+    gender: 'female',
+    available: false,
+  });
+
+  await User.create({
+    email: 'nurse@vitalis.com',
+    password: 'Nurse1!',
+    firstName: 'Ben',
+    lastName: 'Nurse',
+    name: 'Ben Nurse',
+    role: 'nurse',
+    available: false,
+  });
+
   // Hospitals
   logger.info('Seeding hospitals…');
   const hospitals = await Hospital.insertMany([

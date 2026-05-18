@@ -230,17 +230,34 @@ export default function Profile() {
     }
   };
 
+  const isDuplicate = (target: SaveTarget, candidate: string): boolean => {
+    const norm = candidate.trim().toLowerCase();
+    if (!norm) return false;
+    if (target === 'allergy') return (profile?.allergies ?? []).some(a => a.allergen.toLowerCase() === norm);
+    if (target === 'medication') return (profile?.medications ?? []).some(m => m.name.toLowerCase() === norm);
+    if (target === 'condition') return (profile?.conditions ?? []).some(c => c.name.toLowerCase() === norm);
+    return false;
+  };
+
   const createRecord = async (target: Exclude<SaveTarget, 'overview' | null>) => {
     try {
       setSaving(target);
 
       if (target === 'medication') {
+        if (isDuplicate('medication', medicationName)) {
+          toast.error('Already on your list', { description: `${medicationName.trim()} is already saved.` });
+          return;
+        }
         await api.post('/health/medications', { name: medicationName.trim(), dosage: medicationDose.trim() || undefined, isActive: true });
         setMedicationName('');
         setMedicationDose('');
       }
 
       if (target === 'allergy') {
+        if (isDuplicate('allergy', allergen)) {
+          toast.error('Already on your list', { description: `${allergen.trim()} is already saved.` });
+          return;
+        }
         await api.post('/health/allergies', { allergen: allergen.trim(), severity });
         setAllergen('');
       }
@@ -268,6 +285,10 @@ export default function Profile() {
       }
 
       if (target === 'condition') {
+        if (isDuplicate('condition', conditionName)) {
+          toast.error('Already on your list', { description: `${conditionName.trim()} is already saved.` });
+          return;
+        }
         await api.post('/health/conditions', {
           name: conditionName.trim(),
           notes: conditionNotes.trim() || undefined,

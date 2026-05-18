@@ -16,18 +16,19 @@ module.exports = {
         input: '#E2E8EC',
 
         primary: {
-          DEFAULT: '#14B8A6',
+          DEFAULT: '#14A897',
           foreground: '#FFFFFF',
+          strong: '#0C5D57',
         },
         accent: {
           DEFAULT: '#D4F1ED',
-          foreground: '#0F5F58',
+          foreground: '#0C5D57',
         },
         destructive: {
           DEFAULT: '#E14545',
           foreground: '#FFFFFF',
         },
-        ring: '#14B8A6',
+        ring: '#14A897',
 
         // Domain accents (kept literal so RN classes match the web palette)
         rose: { 50: '#FFF1F2', 100: '#FFE4E6', 600: '#E11D48', 700: '#BE123C' },

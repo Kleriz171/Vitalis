@@ -12,7 +12,11 @@
       "supportsTablet": false,
       "bundleIdentifier": "dev.vitalis.native",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Vitalis uses your location to broadcast SOS emergencies to nearby responders."
+        "NSLocationWhenInUseUsageDescription": "Vitalis uses your location to broadcast SOS emergencies to nearby responders.",
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true,
+          "NSAllowsLocalNetworking": true
+        }
       }
     },
     "android": {

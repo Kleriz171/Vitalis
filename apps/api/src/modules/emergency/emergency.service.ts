@@ -49,13 +49,15 @@ export const emergencyService = {
     if (e.status !== 'pending') throw Object.assign(new Error('Already assigned'), { status: 409 });
     const responder = await User.findById(responderId);
     if (!responder) throw Object.assign(new Error('Responder missing'), { status: 404 });
-    const km = haversineKm(
-      (responder.location as any).coordinates,
-      (e.location as any).coordinates
-    );
+    const responderCoords = (responder.location as any)?.coordinates;
+    const incidentCoords = (e.location as any)?.coordinates;
+    const km =
+      Array.isArray(responderCoords) && Array.isArray(incidentCoords)
+        ? haversineKm(responderCoords, incidentCoords)
+        : null;
     e.responder = responderId as any;
     e.status = 'assigned';
-    e.etaSeconds = Math.round((km / 30) * 3600);
+    e.etaSeconds = km != null ? Math.round((km / 30) * 3600) : undefined;
     e.timeline.push({ status: 'assigned', by: responderId as any } as any);
     await e.save();
     await blockchainService.append({

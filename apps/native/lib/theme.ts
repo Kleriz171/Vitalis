@@ -1,18 +1,27 @@
+// Soft teal on warm off-white — must mirror apps/web tokens.
+// Web defines these as HSL CSS vars; we materialize the same values here:
+//   --primary:    173 80% 40%  → #14A897
+//   --background: 36  33% 97%  → #F7F5F0
+//   --accent:     173 60% 92%  → #D4F1ED
+//   --accent-fg:  173 80% 24%  → #0C5D57
+//   --muted:      210 20% 96%  → #F0F2F5
+//   --border:     210 16% 90%  → #E1E5EA
+//   --foreground: 200 25% 12%  → #172026
 export const colors = {
-  background: '#F3F7F7',
-  foreground: '#102126',
+  background: '#F7F5F0',
+  foreground: '#172026',
   card: '#FFFFFF',
-  cardForeground: '#102126',
-  muted: '#E7EFF1',
-  soft: '#EDF4F5',
-  mutedForeground: '#667A83',
-  border: '#D8E4E7',
-  primary: '#127D74',
+  cardForeground: '#172026',
+  muted: '#F0F2F5',
+  soft: '#F4F6F8',
+  mutedForeground: '#647585',
+  border: '#E1E5EA',
+  primary: '#14A897',
   primaryForeground: '#FFFFFF',
   primaryStrong: '#0C5D57',
-  accent: '#DDF4F1',
-  accentForeground: '#0F5F58',
-  destructive: '#D95050',
+  accent: '#D4F1ED',
+  accentForeground: '#0C5D57',
+  destructive: '#E14545',
   destructiveForeground: '#FFFFFF',
   destructiveSoft: '#FDECEC',
   info: '#2F6FED',
