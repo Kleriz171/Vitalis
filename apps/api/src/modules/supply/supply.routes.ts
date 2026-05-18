@@ -100,7 +100,7 @@ r.post('/requests', validate(createRequestSchema), async (req: AuthReq, res, nex
       ...req.body,
       requestMode: req.body.requestMode ?? 'exchange',
       status: req.body.requestMode === 'queue' ? 'queued' : 'open',
-      requesterName: req.user?.name,
+      requesterName: 'Vitalis member',
       createdBy: req.user!.id,
     });
     res.status(201).json(requestToView(created.toObject(), null));
@@ -149,11 +149,11 @@ r.post('/queue-requests', validate(createQueueRequestSchema), async (req: AuthRe
       resourceType: body.resourceType,
       urgency: body.urgency,
       quantityLabel: body.quantityLabel,
-      facilityName: req.user?.name ?? 'Vitalis citizen',
+      facilityName: 'Vitalis member',
       notes: body.notes,
       requestMode: 'queue',
       status: matchedCandidate ? 'matched' : 'queued',
-      requesterName: req.user?.name,
+      requesterName: 'Vitalis member',
       createdBy: req.user!.id,
       matchedAt: matchedCandidate ? new Date() : undefined,
       matchSummary: matchedCandidate

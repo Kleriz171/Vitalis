@@ -1,50 +1,60 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import { BellRing, Clock3, Droplets, HeartHandshake, PackageSearch, Pill, Send, ShieldPlus } from 'lucide-react-native';
 import { useSelector } from 'react-redux';
-import { BellRing, Droplets, HeartHandshake, MessageCircleMore, PackageSearch, Pill, Send, ShieldPlus } from 'lucide-react-native';
 import { toast } from 'sonner-native';
 import { AppScreen } from '@/components/AppScreen';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Input } from '@/components/ui/Input';
+import { Label } from '@/components/ui/Label';
 import { api } from '@/lib/api';
 import { RootState } from '@/lib/store';
 import { colors, radius } from '@/lib/theme';
 
-type Category = 'all' | 'blood' | 'organ' | 'tissue' | 'medicine';
-type FeedTab = 'exchange' | 'inventory' | 'inquiries';
+type QueueCategory = 'blood' | 'organ' | 'tissue' | 'medicine';
+type FilterCategory = 'all' | QueueCategory;
+type FeedTab = 'request' | 'queue' | 'exchange' | 'inventory';
+type Urgency = 'normal' | 'urgent' | 'critical';
 
 type SupplyRequest = {
-  _id: string;
-  category: Exclude<Category, 'all'>;
+  id: string;
+  category: QueueCategory;
+  requestMode: 'exchange' | 'queue';
   title: string;
-  description: string;
-  priority: 'low' | 'medium' | 'high' | 'critical';
-  hospitalName?: string;
-  locationLabel?: string;
-  bloodType?: string;
-  unitsNeeded?: number;
-  itemName?: string;
-  contactName?: string;
+  resourceType: string;
+  urgency: Urgency;
+  quantityLabel: string;
+  facilityName?: string;
+  notes?: string;
+  requesterName?: string;
+  status: 'open' | 'queued' | 'matched' | 'fulfilled' | 'cancelled';
+  inquiryCount: number;
+  queuePosition: number | null;
+  matchedAt?: string;
+  matchSummary?: string;
   createdAt?: string;
 };
 
 type SupplyInquiry = {
-  _id: string;
+  id: string;
   message: string;
   status: 'open' | 'responded' | 'closed';
   createdAt?: string;
-  requestId?: {
-    _id: string;
+  request?: {
+    id: string;
     title: string;
-    category: string;
-    hospitalName?: string;
+    resourceType: string;
+    category: QueueCategory;
+    facilityName?: string;
+    urgency: Urgency;
   };
 };
 
 type MedicineResult = {
-  _id: string;
+  _id?: string;
   name: string;
   brand?: string;
   stock?: number;
@@ -63,7 +73,21 @@ type BloodStatus = {
   };
 };
 
-const categories: { key: Category; label: string }[] = [
+const requestCategories: { key: QueueCategory; label: string; helper: string; shortLabel: string; icon: ReactNode }[] = [
+  { key: 'blood', label: 'Blood', shortLabel: 'Blood', helper: 'Match a blood type, plasma, or platelet need.', icon: <Droplets size={16} color={colors.destructive} /> },
+  { key: 'organ', label: 'Organ', shortLabel: 'Organ', helper: 'Queue for transplant-ready organs and parts.', icon: <HeartHandshake size={16} color={colors.primary} /> },
+  { key: 'tissue', label: 'Tissue', shortLabel: 'Tissue', helper: 'Track corneas, skin grafts, and tissue needs.', icon: <ShieldPlus size={16} color={colors.info} /> },
+  { key: 'medicine', label: 'Medicine', shortLabel: 'Medicine', helper: 'Request a specific drug or treatment quickly.', icon: <Pill size={16} color={colors.success} /> },
+];
+
+const tabs: { key: FeedTab; label: string }[] = [
+  { key: 'request', label: 'Request' },
+  { key: 'queue', label: 'My queue' },
+  { key: 'exchange', label: 'Exchange' },
+  { key: 'inventory', label: 'Inventory' },
+];
+
+const filterCategories: { key: FilterCategory; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'blood', label: 'Blood' },
   { key: 'organ', label: 'Organs' },
@@ -71,53 +95,77 @@ const categories: { key: Category; label: string }[] = [
   { key: 'medicine', label: 'Medicine' },
 ];
 
-const tabs: { key: FeedTab; label: string }[] = [
-  { key: 'exchange', label: 'Exchange' },
-  { key: 'inventory', label: 'Inventory' },
-  { key: 'inquiries', label: 'Replies' },
+const urgencyChoices: { key: Urgency; label: string }[] = [
+  { key: 'normal', label: 'Normal' },
+  { key: 'urgent', label: 'Urgent' },
+  { key: 'critical', label: 'Critical' },
 ];
 
-const priorityColors = {
-  low: colors.info,
-  medium: colors.primary,
-  high: '#f59e0b',
-  critical: colors.destructive,
-} as const;
+const urgencyTheme: Record<Urgency, { background: string; color: string }> = {
+  normal: { background: colors.infoSoft, color: colors.info },
+  urgent: { background: colors.warningSoft, color: colors.warning },
+  critical: { background: colors.destructiveSoft, color: colors.destructive },
+};
+
+const queueTheme: Record<'queued' | 'matched', { background: string; color: string }> = {
+  queued: { background: colors.infoSoft, color: colors.info },
+  matched: { background: colors.successSoft, color: colors.success },
+};
 
 const formatDate = (value?: string) =>
   value
-    ? new Intl.DateTimeFormat('en-US', {
-        month: 'short',
-        day: 'numeric',
-      }).format(new Date(value))
+    ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(new Date(value))
     : 'Just now';
 
+const titleCase = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
+
+const readList = <T,>(value: unknown, keys: string[] = []): T[] => {
+  if (Array.isArray(value)) return value as T[];
+  if (value && typeof value === 'object') {
+    for (const key of keys) {
+      const candidate = (value as Record<string, unknown>)[key];
+      if (Array.isArray(candidate)) return candidate as T[];
+    }
+  }
+  return [];
+};
+
 export default function SupplyScreen() {
+  const tabBarHeight = useBottomTabBarHeight();
   const user = useSelector((state: RootState) => state.auth.user);
-  const [tab, setTab] = useState<FeedTab>('exchange');
-  const [category, setCategory] = useState<Category>('all');
-  const [requests, setRequests] = useState<SupplyRequest[]>([]);
+  const [tab, setTab] = useState<FeedTab>('request');
+  const [categoryFilter, setCategoryFilter] = useState<FilterCategory>('all');
+  const [exchangeRequests, setExchangeRequests] = useState<SupplyRequest[]>([]);
+  const [queueRequests, setQueueRequests] = useState<SupplyRequest[]>([]);
   const [inquiries, setInquiries] = useState<SupplyInquiry[]>([]);
   const [medicines, setMedicines] = useState<MedicineResult[]>([]);
   const [bloodCritical, setBloodCritical] = useState<BloodStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
+  const [selectedExchangeId, setSelectedExchangeId] = useState<string | null>(null);
   const [messageDraft, setMessageDraft] = useState('');
-  const [sending, setSending] = useState(false);
+  const [sendingInquiry, setSendingInquiry] = useState(false);
+  const [submittingRequest, setSubmittingRequest] = useState(false);
+  const [requestCategory, setRequestCategory] = useState<QueueCategory>('blood');
+  const [resourceType, setResourceType] = useState(user?.bloodType ? `${user.bloodType} blood` : '');
+  const [quantityLabel, setQuantityLabel] = useState('1 unit');
+  const [urgency, setUrgency] = useState<Urgency>('urgent');
+  const [notes, setNotes] = useState('');
 
   const loadData = useCallback(async () => {
-    const [requestRes, inquiryRes, medicineRes, bloodRes] = await Promise.all([
-      api.get('/supply/requests'),
+    const [exchangeRes, queueRes, inquiryRes, medicineRes, bloodRes] = await Promise.all([
+      api.get('/supply/requests', { params: { requestMode: 'exchange' } }),
+      api.get('/supply/requests/mine', { params: { requestMode: 'queue' } }),
       api.get('/supply/inquiries/mine'),
       api.get('/medicine/search?q=rare'),
       api.get('/blood/critical'),
     ]);
 
-    setRequests(requestRes.data.requests ?? []);
-    setInquiries(inquiryRes.data.inquiries ?? []);
-    setMedicines(medicineRes.data.results ?? medicineRes.data.items ?? []);
-    setBloodCritical(bloodRes.data.inventory ?? bloodRes.data.items ?? []);
+    setExchangeRequests(readList<SupplyRequest>(exchangeRes.data, ['requests', 'items']));
+    setQueueRequests(readList<SupplyRequest>(queueRes.data, ['requests', 'items']));
+    setInquiries(readList<SupplyInquiry>(inquiryRes.data, ['inquiries', 'items']));
+    setMedicines(readList<MedicineResult>(medicineRes.data, ['results', 'items']));
+    setBloodCritical(readList<BloodStatus>(bloodRes.data, ['inventory', 'items']));
   }, []);
 
   useEffect(() => {
@@ -126,7 +174,7 @@ export default function SupplyScreen() {
         setLoading(true);
         await loadData();
       } catch (error: any) {
-        toast.error('Could not load supply exchange', {
+        toast.error('Could not load supply center', {
           description: error.response?.data?.error ?? 'Please try again shortly.',
         });
       } finally {
@@ -136,6 +184,17 @@ export default function SupplyScreen() {
 
     run();
   }, [loadData]);
+
+  useEffect(() => {
+    if (requestCategory === 'blood' && user?.bloodType) {
+      setResourceType((current) => current.trim() ? current : `${user.bloodType} blood`);
+      setQuantityLabel((current) => current.trim() ? current : '1 unit');
+      return;
+    }
+
+    setResourceType((current) => (current === `${user?.bloodType} blood` ? '' : current));
+    setQuantityLabel((current) => (current === '1 unit' ? '' : current));
+  }, [requestCategory, user?.bloodType]);
 
   const onRefresh = async () => {
     try {
@@ -150,452 +209,610 @@ export default function SupplyScreen() {
     }
   };
 
-  const filteredRequests = useMemo(
-    () => requests.filter((request) => category === 'all' || request.category === category),
-    [category, requests]
+  const selectedCategory = requestCategories.find((item) => item.key === requestCategory) ?? requestCategories[0];
+  const filteredExchangeRequests = useMemo(
+    () => exchangeRequests.filter((request) => categoryFilter === 'all' || request.category === categoryFilter),
+    [categoryFilter, exchangeRequests]
   );
+  const selectedExchange = filteredExchangeRequests.find((request) => request.id === selectedExchangeId) ?? null;
+  const queuedCount = queueRequests.filter((request) => request.status === 'queued').length;
+  const matchedCount = queueRequests.filter((request) => request.status === 'matched').length;
+  const nextQueuePosition = queueRequests
+    .filter((request) => request.status === 'queued' && typeof request.queuePosition === 'number')
+    .sort((a, b) => (a.queuePosition ?? 0) - (b.queuePosition ?? 0))[0]?.queuePosition ?? null;
 
-  const selectedRequest = filteredRequests.find((request) => request._id === selectedRequestId) ?? null;
-
-  const submitInquiry = async () => {
-    if (!selectedRequest || !messageDraft.trim()) return;
+  const submitQueueRequest = async () => {
+    if (!resourceType.trim() || !quantityLabel.trim()) {
+      toast.error('Finish the request details', {
+        description: 'Add a resource type and quantity before joining the queue.',
+      });
+      return;
+    }
 
     try {
-      setSending(true);
-      await api.post(`/supply/requests/${selectedRequest._id}/inquiries`, {
+      setSubmittingRequest(true);
+      await api.post('/supply/queue-requests', {
+        category: requestCategory,
+        resourceType: resourceType.trim(),
+        quantityLabel: quantityLabel.trim(),
+        urgency,
+        notes: notes.trim() || undefined,
+      });
+      setNotes('');
+      setMessageDraft('');
+      setSelectedExchangeId(null);
+      if (requestCategory !== 'blood' || !user?.bloodType) setResourceType('');
+      setQuantityLabel(requestCategory === 'blood' ? '1 unit' : '');
+      await loadData();
+      setTab('queue');
+      toast.success('Request added to the queue', {
+        description: 'We will keep it active until a matching supply is found.',
+      });
+    } catch (error: any) {
+      toast.error('Could not queue your request', {
+        description: error.response?.data?.error ?? 'Please try again.',
+      });
+    } finally {
+      setSubmittingRequest(false);
+    }
+  };
+
+  const submitInquiry = async () => {
+    if (!selectedExchange || !messageDraft.trim()) {
+      toast.error('Add a short availability note first.');
+      return;
+    }
+
+    try {
+      setSendingInquiry(true);
+      await api.post(`/supply/requests/${selectedExchange.id}/inquiries`, {
         message: messageDraft.trim(),
       });
       setMessageDraft('');
       await loadData();
-      setTab('inquiries');
-      toast.success('Inquiry sent', {
-        description: 'The requester can now reply with availability details.',
+      setTab('queue');
+      toast.success('Availability message sent', {
+        description: 'The requester will see your note in their replies.',
       });
     } catch (error: any) {
-      toast.error('Could not send inquiry', {
+      toast.error('Could not send your note', {
         description: error.response?.data?.error ?? 'Please try again.',
       });
     } finally {
-      setSending(false);
+      setSendingInquiry(false);
     }
   };
 
   return (
     <AppScreen
       tone="info"
-      eyebrow="Supply exchange"
-      title="Blood, organs, tissue, and medicine in one place."
-      subtitle="Track active requests, check critical stock, and message requesters directly when you can help."
+      eyebrow="Supply center"
+      title="Find care fast and track every request in one place."
+      subtitle="Request blood, organs, tissue, or medicine, stay in queue, and answer urgent exchange needs."
       icon={<HeartHandshake size={24} color="#fff" />}
-      scroll={false}
-    >
-      <ScrollView
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}
-      >
-        <Card style={styles.heroCard}>
-          <View style={styles.heroRow}>
+      contentContainerStyle={{ paddingBottom: Math.max(tabBarHeight + 48, 148) }}
+      scrollProps={{
+        refreshControl: <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />,
+      }}
+      headerContent={
+        <View style={styles.heroPanel}>
+          <View style={styles.heroIdentityRow}>
             <Badge variant="outline" style={styles.heroBadge}>
               {user?.bloodType ?? 'Profile incomplete'}
             </Badge>
-            <Text style={styles.heroMeta}>Replies stay linked to your Bio Passport profile.</Text>
+            <Text style={styles.heroHint}>Connected to your Vitalis profile and live supply matching.</Text>
           </View>
-          <View style={styles.kpiRow}>
-            <KpiCard label="Live requests" value={String(requests.length)} icon={<BellRing size={16} color={colors.primary} />} />
-            <KpiCard label="Critical blood" value={String(bloodCritical.length)} icon={<Droplets size={16} color={colors.destructive} />} />
-            <KpiCard label="Rare meds" value={String(medicines.length)} icon={<Pill size={16} color={colors.success} />} />
+          <View style={styles.heroStatsRow}>
+            <HeroStat label="Queued" value={String(queuedCount)} />
+            <HeroStat label="Matched" value={String(matchedCount)} />
+            <HeroStat label="Exchange" value={String(exchangeRequests.length)} />
+            <HeroStat label="Replies" value={String(inquiries.length)} />
           </View>
-        </Card>
-
-        <View style={styles.tabRow}>
-          {tabs.map((item) => (
+        </View>
+      }
+    >
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabRail}>
+        {tabs.map((item) => {
+          const active = tab === item.key;
+          return (
             <Pressable
               key={item.key}
               onPress={() => setTab(item.key)}
-              style={[styles.tabButton, tab === item.key && styles.tabButtonActive]}
+              style={[styles.tabChip, active && styles.tabChipActive]}
             >
-              <Text style={[styles.tabLabel, tab === item.key && styles.tabLabelActive]}>{item.label}</Text>
+              <Text style={[styles.tabChipLabel, active && styles.tabChipLabelActive]}>{item.label}</Text>
             </Pressable>
-          ))}
-        </View>
+          );
+        })}
+      </ScrollView>
 
-        {tab === 'exchange' ? (
-          <>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-              {categories.map((item) => (
-                <Pressable
-                  key={item.key}
-                  onPress={() => setCategory(item.key)}
-                  style={[styles.filterChip, category === item.key && styles.filterChipActive]}
-                >
-                  <Text style={[styles.filterLabel, category === item.key && styles.filterLabelActive]}>{item.label}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
+      {loading && !exchangeRequests.length && !queueRequests.length && !bloodCritical.length && !medicines.length ? (
+        <Card style={styles.loadingCard}>
+          <Text style={styles.sectionBody}>Loading supply network…</Text>
+        </Card>
+      ) : null}
 
-            {filteredRequests.length === 0 ? (
-              <Card style={styles.emptyCard}>
-                <PackageSearch size={20} color={colors.primary} />
-                <Text style={styles.emptyTitle}>No active requests in this category</Text>
-                <Text style={styles.emptyBody}>Try another filter or pull to refresh the live exchange feed.</Text>
-              </Card>
-            ) : (
-              filteredRequests.map((request, index) => {
-                const isSelected = selectedRequestId === request._id;
-                return (
-                  <Animated.View key={request._id} entering={FadeInDown.delay(index * 70).duration(300)}>
-                    <Card style={[styles.requestCard, isSelected && styles.requestCardSelected]}>
-                      <View style={styles.requestHeader}>
-                        <View style={styles.requestHeaderCopy}>
-                          <Badge
-                            style={{ backgroundColor: `${priorityColors[request.priority]}18`, borderColor: `${priorityColors[request.priority]}30` }}
-                            textStyle={{ color: priorityColors[request.priority] }}
-                          >
-                            {request.priority.toUpperCase()}
-                          </Badge>
-                          <Text style={styles.requestTitle}>{request.title}</Text>
-                          <Text style={styles.requestMeta}>
-                            {request.hospitalName ?? 'Coordinated request'} · {request.locationLabel ?? 'Location pending'}
-                          </Text>
-                        </View>
-                        <Badge variant="outline" textStyle={{ color: colors.primary }}>
-                          {request.category}
-                        </Badge>
-                      </View>
-
-                      <Text style={styles.requestBody}>{request.description}</Text>
-
-                      <View style={styles.requestFacts}>
-                        {request.bloodType ? <FactPill label={`Blood ${request.bloodType}`} /> : null}
-                        {request.unitsNeeded ? <FactPill label={`${request.unitsNeeded} units`} /> : null}
-                        {request.itemName ? <FactPill label={request.itemName} /> : null}
-                        <FactPill label={formatDate(request.createdAt)} />
-                      </View>
-
-                      <Button
-                        variant={isSelected ? 'secondary' : 'outline'}
-                        onPress={() => setSelectedRequestId(isSelected ? null : request._id)}
-                      >
-                        <MessageCircleMore size={16} color={isSelected ? '#fff' : colors.foreground} />
-                        {isSelected ? 'Hide inquiry' : 'Reply / inquire'}
-                      </Button>
-
-                      {isSelected ? (
-                        <View style={styles.replyBox}>
-                          <Text style={styles.replyTitle}>Message the requester</Text>
-                          <TextInput
-                            value={messageDraft}
-                            onChangeText={setMessageDraft}
-                            placeholder="Share availability, transport timing, stock details, or questions."
-                            placeholderTextColor={colors.mutedForeground}
-                            style={styles.replyInput}
-                            multiline
-                          />
-                          <Button onPress={submitInquiry} loading={sending}>
-                            <Send size={16} color="#fff" />
-                            Send inquiry
-                          </Button>
-                        </View>
-                      ) : null}
-                    </Card>
-                  </Animated.View>
-                );
-              })
-            )}
-          </>
-        ) : null}
-
-        {tab === 'inventory' ? (
-          <>
-            <Card style={styles.sectionCard}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Critical blood centres</Text>
-                <Badge variant="outline">Live</Badge>
-              </View>
-              {bloodCritical.length === 0 ? (
-                <Text style={styles.sectionBody}>No critical blood centre alerts right now.</Text>
-              ) : (
-                bloodCritical.map((item) => (
-                  <View key={`${item._id ?? item.bloodType}-${item.hospital?.name ?? 'hospital'}`} style={styles.inventoryRow}>
-                    <View>
-                      <Text style={styles.inventoryTitle}>{item.hospital?.name ?? 'Regional hospital'}</Text>
-                      <Text style={styles.inventoryMeta}>
-                        {item.bloodType} · {item.availableUnits} units available
-                      </Text>
-                    </View>
-                    <Badge textStyle={{ color: colors.destructive }} style={styles.dangerBadge}>
-                      Critical
-                    </Badge>
-                  </View>
-                ))
-              )}
-            </Card>
-
-            <Card style={styles.sectionCard}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Rare medicine search</Text>
-                <Badge variant="outline">Nearby</Badge>
-              </View>
-              {medicines.length === 0 ? (
-                <Text style={styles.sectionBody}>No rare medicine matches found right now.</Text>
-              ) : (
-                medicines.map((item) => (
-                  <View key={item._id} style={styles.inventoryRow}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.inventoryTitle}>{item.name}</Text>
-                      <Text style={styles.inventoryMeta}>
-                        {item.brand ?? 'Generic'} · {item.locationName ?? 'Location pending'}
-                      </Text>
-                    </View>
-                    <View style={{ alignItems: 'flex-end', gap: 6 }}>
-                      <Text style={styles.inventoryStock}>{item.stock ?? 0} in stock</Text>
-                      {item.requiresPrescription ? <Badge variant="outline">Rx</Badge> : null}
-                    </View>
-                  </View>
-                ))
-              )}
-            </Card>
-          </>
-        ) : null}
-
-        {tab === 'inquiries' ? (
+      {tab === 'request' ? (
+        <>
           <Card style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Your inquiry history</Text>
-              <ShieldPlus size={16} color={colors.primary} />
+            <View style={styles.sectionHeaderBlock}>
+              <Text style={styles.sectionTitle}>New request</Text>
+              <Text style={styles.sectionBody}>
+                Pick a category, add the exact type you need, and we will keep it in queue until a compatible match appears.
+              </Text>
+            </View>
+
+            <View style={styles.categoryGrid}>
+              {requestCategories.map((item) => {
+                const active = requestCategory === item.key;
+                return (
+                  <Pressable
+                    key={item.key}
+                    onPress={() => setRequestCategory(item.key)}
+                    style={[styles.categoryTile, active && styles.categoryTileActive]}
+                  >
+                    <View style={[styles.categoryIconWrap, active && styles.categoryIconWrapActive]}>{item.icon}</View>
+                    <Text style={[styles.categoryTitle, active && styles.categoryTitleActive]}>{item.label}</Text>
+                    <Text style={[styles.categoryBody, active && styles.categoryBodyActive]}>{item.helper}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <View style={styles.spotlightCard}>
+              <View style={styles.spotlightHeader}>
+                <View style={styles.spotlightIcon}>{selectedCategory.icon}</View>
+                <View style={styles.spotlightCopy}>
+                  <Text style={styles.spotlightTitle}>{selectedCategory.shortLabel} request</Text>
+                  <Text style={styles.spotlightBody}>{selectedCategory.helper}</Text>
+                </View>
+              </View>
+              <View style={styles.spotlightFacts}>
+                <DetailPill label={`Open exchange: ${exchangeRequests.filter((item) => item.category === requestCategory).length}`} />
+                <DetailPill label={nextQueuePosition ? `Closest queue slot: ${nextQueuePosition}` : 'No active wait shown'} />
+              </View>
+            </View>
+
+            <View style={styles.formBlock}>
+              <Label>
+                {requestCategory === 'blood'
+                  ? 'Blood type or product'
+                  : requestCategory === 'medicine'
+                    ? 'Medicine or treatment'
+                    : requestCategory === 'organ'
+                      ? 'Organ needed'
+                      : 'Tissue needed'}
+              </Label>
+              <Input
+                value={resourceType}
+                onChangeText={setResourceType}
+                placeholder={
+                  requestCategory === 'blood'
+                    ? 'O- blood, AB plasma, platelets'
+                    : requestCategory === 'medicine'
+                      ? 'Insulin, amoxicillin, epinephrine'
+                      : requestCategory === 'organ'
+                        ? 'Kidney, liver segment, heart'
+                        : 'Cornea, skin graft, bone tissue'
+                }
+              />
+            </View>
+
+            <View style={styles.formRow}>
+              <View style={styles.formField}>
+                <Label>Quantity</Label>
+                <Input value={quantityLabel} onChangeText={setQuantityLabel} placeholder="1 unit, 2 doses, urgent transplant" />
+              </View>
+              <View style={styles.formField}>
+                <Label>Urgency</Label>
+                <View style={styles.segmentRow}>
+                  {urgencyChoices.map((item) => {
+                    const active = urgency === item.key;
+                    return (
+                      <Pressable
+                        key={item.key}
+                        onPress={() => setUrgency(item.key)}
+                        style={[styles.segmentChip, active && styles.segmentChipActive]}
+                      >
+                        <Text style={[styles.segmentChipLabel, active && styles.segmentChipLabelActive]}>{item.label}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.formBlock}>
+              <Label>Care notes</Label>
+              <TextInput
+                value={notes}
+                onChangeText={setNotes}
+                placeholder="Share timing, diagnosis context, or where the match should be delivered."
+                placeholderTextColor={colors.mutedForeground}
+                multiline
+                textAlignVertical="top"
+                style={styles.notesInput}
+              />
+            </View>
+
+            <View style={styles.submitSection}>
+              <View style={styles.submitBubble}>
+                <Button size="lg" loading={submittingRequest} onPress={submitQueueRequest} style={styles.submitButton}>
+                  Join the queue
+                </Button>
+              </View>
+              <Text style={styles.submitSectionBody}>Once the details look right, send it to the live queue here.</Text>
+            </View>
+          </Card>
+
+          <Card style={styles.sectionCard}>
+            <View style={styles.sectionHeaderInline}>
+              <Text style={styles.sectionTitle}>How the queue works</Text>
+              <Badge variant="secondary">Live</Badge>
+            </View>
+            <View style={styles.stepList}>
+              <StepTile title="Queued immediately" body="Your request is grouped by resource type and urgency." />
+              <StepTile title="Monitored continuously" body="Open supply listings and replies are checked while you wait." />
+              <StepTile title="Matched clearly" body="When a close match exists, it moves into your queue updates." />
+            </View>
+          </Card>
+        </>
+      ) : null}
+
+      {tab === 'queue' ? (
+        <>
+          <View style={styles.summaryRow}>
+            <SummaryCard label="Waiting" value={String(queuedCount)} tone="info" />
+            <SummaryCard label="Matched" value={String(matchedCount)} tone="success" />
+            <SummaryCard label="Replies" value={String(inquiries.length)} tone="primary" />
+          </View>
+
+          {queueRequests.length === 0 ? (
+            <Card style={styles.emptyCard}>
+              <PackageSearch size={20} color={colors.primary} />
+              <Text style={styles.emptyTitle}>No active queue requests</Text>
+              <Text style={styles.emptyBody}>Start a request and this screen will show your place in line and any supply matches.</Text>
+              <Button onPress={() => setTab('request')}>Create request</Button>
+            </Card>
+          ) : (
+            queueRequests.map((request) => {
+              const tone = queueTheme[request.status as 'queued' | 'matched'] ?? queueTheme.queued;
+              return (
+                <Card key={request.id} style={styles.queueCard}>
+                  <View style={styles.queueAccent} />
+                  <View style={styles.queueContent}>
+                    <View style={styles.queueHeader}>
+                      <View style={styles.queueHeaderCopy}>
+                        <Text style={styles.cardTitle}>{request.title}</Text>
+                        <Text style={styles.cardMeta}>
+                          {titleCase(request.category)} · {request.quantityLabel} · Added {formatDate(request.createdAt)}
+                        </Text>
+                      </View>
+                      <View style={[styles.statusPill, { backgroundColor: tone.background }]}>
+                        <Text style={[styles.statusPillText, { color: tone.color }]}>
+                          {request.status === 'matched' ? 'Match found' : 'Queued'}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.detailRow}>
+                      <DetailPill label={request.resourceType} />
+                      <DetailPill label={titleCase(request.urgency)} />
+                      {request.status === 'queued' && request.queuePosition ? <DetailPill label={`Position ${request.queuePosition}`} /> : null}
+                    </View>
+                    <Text style={styles.cardBody}>
+                      {request.status === 'matched'
+                        ? request.matchSummary ?? 'A compatible source has been identified and queued for follow-up.'
+                        : 'You are in line and waiting for the next compatible supply or coordinator reply.'}
+                    </Text>
+                    {request.notes ? <Text style={styles.cardSubtle}>Notes: {request.notes}</Text> : null}
+                  </View>
+                </Card>
+              );
+            })
+          )}
+
+          <Card style={styles.sectionCard}>
+            <View style={styles.sectionHeaderInline}>
+              <Text style={styles.sectionTitle}>Replies on your requests</Text>
+              <Badge variant="secondary">{inquiries.length}</Badge>
             </View>
             {inquiries.length === 0 ? (
-              <Text style={styles.sectionBody}>Once you contact a requester, replies and updates will appear here.</Text>
+              <Text style={styles.sectionBody}>Availability notes and coordinator updates will appear here.</Text>
             ) : (
-              inquiries.map((item) => (
-                <View key={item._id} style={styles.inquiryRow}>
-                  <View style={{ flex: 1, gap: 6 }}>
-                    <Text style={styles.inventoryTitle}>{item.requestId?.title ?? 'Supply request'}</Text>
-                    <Text style={styles.inventoryMeta}>
-                      {item.requestId?.hospitalName ?? 'Coordinator'} · {formatDate(item.createdAt)}
+              inquiries.map((inquiry) => (
+                <View key={inquiry.id} style={styles.replyRow}>
+                  <View style={styles.replyDot} />
+                  <View style={styles.replyCopy}>
+                    <Text style={styles.replyTitle}>{inquiry.request?.title ?? 'Supply update'}</Text>
+                    <Text style={styles.replyMessage}>{inquiry.message}</Text>
+                    <Text style={styles.replyMeta}>
+                      {inquiry.request?.facilityName ?? 'Vitalis coordinator'} · {formatDate(inquiry.createdAt)}
                     </Text>
-                    <Text style={styles.inquiryMessage}>{item.message}</Text>
                   </View>
-                  <Badge
-                    style={{ backgroundColor: `${colors.primary}14`, borderColor: `${colors.primary}24` }}
-                    textStyle={{ color: colors.primary }}
-                  >
-                    {item.status}
-                  </Badge>
                 </View>
               ))
             )}
           </Card>
-        ) : null}
+        </>
+      ) : null}
 
-        {loading ? (
-          <Card style={styles.loadingCard}>
-            <Text style={styles.sectionBody}>Loading live exchange data...</Text>
+      {tab === 'exchange' ? (
+        <>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRail}>
+            {filterCategories.map((item) => {
+              const active = categoryFilter === item.key;
+              return (
+                <Pressable
+                  key={item.key}
+                  onPress={() => setCategoryFilter(item.key)}
+                  style={[styles.filterChip, active && styles.filterChipActive]}
+                >
+                  <Text style={[styles.filterChipLabel, active && styles.filterChipLabelActive]}>{item.label}</Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+
+          {filteredExchangeRequests.length === 0 ? (
+            <Card style={styles.emptyCard}>
+              <PackageSearch size={20} color={colors.primary} />
+              <Text style={styles.emptyTitle}>No open exchange requests</Text>
+              <Text style={styles.emptyBody}>Pull to refresh or switch categories for more live hospital and donor requests.</Text>
+            </Card>
+          ) : (
+            filteredExchangeRequests.map((request) => {
+              const expanded = selectedExchangeId === request.id;
+              const urgencyStyle = urgencyTheme[request.urgency];
+              return (
+                <Card key={request.id} style={[styles.exchangeCard, expanded && styles.exchangeCardActive]}>
+                  <View style={styles.exchangeHeader}>
+                    <View style={styles.exchangeHeaderCopy}>
+                      <Text style={styles.cardTitle}>{request.title}</Text>
+                      <Text style={styles.cardMeta}>
+                        {request.facilityName ?? 'Supply coordinator'} · {formatDate(request.createdAt)}
+                      </Text>
+                    </View>
+                    <View style={[styles.statusPill, { backgroundColor: urgencyStyle.background }]}>
+                      <Text style={[styles.statusPillText, { color: urgencyStyle.color }]}>{titleCase(request.urgency)}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.detailRow}>
+                    <DetailPill label={titleCase(request.category)} />
+                    <DetailPill label={request.resourceType} />
+                    <DetailPill label={request.quantityLabel} />
+                    {request.inquiryCount > 0 ? <DetailPill label={`${request.inquiryCount} replies`} /> : null}
+                  </View>
+
+                  {request.notes ? <Text style={styles.cardBody}>{request.notes}</Text> : null}
+
+                  <Button variant={expanded ? 'secondary' : 'default'} onPress={() => setSelectedExchangeId(expanded ? null : request.id)}>
+                    {expanded ? 'Hide response' : 'Offer availability'}
+                  </Button>
+
+                  {expanded ? (
+                    <View style={styles.responseBox}>
+                      <Label>Response</Label>
+                      <TextInput
+                        value={messageDraft}
+                        onChangeText={setMessageDraft}
+                        placeholder="Example: I can help with two units and can coordinate transport this morning."
+                        placeholderTextColor={colors.mutedForeground}
+                        multiline
+                        textAlignVertical="top"
+                        style={styles.responseInput}
+                      />
+                      <Button loading={sendingInquiry} onPress={submitInquiry}>
+                        <Send size={16} color={colors.primaryForeground} />
+                        Send note
+                      </Button>
+                    </View>
+                  ) : null}
+                </Card>
+              );
+            })
+          )}
+        </>
+      ) : null}
+
+      {tab === 'inventory' ? (
+        <>
+          <View style={styles.summaryRow}>
+            <SummaryCard label="Critical blood" value={String(bloodCritical.length)} tone="danger" />
+            <SummaryCard label="Rare meds" value={String(medicines.length)} tone="success" />
+          </View>
+
+          <Card style={styles.sectionCard}>
+            <View style={styles.sectionHeaderInline}>
+              <Text style={styles.sectionTitle}>Critical blood alerts</Text>
+              <Badge variant="destructive">{bloodCritical.length}</Badge>
+            </View>
+            {bloodCritical.length === 0 ? (
+              <Text style={styles.sectionBody}>No blood inventory is flagged as critical right now.</Text>
+            ) : (
+              bloodCritical.map((item) => (
+                <View key={`${item.hospital?.name ?? 'blood'}-${item.bloodType}`} style={styles.inventoryRow}>
+                  <View style={styles.inventoryIconWrap}>
+                    <Droplets size={16} color={colors.destructive} />
+                  </View>
+                  <View style={styles.inventoryCopy}>
+                    <Text style={styles.inventoryTitle}>{item.bloodType}</Text>
+                    <Text style={styles.inventoryMeta}>
+                      {item.hospital?.name ?? 'Regional bank'} · {item.availableUnits} units available
+                    </Text>
+                  </View>
+                  <Badge variant="destructive">{item.criticalLevel ? `Needs ${item.criticalLevel}+` : 'Critical'}</Badge>
+                </View>
+              ))
+            )}
           </Card>
-        ) : null}
-      </ScrollView>
+
+          <Card style={styles.sectionCard}>
+            <View style={styles.sectionHeaderInline}>
+              <Text style={styles.sectionTitle}>Medicine network</Text>
+              <Badge variant="secondary">{medicines.length}</Badge>
+            </View>
+            {medicines.length === 0 ? (
+              <Text style={styles.sectionBody}>No rare medicine inventory results are available right now.</Text>
+            ) : (
+              medicines.map((item) => (
+                <View key={`${item._id ?? item.name}-${item.locationName ?? 'inventory'}`} style={styles.inventoryRow}>
+                  <View style={styles.inventoryIconWrap}>
+                    <Pill size={16} color={colors.success} />
+                  </View>
+                  <View style={styles.inventoryCopy}>
+                    <Text style={styles.inventoryTitle}>{item.name}</Text>
+                    <Text style={styles.inventoryMeta}>
+                      {item.brand ? `${item.brand} · ` : ''}
+                      {item.locationName ?? 'Pharmacy network'}
+                    </Text>
+                  </View>
+                  <View style={styles.inventoryRight}>
+                    <Text style={styles.inventoryStock}>{item.stock ?? 0} in stock</Text>
+                    {item.requiresPrescription ? <Text style={styles.inventoryMeta}>Prescription</Text> : null}
+                  </View>
+                </View>
+              ))
+            )}
+          </Card>
+        </>
+      ) : null}
     </AppScreen>
   );
 }
 
-function KpiCard({ label, value, icon }: { label: string; value: string; icon: ReactNode }) {
+function HeroStat({ label, value }: { label: string; value: string }) {
   return (
-    <View style={styles.kpiCard}>
-      <View style={styles.kpiIcon}>{icon}</View>
-      <Text style={styles.kpiValue}>{value}</Text>
-      <Text style={styles.kpiLabel}>{label}</Text>
+    <View style={styles.heroStat}>
+      <Text style={styles.heroStatValue}>{value}</Text>
+      <Text style={styles.heroStatLabel}>{label}</Text>
     </View>
   );
 }
 
-function FactPill({ label }: { label: string }) {
+function SummaryCard({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: 'info' | 'success' | 'primary' | 'danger';
+}) {
+  const theme =
+    tone === 'success'
+      ? { backgroundColor: colors.successSoft, color: colors.success }
+      : tone === 'primary'
+        ? { backgroundColor: colors.accent, color: colors.accentForeground }
+        : tone === 'danger'
+          ? { backgroundColor: colors.destructiveSoft, color: colors.destructive }
+          : { backgroundColor: colors.infoSoft, color: colors.info };
+
   return (
-    <View style={styles.factPill}>
-      <Text style={styles.factPillText}>{label}</Text>
+    <View style={[styles.summaryCard, { backgroundColor: theme.backgroundColor }]}>
+      <Text style={[styles.summaryValue, { color: theme.color }]}>{value}</Text>
+      <Text style={styles.summaryLabel}>{label}</Text>
+    </View>
+  );
+}
+
+function DetailPill({ label }: { label: string }) {
+  return (
+    <View style={styles.detailPill}>
+      <Text style={styles.detailPillText}>{label}</Text>
+    </View>
+  );
+}
+
+function StepTile({ title, body }: { title: string; body: string }) {
+  return (
+    <View style={styles.stepTile}>
+      <Text style={styles.stepTitle}>{title}</Text>
+      <Text style={styles.stepBody}>{body}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  content: {
-    gap: 16,
-    paddingBottom: 140,
-  },
-  heroCard: {
-    padding: 18,
-    gap: 16,
-  },
-  heroRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  heroPanel: {
     gap: 12,
   },
-  heroBadge: {
-    backgroundColor: `${colors.primary}12`,
-    borderColor: `${colors.primary}28`,
-  },
-  heroMeta: {
-    flex: 1,
-    fontSize: 13,
-    lineHeight: 18,
-    color: colors.mutedForeground,
-    textAlign: 'right',
-  },
-  kpiRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  kpiCard: {
-    flex: 1,
-    borderRadius: radius.lg,
-    padding: 14,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    gap: 6,
-  },
-  kpiIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: radius.full,
-    backgroundColor: colors.soft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  kpiValue: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: colors.foreground,
-  },
-  kpiLabel: {
-    fontSize: 12,
-    color: colors.mutedForeground,
-  },
-  tabRow: {
-    flexDirection: 'row',
+  heroIdentityRow: {
     gap: 8,
   },
-  tabButton: {
-    flex: 1,
-    borderRadius: radius.full,
-    paddingVertical: 12,
-    alignItems: 'center',
-    backgroundColor: colors.soft,
+  heroBadge: {
+    alignSelf: 'flex-start',
   },
-  tabButtonActive: {
-    backgroundColor: colors.primary,
+  heroHint: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: '#F4FBFE',
   },
-  tabLabel: {
-    color: colors.foreground,
-    fontWeight: '700',
-  },
-  tabLabelActive: {
-    color: '#fff',
-  },
-  filterRow: {
+  heroStatsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
-    paddingRight: 12,
   },
-  filterChip: {
-    borderRadius: radius.full,
-    paddingHorizontal: 16,
+  heroStat: {
+    minWidth: 88,
+    flexGrow: 1,
+    paddingHorizontal: 12,
     paddingVertical: 10,
+    borderRadius: radius.lg,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    gap: 2,
+  },
+  heroStatValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  heroStatLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.82)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  tabRail: {
+    gap: 8,
+    paddingRight: 4,
+  },
+  tabChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    borderRadius: radius.full,
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  filterChipActive: {
+  tabChipActive: {
     backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
-  filterLabel: {
-    color: colors.foreground,
-    fontWeight: '600',
-  },
-  filterLabelActive: {
-    color: '#fff',
-  },
-  requestCard: {
-    padding: 18,
-    gap: 14,
-  },
-  requestCardSelected: {
-    borderColor: `${colors.primary}40`,
-    backgroundColor: colors.card,
-  },
-  requestHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  requestHeaderCopy: {
-    flex: 1,
-    gap: 8,
-  },
-  requestTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: colors.foreground,
-  },
-  requestMeta: {
+  tabChipLabel: {
     fontSize: 13,
-    color: colors.mutedForeground,
-  },
-  requestBody: {
-    fontSize: 14,
-    lineHeight: 21,
-    color: colors.foreground,
-  },
-  requestFacts: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  factPill: {
-    borderRadius: radius.full,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    backgroundColor: colors.soft,
-  },
-  factPillText: {
-    fontSize: 12,
-    color: colors.foreground,
-    fontWeight: '600',
-  },
-  replyBox: {
-    gap: 12,
-    paddingTop: 4,
-  },
-  replyTitle: {
-    fontSize: 14,
     fontWeight: '700',
     color: colors.foreground,
   },
-  replyInput: {
-    minHeight: 96,
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.background,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    textAlignVertical: 'top',
-    color: colors.foreground,
+  tabChipLabelActive: {
+    color: colors.primaryForeground,
   },
   sectionCard: {
     padding: 18,
-    gap: 14,
+    gap: 16,
   },
-  sectionHeader: {
+  sectionHeaderBlock: {
+    gap: 6,
+  },
+  sectionHeaderInline: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     gap: 12,
   },
   sectionTitle: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '800',
     color: colors.foreground,
   },
@@ -604,14 +821,388 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     color: colors.mutedForeground,
   },
-  inventoryRow: {
+  categoryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  categoryTile: {
+    width: '48%',
+    minWidth: 148,
+    padding: 14,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.soft,
+    gap: 10,
+  },
+  categoryTileActive: {
+    borderColor: `${colors.primary}55`,
+    backgroundColor: '#F3FBFA',
+  },
+  categoryIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.card,
+  },
+  categoryIconWrapActive: {
+    backgroundColor: colors.accent,
+  },
+  categoryTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: colors.foreground,
+  },
+  categoryTitleActive: {
+    color: colors.primary,
+  },
+  categoryBody: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.mutedForeground,
+  },
+  categoryBodyActive: {
+    color: colors.foreground,
+  },
+  spotlightCard: {
+    padding: 16,
+    borderRadius: radius.lg,
+    backgroundColor: colors.soft,
+    gap: 12,
+  },
+  spotlightHeader: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
+  },
+  spotlightIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.card,
+  },
+  spotlightCopy: {
+    flex: 1,
+    gap: 3,
+  },
+  spotlightTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: colors.foreground,
+  },
+  spotlightBody: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.mutedForeground,
+  },
+  spotlightFacts: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  formBlock: {
+    gap: 8,
+  },
+  formRow: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'flex-start',
+  },
+  formField: {
+    flex: 1,
+    gap: 8,
+  },
+  segmentRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  segmentChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: radius.full,
+    backgroundColor: colors.soft,
+  },
+  segmentChipActive: {
+    backgroundColor: colors.primary,
+  },
+  segmentChipLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.foreground,
+  },
+  segmentChipLabelActive: {
+    color: colors.primaryForeground,
+  },
+  notesInput: {
+    minHeight: 108,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: colors.foreground,
+  },
+  submitSection: {
+    gap: 8,
+    paddingTop: 4,
+    alignItems: 'center',
+  },
+  submitSectionTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: colors.foreground,
+    textAlign: 'center',
+  },
+  submitSectionBody: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.mutedForeground,
+    textAlign: 'center',
+    maxWidth: 280,
+  },
+  submitBubble: {
+    alignSelf: 'center',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderRadius: radius.full,
+    backgroundColor: colors.primary,
+  },
+  submitButton: {
+    width: 236,
+    alignSelf: 'center',
+    backgroundColor: colors.primaryStrong,
+    borderRadius: radius.full,
+  },
+  stepList: {
+    gap: 10,
+  },
+  stepTile: {
+    padding: 14,
+    borderRadius: radius.lg,
+    backgroundColor: colors.soft,
+    gap: 4,
+  },
+  stepTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: colors.foreground,
+  },
+  stepBody: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.mutedForeground,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  summaryCard: {
+    flex: 1,
+    minHeight: 82,
+    borderRadius: radius.xl,
+    padding: 14,
+    justifyContent: 'space-between',
+  },
+  summaryValue: {
+    fontSize: 24,
+    fontWeight: '800',
+  },
+  summaryLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.mutedForeground,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  queueCard: {
+    flexDirection: 'row',
+    overflow: 'hidden',
+  },
+  queueAccent: {
+    width: 5,
+    backgroundColor: colors.primary,
+  },
+  queueContent: {
+    flex: 1,
+    padding: 18,
+    gap: 12,
+  },
+  queueHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  queueHeaderCopy: {
+    flex: 1,
+    gap: 5,
+  },
+  statusPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: radius.full,
+  },
+  statusPillText: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  cardTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: colors.foreground,
+  },
+  cardMeta: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  detailPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: radius.full,
+    backgroundColor: colors.soft,
+  },
+  detailPillText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.foreground,
+  },
+  cardBody: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: colors.foreground,
+  },
+  cardSubtle: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.mutedForeground,
+  },
+  replyRow: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    alignItems: 'flex-start',
+  },
+  replyDot: {
+    width: 10,
+    height: 10,
+    borderRadius: radius.full,
+    marginTop: 6,
+    backgroundColor: colors.primary,
+  },
+  replyCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  replyTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.foreground,
+  },
+  replyMessage: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.foreground,
+  },
+  replyMeta: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+  },
+  filterRail: {
+    gap: 8,
+    paddingRight: 4,
+  },
+  filterChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: radius.full,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  filterChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  filterChipLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.foreground,
+  },
+  filterChipLabelActive: {
+    color: colors.primaryForeground,
+  },
+  exchangeCard: {
+    padding: 18,
+    gap: 14,
+  },
+  exchangeCardActive: {
+    borderColor: `${colors.primary}45`,
+    backgroundColor: '#FBFEFD',
+  },
+  exchangeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  exchangeHeaderCopy: {
+    flex: 1,
+    gap: 5,
+  },
+  responseBox: {
+    gap: 10,
+    padding: 14,
+    borderRadius: radius.lg,
+    backgroundColor: colors.soft,
+  },
+  responseInput: {
+    minHeight: 96,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: colors.foreground,
+  },
+  inventoryRow: {
+    flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     paddingTop: 14,
     borderTopWidth: 1,
     borderTopColor: colors.border,
+  },
+  inventoryIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.soft,
+  },
+  inventoryCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  inventoryRight: {
+    alignItems: 'flex-end',
+    gap: 2,
   },
   inventoryTitle: {
     fontSize: 15,
@@ -620,29 +1211,11 @@ const styles = StyleSheet.create({
   },
   inventoryMeta: {
     fontSize: 13,
-    lineHeight: 18,
     color: colors.mutedForeground,
   },
   inventoryStock: {
     fontSize: 13,
     fontWeight: '700',
-    color: colors.foreground,
-  },
-  dangerBadge: {
-    backgroundColor: `${colors.destructive}12`,
-    borderColor: `${colors.destructive}28`,
-  },
-  inquiryRow: {
-    flexDirection: 'row',
-    gap: 12,
-    paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    alignItems: 'flex-start',
-  },
-  inquiryMessage: {
-    fontSize: 14,
-    lineHeight: 20,
     color: colors.foreground,
   },
   emptyCard: {

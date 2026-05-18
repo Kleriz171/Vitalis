@@ -4,8 +4,8 @@ import { ArrowLeft, Eye, MessageCircle, Shield, Users } from 'lucide-react-nativ
 import { toast } from 'sonner-native';
 import { api } from '@/lib/api';
 import { AppScreen } from '@/components/AppScreen';
-import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
 import { Empty } from '@/components/ui/Empty';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { colors, radius } from '@/lib/theme';
@@ -134,6 +134,15 @@ export default function Community() {
             placeholderTextColor="#94A3B8"
             style={styles.composerInput}
           />
+          <Button
+            size="lg"
+            onPress={() => void submit()}
+            loading={posting}
+            disabled={!newPost.trim()}
+            style={styles.postButton}
+          >
+            Send
+          </Button>
           <View style={styles.composerFooter}>
             <Pressable onPress={() => setAnonymous((value) => !value)} style={[styles.anonymousPill, anonymous && styles.anonymousPillActive]}>
               <Eye size={12} color={anonymous ? '#fff' : colors.mutedForeground} />
@@ -141,9 +150,6 @@ export default function Community() {
                 {anonymous ? 'Anonymous' : 'Public'}
               </Text>
             </Pressable>
-            <Button size="sm" onPress={submit} loading={posting} disabled={!newPost.trim()} style={styles.postButton}>
-              Publish
-            </Button>
           </View>
         </Card>
 
@@ -315,8 +321,7 @@ const styles = StyleSheet.create({
   },
   composerFooter: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
+    justifyContent: 'flex-start',
     alignItems: 'center',
   },
   anonymousPill: {
@@ -340,6 +345,9 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   postButton: {
+    width: 220,
+    alignSelf: 'center',
+    borderRadius: radius.full,
     backgroundColor: colors.purple,
   },
   postCard: {
