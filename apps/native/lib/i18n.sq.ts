@@ -650,6 +650,9 @@ export const ui: Record<string, string> = {
   'VITALIS · FIRST AID TRAINING': 'VITALIS · TRAJNIM NË NDIHMËN E PARË',
   'Correct: {answer}': 'E saktë: {answer}',
 
+  'Emergency contact saved': 'Kontakti në urgjencë u ruajt',
+  'Not set': 'Nuk është vendosur',
+
   // Notifications (system)
   'SOS calls near you': 'Thirrje SOS pranë jush',
   'Updates on your SOS': 'Përditësime për SOS-in tuaj',

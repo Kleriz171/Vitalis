@@ -34,6 +34,7 @@ const serializeUser = (user: any) => ({
   weightKg: user.weightKg,
   illnesses: user.illnesses ?? [],
   disabilities: user.disabilities ?? [],
+  emergencyContact: user.emergencyContact?.phone ? { name: user.emergencyContact.name, phone: user.emergencyContact.phone } : null,
 });
 
 async function loadProfile(userId: string) {
@@ -102,6 +103,11 @@ const profileSchema = z.object({
   weightKg: z.number().min(1).max(500).optional(),
   illnesses: z.array(z.string().min(1)).optional(),
   disabilities: z.array(z.string().min(1)).optional(),
+  // Same rules as sign-up: the QR shows this number to paramedics.
+  emergencyContact: z.object({
+    name: z.string().trim().min(1).max(80),
+    phone: z.string().regex(/^\+[1-9]\d{7,14}$/, 'Use the international format, e.g. +355691234567'),
+  }).strict().optional(),
 });
 
 r.patch('/profile', validate(profileSchema), async (req: AuthReq, res, next) => {

@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/Input';
 import { api } from '@/lib/api';
 import { setSession } from '@/lib/store';
 import { apiError, t } from '@/lib/i18n';
+import { isE164, toE164 } from '@/lib/geo';
 import { colors, radius, type } from '@/lib/theme';
 
 type Step = 'phone' | 'code' | 'about' | 'passport' | 'email';
@@ -21,15 +22,6 @@ const SEVERITIES: Severity[] = ['mild', 'moderate', 'severe'];
 const severityLabels: Record<Severity, string> = { mild: t('Mild'), moderate: t('Moderate'), severe: t('Severe') };
 const RESEND_SECONDS = 30;
 
-/** Local Albanian formats (069…, 69…, 355…) and 00-prefixed numbers → E.164. */
-const toE164 = (raw: string) => {
-  let d = raw.replace(/[^\d+]/g, '');
-  if (d.startsWith('00')) d = `+${d.slice(2)}`;
-  if (d.startsWith('+')) return d;
-  if (d.startsWith('355')) return `+${d}`;
-  return `+355${d.replace(/^0/, '')}`;
-};
-const isE164 = (p: string) => /^\+[1-9]\d{7,14}$/.test(p);
 
 const errorText = (e: any) => apiError(e, 'Check your connection and try again.');
 

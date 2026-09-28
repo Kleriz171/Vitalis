@@ -34,6 +34,19 @@ export const openDirections = (to: LngLat, label: string) => {
   );
 };
 
+/** Local Albanian formats (069…, 69…, 355…) and 00-prefixed numbers → E.164. */
+export const toE164 = (raw: string) => {
+  let d = raw.replace(/[^\d+]/g, '');
+  if (d.startsWith('00')) d = `+${d.slice(2)}`;
+  if (d.startsWith('+')) return d;
+  if (d.startsWith('355')) return `+${d}`;
+  return `+355${d.replace(/^0/, '')}`;
+};
+export const isE164 = (p: string) => /^\+[1-9]\d{7,14}$/.test(p);
+/** +355691234567 → +355 69 123 4567 for reading back; other countries stay as stored. */
+export const formatPhone = (p?: string | null) =>
+  p?.replace(/^\+355(6\d)(\d{3})(\d{3,4})$/, '+355 $1 $2 $3') ?? '';
+
 export const callNumber = (n: string) => Linking.openURL(`tel:${n}`);
 
 /** "120 m · Name" for the closest public AED, refreshed on focus. Null until known or without location permission. */

@@ -7,6 +7,7 @@ import { toast } from 'sonner-native';
 import { api } from '@/lib/api';
 import { signOut } from '@/lib/session';
 import { AppScreen } from '@/components/AppScreen';
+import { formatPhone, isE164, toE164 } from '@/lib/geo';
 import { apiError, lang, locale, setLanguage, t, tn } from '@/lib/i18n';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -30,6 +31,8 @@ type ProfileUser = {
   heightCm?: number;
   weightKg?: number;
   illnesses?: string[];
+  phone?: string;
+  emergencyContact?: { name?: string; phone: string } | null;
   disabilities?: string[];
 };
 
@@ -65,7 +68,7 @@ type BioPassport = {
   qr: string;
 };
 
-type SaveTarget = 'overview' | 'medication' | 'allergy' | 'vaccination' | 'appointment' | 'condition' | 'disability' | null;
+type SaveTarget = 'overview' | 'contact' | 'medication' | 'allergy' | 'vaccination' | 'appointment' | 'condition' | 'disability' | null;
 
 const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 // Values must match GENDERS in apps/api/src/models/User.ts.
@@ -132,6 +135,8 @@ export default function Profile() {
   const [conditionNotes, setConditionNotes] = useState('');
   const [disabilityName, setDisabilityName] = useState('');
   const [disabilityNotes, setDisabilityNotes] = useState('');
+  const [contactName, setContactName] = useState('');
+  const [contactPhoneRaw, setContactPhoneRaw] = useState('');
 
   const syncEditableFields = useCallback((next: HealthProfile) => {
     setBloodType(next.user.bloodType ?? '');
@@ -140,6 +145,8 @@ export default function Profile() {
     setHeightCm(next.user.heightCm != null ? String(next.user.heightCm) : '');
     setWeightKg(next.user.weightKg != null ? String(next.user.weightKg) : '');
     setIllnesses((next.user.illnesses ?? []).join(', '));
+    setContactName(next.user.emergencyContact?.name ?? '');
+    setContactPhoneRaw(next.user.emergencyContact?.phone ?? '');
   }, []);
 
   const load = useCallback(async () => {
@@ -193,6 +200,22 @@ export default function Profile() {
       });
     } finally {
       setRefreshing(false);
+    }
+  };
+
+  const contactPhone = toE164(contactPhoneRaw);
+  const contactOwnNumber = !!profile?.user.phone && contactPhone === profile.user.phone;
+  const contactValid = contactName.trim() && isE164(contactPhone) && !contactOwnNumber;
+  const saveContact = async () => {
+    try {
+      setSaving('contact');
+      await api.patch('/health/profile', { emergencyContact: { name: contactName.trim(), phone: contactPhone } });
+      await load();
+      toast.success(t('Emergency contact saved'));
+    } catch (error: any) {
+      toast.error(t('Could not update profile'), { description: apiError(error, 'Please check your details.') });
+    } finally {
+      setSaving(null);
     }
   };
 
@@ -330,6 +353,7 @@ export default function Profile() {
   return (
     <AppScreen
       title={t('Me')}
+      subtitle={formatPhone(profile?.user.phone ?? auth.user?.phone) || profile?.user.email || auth.user?.email}
       scrollProps={{ refreshControl: <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} /> }}
     >
       <View style={styles.wallet} accessible accessibilityLabel={t('Bio Passport. {name}. Blood type {type}.', { name: user?.name ?? '', type: user?.bloodType ?? t('unknown') })}>
@@ -351,6 +375,24 @@ export default function Profile() {
       <Text style={styles.footnote}>
         {t('Paramedics scan the code with any phone camera. It carries only what they need in the first minutes: blood type, allergies, medication, conditions and your emergency contact.')}
       </Text>
+
+      {/* Called when you cannot answer; shown to paramedics through the QR. */}
+      <Text style={styles.groupTitle}>{t('Emergency contact')}</Text>
+      <View style={styles.group}>
+        <Section
+          id="contact"
+          title={profile?.user.emergencyContact?.name || t('Not set')}
+          detail={formatPhone(profile?.user.emergencyContact?.phone) || t('Someone we can call if you can\'t answer.')}
+          open={open}
+          onToggle={toggle}
+          first
+        >
+          <Field label={t('Their name')} value={contactName} onChangeText={setContactName} />
+          <Field label={t('Their phone')} value={contactPhoneRaw} onChangeText={setContactPhoneRaw} placeholder="069 123 4567" keyboardType="phone-pad" />
+          {contactOwnNumber ? <Text style={styles.error}>{t("Use someone else's number, not your own.")}</Text> : null}
+          <Button onPress={saveContact} loading={saving === 'contact'} disabled={!contactValid}>{t('Save')}</Button>
+        </Section>
+      </View>
 
       <Text style={styles.groupTitle}>{t('Medical record')}</Text>
       <View style={styles.group}>
@@ -611,6 +653,7 @@ const styles = StyleSheet.create({
   rowTitle: { ...type.headline, color: colors.foreground },
   rowDetail: { ...type.footnote, color: colors.mutedForeground, marginTop: 2 },
   sectionBody: { paddingHorizontal: 16, paddingBottom: 16, gap: 10 },
+  error: { ...type.footnote, color: colors.destructive },
   fieldLabel: { ...type.footnote, fontWeight: '600', color: colors.mutedForeground },
   fieldRow: { flexDirection: 'row', gap: 10 },
   selectionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
