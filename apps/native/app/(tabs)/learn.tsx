@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import { SvgXml } from 'react-native-svg';
 import { useDispatch, useSelector } from 'react-redux';
-import { Award, BookOpen, Clock3, GraduationCap, Heart, ShieldCheck } from 'lucide-react-native';
+import { Award, CheckCircle2, ChevronRight, GraduationCap } from 'lucide-react-native';
 import { toast } from 'sonner-native';
 
 import { AppScreen } from '@/components/AppScreen';
-import { Card } from '@/components/ui/Card';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Empty } from '@/components/ui/Empty';
 import { api } from '@/lib/api';
@@ -17,7 +16,8 @@ import {
   TrainingCertification,
   TrainingEnrollment,
 } from '@/lib/store';
-import { colors, radius } from '@/lib/theme';
+import { courseArt } from '@/lib/courseArt';
+import { colors, radius, type } from '@/lib/theme';
 
 interface CourseSummary {
   id: string;
@@ -25,7 +25,6 @@ interface CourseSummary {
   title: string;
   category: string;
   shortDescription: string;
-  heroEmoji: string;
   estimatedMinutes: number;
   level: string;
   lessonCount: number;
@@ -92,170 +91,99 @@ export default function Training() {
 
   return (
     <AppScreen
-      eyebrow="First aid training"
-      title="Become a life-saver."
-      subtitle="Quick lessons based on Red Cross guidelines — certify yourself in minutes."
-      headerContent={
-        <View style={styles.heroChips}>
-          <View style={styles.heroChip}>
-            <Award size={14} color="#fff" />
-            <Text style={styles.heroChipText}>{activeCerts.length} active {activeCerts.length === 1 ? 'certificate' : 'certificates'}</Text>
-          </View>
-          <View style={styles.heroChip}>
-            <ShieldCheck size={14} color="#fff" />
-            <Text style={[styles.heroChipText, { flexShrink: 1 }]}>Educational. Not a replacement for in-person training.</Text>
-          </View>
-        </View>
-      }
+      title="Learn"
+      subtitle="Short first-aid courses based on Red Cross guidelines. Pass CPR or AED and Vitalis can call you to emergencies nearby."
       scrollProps={{
-        refreshControl: <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />,
+        refreshControl: <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />,
       }}
     >
       {activeCerts.length ? (
-        <Card style={styles.certCard}>
-          <View style={styles.certHeader}>
-            <Heart size={18} color={colors.primary} fill={colors.primary} />
-            <Text style={styles.certTitle}>Your certifications</Text>
-          </View>
-          <View style={styles.badgeRow}>
-            {activeCerts.map((cert) => (
-              <Pressable
-                key={cert.id}
-                onPress={() => router.push({ pathname: '/training/certificate/[id]', params: { id: cert.id } } as never)}
-                style={styles.badgePill}
-              >
-                <Text style={styles.badgePillText}>{cert.badgeLabel}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </Card>
+        <View style={styles.group}>
+          {activeCerts.map((cert, i) => (
+            <Pressable
+              key={cert.id}
+              onPress={() => router.push({ pathname: '/training/certificate/[id]', params: { id: cert.id } } as never)}
+              style={({ pressed }) => [styles.certRow, i > 0 && styles.divider, pressed && styles.pressed]}
+              accessibilityRole="button"
+            >
+              <Award size={20} color={colors.primaryStrong} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowTitle}>{cert.badgeLabel}</Text>
+                <Text style={styles.rowDetail}>Certified until {new Date(cert.expiresAt).toLocaleDateString()}</Text>
+              </View>
+              <ChevronRight size={18} color={colors.mutedForeground} />
+            </Pressable>
+          ))}
+        </View>
       ) : null}
 
-      {loading ? (
-        Array.from({ length: 3 }).map((_, idx) => (
-          <Card key={idx} style={styles.courseCard}>
-            <Skeleton style={{ width: 52, height: 52, borderRadius: radius.lg }} />
-            <View style={{ flex: 1, gap: 8 }}>
-              <Skeleton style={{ height: 16, width: 160 }} />
-              <Skeleton style={{ height: 12, width: '90%' }} />
+      <View style={styles.group}>
+        {loading ? (
+          Array.from({ length: 4 }).map((_, idx) => (
+            <View key={idx} style={[styles.row, idx > 0 && styles.divider]}>
+              <Skeleton style={{ width: 64, height: 64, borderRadius: 32 }} />
+              <View style={{ flex: 1, gap: 8 }}>
+                <Skeleton style={{ height: 16, width: 160 }} />
+                <Skeleton style={{ height: 12, width: '70%' }} />
+              </View>
             </View>
-          </Card>
-        ))
-      ) : !courses.length ? (
-        <Card style={styles.courseCard}>
+          ))
+        ) : !courses.length ? (
           <Empty icon={GraduationCap} title="No courses yet" description="Training content will appear once the seed runs." />
-        </Card>
-      ) : (
-        courses.map((course, index) => {
-          const enrollment = enrollmentByCourse.get(course.id);
-          const cert = certByCourse.get(course.id);
-          const completedLessons = enrollment?.completedLessonIds.length ?? 0;
-          const progress = course.lessonCount
-            ? Math.round((completedLessons / course.lessonCount) * 100)
-            : 0;
-          return (
-            <Animated.View key={course.id} entering={FadeInDown.delay(40 * index).duration(280)}>
-              <Pressable onPress={() => router.push({ pathname: '/training/[slug]', params: { slug: course.slug } } as never)}>
-                <Card style={styles.courseCard}>
-                  <View style={styles.courseTop}>
-                    <View style={styles.emojiBadge}>
-                      <Text style={styles.emoji}>{course.heroEmoji}</Text>
-                    </View>
-                    <View style={styles.courseMain}>
-                      <View style={styles.titleRow}>
-                        <Text style={styles.courseTitle}>{course.title}</Text>
-                        {cert ? <View style={styles.miniBadge}><Text style={styles.miniBadgeText}>Certified</Text></View> : null}
-                      </View>
-                      <Text style={styles.courseDesc} numberOfLines={2}>{course.shortDescription}</Text>
-                      <View style={styles.badgeRowMeta}>
-                        <View style={styles.metaBadge}>
-                          <Clock3 size={11} color={colors.foreground} />
-                          <Text style={styles.metaBadgeText}>{course.estimatedMinutes} min</Text>
-                        </View>
-                        <View style={styles.metaBadge}>
-                          <BookOpen size={11} color={colors.foreground} />
-                          <Text style={styles.metaBadgeText}>{course.lessonCount} lessons</Text>
-                        </View>
-                        <View style={styles.metaBadge}>
-                          <Text style={styles.metaBadgeText}>{course.level}</Text>
-                        </View>
-                      </View>
-                    </View>
+        ) : (
+          courses.map((course, i) => {
+            const enrollment = enrollmentByCourse.get(course.id);
+            const cert = certByCourse.get(course.id);
+            const done = enrollment?.completedLessonIds.length ?? 0;
+            const progress = course.lessonCount ? done / course.lessonCount : 0;
+            const xml = courseArt(course.slug);
+            const status = cert
+              ? 'Certified'
+              : done ? `${done} of ${course.lessonCount} lessons done` : `${course.estimatedMinutes} min · ${course.lessonCount} lessons`;
+            return (
+              <Pressable
+                key={course.id}
+                onPress={() => router.push({ pathname: '/training/[slug]', params: { slug: course.slug } } as never)}
+                style={({ pressed }) => [styles.row, i > 0 && styles.divider, pressed && styles.pressed]}
+                accessibilityRole="button"
+                accessibilityLabel={`${course.title}. ${status}`}
+              >
+                {xml ? <SvgXml xml={xml} width={64} height={64} /> : <View style={styles.artFallback} />}
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={styles.rowTitle}>{course.title}</Text>
+                  <View style={styles.statusRow}>
+                    {cert ? <CheckCircle2 size={14} color={colors.success} /> : null}
+                    <Text style={[styles.rowDetail, cert && { color: colors.success }]}>{status}</Text>
                   </View>
-                  <View style={styles.progressBlock}>
-                    <View style={styles.progressHeader}>
-                      <Text style={styles.progressLabel}>{progress > 0 ? 'Progress' : 'Ready to start'}</Text>
-                      <Text style={styles.progressValue}>{progress}%</Text>
-                    </View>
+                  {done && !cert ? (
                     <View style={styles.progressTrack}>
-                      <View style={[styles.progressFill, { width: `${progress}%` }]} />
+                      <View style={[styles.progressFill, { width: `${Math.round(progress * 100)}%` }]} />
                     </View>
-                  </View>
-                </Card>
+                  ) : null}
+                </View>
+                <ChevronRight size={18} color={colors.mutedForeground} />
               </Pressable>
-            </Animated.View>
-          );
-        })
-      )}
+            );
+          })
+        )}
+      </View>
+
+      <Text style={styles.footnote}>Educational only. It does not replace hands-on training with an instructor.</Text>
     </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  heroChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  heroChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 6, maxWidth: '100%',
-    paddingHorizontal: 12, paddingVertical: 8,
-    borderRadius: radius.full, backgroundColor: 'rgba(255,255,255,0.14)',
-  },
-  heroChipText: { color: '#fff', fontSize: 12, fontWeight: '600' },
-  certCard: { padding: 16, gap: 12 },
-  certHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  certTitle: { color: colors.foreground, fontSize: 15, fontWeight: '800' },
-  badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  badgePill: {
-    paddingHorizontal: 12, paddingVertical: 8,
-    borderRadius: radius.full,
-    backgroundColor: colors.accent,
-  },
-  badgePillText: { color: colors.accentForeground, fontSize: 12, fontWeight: '700' },
-  courseCard: {
-    padding: 16, gap: 14,
-  },
-  courseTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
-  courseMain: { flex: 1, gap: 8 },
-  emojiBadge: {
-    width: 52, height: 52, borderRadius: radius.lg,
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: colors.accent,
-  },
-  emoji: { fontSize: 26 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  courseTitle: { color: colors.foreground, fontSize: 15, fontWeight: '800' },
-  miniBadge: {
-    paddingHorizontal: 8, paddingVertical: 3,
-    borderRadius: radius.full,
-    backgroundColor: colors.successSoft,
-  },
-  miniBadgeText: { color: colors.success, fontSize: 10, fontWeight: '800' },
-  courseDesc: { color: colors.mutedForeground, fontSize: 12, lineHeight: 18 },
-  badgeRowMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  metaBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    backgroundColor: colors.soft,
-    borderColor: colors.border,
-  },
-  metaBadgeText: { color: colors.foreground, fontSize: 11, fontWeight: '700', letterSpacing: 0, textTransform: 'capitalize' },
-  progressBlock: { gap: 8 },
-  progressHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  progressLabel: { color: colors.mutedForeground, fontSize: 11, fontWeight: '700' },
-  progressValue: { color: colors.primary, fontSize: 11, fontWeight: '800' },
-  progressTrack: {
-    height: 7, backgroundColor: colors.muted, borderRadius: radius.full, overflow: 'hidden',
-  },
-  progressFill: { height: '100%', backgroundColor: colors.primary, borderRadius: radius.full },
+  group: { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 14, paddingVertical: 12 },
+  certRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 16, paddingVertical: 12, minHeight: 60 },
+  divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  pressed: { backgroundColor: colors.muted },
+  rowTitle: { ...type.headline, color: colors.foreground },
+  rowDetail: { ...type.footnote, color: colors.mutedForeground },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  artFallback: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.accent },
+  progressTrack: { height: 4, marginTop: 6, backgroundColor: colors.muted, borderRadius: radius.full, overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: colors.primary },
+  footnote: { ...type.footnote, color: colors.mutedForeground },
 });

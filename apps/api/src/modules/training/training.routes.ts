@@ -90,7 +90,8 @@ r.use(authRequired);
 
 r.get('/courses', async (_req, res, next) => {
   try {
-    const courses = await Course.find().sort('title').lean();
+    // Seed order is teaching order (CPR first); _id preserves it.
+    const courses = await Course.find().sort('_id').lean();
     res.json(courses.map(courseToSummary));
   } catch (e) { next(e); }
 });
