@@ -1,28 +1,17 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  Image,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import { Image, Pressable, RefreshControl, StyleSheet, Text, TextInputProps, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { useRouter } from 'expo-router';
-import { AlertTriangle, Award, Calendar, Heart, LogOut, Pill, QrCode, ShieldCheck, Syringe, UserCircle, X } from 'lucide-react-native';
+import { Award, ChevronDown, ChevronRight, ChevronUp, LogOut, Users, X } from 'lucide-react-native';
 import { toast } from 'sonner-native';
 import { api } from '@/lib/api';
 import { signOut } from '@/lib/session';
-import { AppScreen, HeaderButton } from '@/components/AppScreen';
-import { Badge } from '@/components/ui/Badge';
+import { AppScreen } from '@/components/AppScreen';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { RootState, setSession, setTraining } from '@/lib/store';
 import type { TrainingCertification, TrainingEnrollment } from '@/lib/store';
-import { colors, radius } from '@/lib/theme';
+import { colors, fonts, radius, type } from '@/lib/theme';
 
 type Severity = 'mild' | 'moderate' | 'severe';
 
@@ -196,16 +185,6 @@ export default function Profile() {
     }
   };
 
-  const stats = useMemo(
-    () => [
-      { label: 'Medications', value: profile?.medications.length ?? 0, icon: <Pill size={16} color={colors.warning} /> },
-      { label: 'Allergies', value: profile?.allergies.length ?? 0, icon: <AlertTriangle size={16} color={colors.destructive} /> },
-      { label: 'Vaccines', value: profile?.vaccinations.length ?? 0, icon: <Syringe size={16} color={colors.success} /> },
-      { label: 'Appointments', value: profile?.appointments.length ?? 0, icon: <Calendar size={16} color={colors.info} /> },
-    ],
-    [profile]
-  );
-
   const saveOverview = async () => {
     try {
       setSaving('overview');
@@ -329,200 +308,112 @@ export default function Profile() {
       });
     }
   };
+  const [open, setOpen] = useState<string | null>(null);
+  const toggle = (id: string) => setOpen(o => (o === id ? null : id));
+  const list = (items: string[]) => (items.length ? items.join(', ') : 'None added');
+
+  const user = profile?.user;
+  const pretty = (s?: string) => s && (s[0].toUpperCase() + s.slice(1)).replaceAll('_', ' ');
+  const walletMeta = [user?.age != null ? `${user.age} years` : null, pretty(user?.gender)].filter(Boolean).join(' · ');
+  const basicsDetail = [user?.bloodType, user?.age != null ? `${user.age} y` : null, pretty(user?.gender)].filter(Boolean).join(' · ');
 
   return (
     <AppScreen
-      eyebrow="Bio Passport"
-      title={profile?.user.name ?? auth.user?.name ?? 'Your profile'}
-      subtitle={profile?.user.email ?? auth.user?.email ?? 'Citizen account'}
-      action={
-        <HeaderButton icon={LogOut} label="Sign out" onPress={async () => { await signOut(); router.replace('/'); }} />
-      }
-      headerContent={
-        <View style={styles.headerContent}>
-          <View style={styles.headerChip}>
-            <Heart size={14} color="#fff" fill="#fff" />
-            <Text style={styles.headerChipText}>Blood {profile?.user.bloodType ?? 'Unknown'}</Text>
-          </View>
-          <View style={styles.headerChip}>
-            <ShieldCheck size={14} color="#fff" />
-            <Text style={styles.headerChipText}>{profile?.user.role ?? auth.user?.role ?? 'citizen'}</Text>
-          </View>
-        </View>
-      }
-      scroll={false}
+      title="Me"
+      scrollProps={{ refreshControl: <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} /> }}
     >
-      <ScrollView
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.statsGrid}>
-          {stats.map((stat) => (
-            <Card key={stat.label} style={styles.statCard}>
-              <View style={styles.statIcon}>{stat.icon}</View>
-              <Text style={styles.statValue}>{stat.value}</Text>
-              <Text style={styles.statLabel}>{stat.label}</Text>
-            </Card>
-          ))}
-        </View>
-
-        <Animated.View entering={FadeInDown.duration(280)}>
-          <Card style={styles.passportCard}>
-            <View style={styles.passportHeader}>
-              <View style={styles.passportIcon}>
-                <QrCode size={22} color="#fff" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.sectionTitle}>Generated Bio Passport</Text>
-                <Text style={styles.sectionBody}>Your emergency identity updates from the same data used during signup and profile edits.</Text>
-              </View>
-            </View>
-
-            <View style={styles.passportBodyCard}>
-              <Text style={styles.passportBrand}>VITALIS</Text>
-              <Text style={styles.passportName}>{passport?.profile.name ?? profile?.user.name ?? 'Citizen'}</Text>
-              <Text style={styles.passportMeta}>
-                {passport?.profile.bloodType ?? profile?.user.bloodType ?? 'Unknown blood type'} · {passport?.profile.gender ?? profile?.user.gender ?? 'Profile pending'}
-              </Text>
-              {passport?.qr ? <Image source={{ uri: passport.qr }} style={styles.qrImage} /> : null}
-              <Text style={styles.passportHint}>Show this during triage, intake, or when confirming matched supply requests.</Text>
-            </View>
-
-            <View style={styles.tagWrap}>
-              {(profile?.user.illnesses ?? []).map((item) => (
-                <Badge key={item} variant="outline">
-                  {item}
-                </Badge>
-              ))}
-              {(profile?.conditions ?? []).map((item) => (
-                <Badge key={item.id} style={styles.softBadge}>
-                  {item.name}
-                </Badge>
-              ))}
-            </View>
-          </Card>
-        </Animated.View>
-
-        {activeCertifications.length ? (
-          <Card style={styles.certCard}>
-            <View style={styles.certHeader}>
-              <Award size={18} color={colors.primary} />
-              <Text style={styles.sectionTitle}>First aid certifications</Text>
-            </View>
-            <Text style={styles.sectionBody}>Visible to dispatchers during emergencies.</Text>
-            <View style={styles.certRow}>
-              {activeCertifications.map((cert: TrainingCertification) => (
-                <Pressable
-                  key={cert.id}
-                  onPress={() => router.push({ pathname: '/training/certificate/[id]', params: { id: cert.id } } as never)}
-                  style={styles.certBadge}
-                >
-                  <Text style={styles.certBadgeText}>{cert.badgeLabel}</Text>
-                  <Text style={styles.certBadgeMeta}>
-                    Valid until {new Date(cert.expiresAt).toLocaleDateString()}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          </Card>
-        ) : null}
-
-        <Card style={styles.editorCard}>
-          <Text style={styles.sectionTitle}>Core health profile</Text>
-          <Text style={styles.sectionBody}>Keep your blood type, biometrics, and ongoing illnesses current so the rest of the app stays accurate.</Text>
-          <View style={styles.formGrid}>
-            <Input value={bloodType} onChangeText={setBloodType} placeholder="Blood type" />
-            <Input value={age} onChangeText={setAge} placeholder="Age" keyboardType="number-pad" />
-            <Input value={gender} onChangeText={setGender} placeholder="Gender" />
-            <Input value={heightCm} onChangeText={setHeightCm} placeholder="Height (cm)" keyboardType="decimal-pad" />
-            <Input value={weightKg} onChangeText={setWeightKg} placeholder="Weight (kg)" keyboardType="decimal-pad" />
-            <Input value={illnesses} onChangeText={setIllnesses} placeholder="Illnesses, comma separated" />
+      <View style={styles.wallet} accessible accessibilityLabel={`Bio Passport. ${user?.name ?? ''}. Blood type ${user?.bloodType ?? 'unknown'}.`}>
+        <Text style={styles.walletBrand}>Vitalis · Bio Passport</Text>
+        <View style={styles.walletBody}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.walletLabel}>Blood type</Text>
+            <Text style={styles.walletBlood}>{user?.bloodType ?? '?'}</Text>
+            <Text style={styles.walletName} numberOfLines={1}>{user?.name ?? auth.user?.name ?? ''}</Text>
+            {walletMeta ? <Text style={styles.walletMeta}>{walletMeta}</Text> : null}
           </View>
+          {passport?.qr ? (
+            <View style={styles.qrTile}>
+              <Image source={{ uri: passport.qr }} style={styles.qr} accessibilityLabel="Bio Passport QR code" />
+            </View>
+          ) : null}
+        </View>
+      </View>
+      <Text style={styles.footnote}>
+        Paramedics scan the code with any phone camera. It carries only what they need in the first minutes: blood type, allergies, medication, conditions and your emergency contact.
+      </Text>
+
+      <Text style={styles.groupTitle}>Medical record</Text>
+      <View style={styles.group}>
+        <Section id="basics" title="Basics" detail={basicsDetail || 'Blood type, age, height, weight'} open={open} onToggle={toggle} first>
+          <Text style={styles.fieldLabel}>Blood type</Text>
           <View style={styles.selectionRow}>
             {bloodTypes.map((item) => (
-              <Pressable key={item} onPress={() => setBloodType(item)} style={[styles.choiceChip, bloodType === item && styles.choiceChipActive]}>
-                <Text style={[styles.choiceLabel, bloodType === item && styles.choiceLabelActive]}>{item}</Text>
-              </Pressable>
+              <Choice key={item} label={item} active={bloodType === item} onPress={() => setBloodType(item)} />
             ))}
           </View>
+          <Text style={styles.fieldLabel}>Gender</Text>
           <View style={styles.selectionRow}>
             {genders.map((item) => (
-              <Pressable key={item} onPress={() => setGender(item)} style={[styles.choiceChip, gender === item && styles.choiceChipActive]}>
-                <Text style={[styles.choiceLabel, gender === item && styles.choiceLabelActive]}>{item.replaceAll('_', ' ')}</Text>
-              </Pressable>
+              <Choice key={item} label={pretty(item)!} active={gender === item} onPress={() => setGender(item)} />
             ))}
           </View>
-          <Button onPress={saveOverview} loading={saving === 'overview'}>
-            Save profile basics
-          </Button>
-        </Card>
+          <View style={styles.fieldRow}>
+            <Field label="Age" value={age} onChangeText={setAge} keyboardType="number-pad" />
+            <Field label="Height, cm" value={heightCm} onChangeText={setHeightCm} keyboardType="decimal-pad" />
+            <Field label="Weight, kg" value={weightKg} onChangeText={setWeightKg} keyboardType="decimal-pad" />
+          </View>
+          <Field label="Illnesses" value={illnesses} onChangeText={setIllnesses} placeholder="Comma separated" />
+          <Button onPress={saveOverview} loading={saving === 'overview'}>Save</Button>
+        </Section>
 
-        <EntryCard
-          title="Medications"
-          description="Routine medication appears on your passport and helps responders avoid unsafe conflicts."
-          fields={
-            <>
-              <Input value={medicationName} onChangeText={setMedicationName} placeholder="Medication name" />
-              <Input value={medicationDose} onChangeText={setMedicationDose} placeholder="Dose or schedule" />
-              <Button onPress={() => createRecord('medication')} loading={saving === 'medication'} style={styles.warningButton}>
-                Add medication
-              </Button>
-            </>
-          }
-          items={(profile?.medications ?? []).map((item) => (
+        <Section id="allergies" title="Allergies" detail={list((profile?.allergies ?? []).map(a => a.allergen))} open={open} onToggle={toggle}>
+          {(profile?.allergies ?? []).map((item) => (
+            <RecordRow key={item.id} title={item.allergen} badge={item.severity} onDelete={() => removeRecord(`/health/allergies/${item.id}`)} />
+          ))}
+          <Input value={allergen} onChangeText={setAllergen} placeholder="Allergen" />
+          <View style={styles.selectionRow}>
+            {severities.map((item) => (
+              <Choice key={item} label={pretty(item)!} active={severity === item} onPress={() => setSeverity(item)} />
+            ))}
+          </View>
+          <Button onPress={() => createRecord('allergy')} loading={saving === 'allergy'}>Add allergy</Button>
+        </Section>
+
+        <Section id="medications" title="Medication" detail={list((profile?.medications ?? []).filter(m => m.isActive).map(m => m.name))} open={open} onToggle={toggle}>
+          {(profile?.medications ?? []).map((item) => (
             <RecordRow
               key={item.id}
               title={item.name}
-              subtitle={item.dosage || 'Active medication'}
-              badge={item.isActive ? 'Active' : 'Ended'}
+              subtitle={item.dosage}
+              badge={item.isActive ? undefined : 'Ended'}
               onDelete={() => removeRecord(`/health/medications/${item.id}`)}
             />
           ))}
-        />
+          <Input value={medicationName} onChangeText={setMedicationName} placeholder="Medication name" />
+          <Input value={medicationDose} onChangeText={setMedicationDose} placeholder="Dose or schedule" />
+          <Button onPress={() => createRecord('medication')} loading={saving === 'medication'}>Add medication</Button>
+        </Section>
 
-        <EntryCard
-          title="Allergies"
-          description="Severity stays attached to every allergy so emergency teams can act faster."
-          fields={
-            <>
-              <Input value={allergen} onChangeText={setAllergen} placeholder="Allergen" />
-              <View style={styles.selectionRow}>
-                {severities.map((item) => (
-                  <Pressable key={item} onPress={() => setSeverity(item)} style={[styles.choiceChip, severity === item && styles.destructiveChipActive]}>
-                    <Text style={[styles.choiceLabel, severity === item && styles.choiceLabelActive]}>{item}</Text>
-                  </Pressable>
-                ))}
-              </View>
-              <Button onPress={() => createRecord('allergy')} loading={saving === 'allergy'} style={styles.destructiveButton}>
-                Add allergy
-              </Button>
-            </>
-          }
-          items={(profile?.allergies ?? []).map((item) => (
-            <RecordRow
-              key={item.id}
-              title={item.allergen}
-              badge={item.severity}
-              onDelete={() => removeRecord(`/health/allergies/${item.id}`)}
-            />
+        <Section id="conditions" title="Conditions" detail={list([...new Set([...(user?.illnesses ?? []), ...(profile?.conditions ?? []).map(c => c.name)])])} open={open} onToggle={toggle}>
+          {(profile?.conditions ?? []).map((item) => (
+            <RecordRow key={item.id} title={item.name} subtitle={item.notes} onDelete={() => removeRecord(`/health/conditions/${item.id}`)} />
           ))}
-        />
+          <Input value={conditionName} onChangeText={setConditionName} placeholder="Condition" />
+          <Input value={conditionNotes} onChangeText={setConditionNotes} placeholder="Notes" />
+          <Button onPress={() => createRecord('condition')} loading={saving === 'condition'}>Add condition</Button>
+        </Section>
 
-        <EntryCard
-          title="Vaccines"
-          description="Enter the vaccine name, optional provider, and date so your passport can surface them correctly."
-          fields={
-            <>
-              <Input value={vaccinationName} onChangeText={setVaccinationName} placeholder="Vaccine name" />
-              <Input value={vaccinationProvider} onChangeText={setVaccinationProvider} placeholder="Provider or clinic" />
-              <Input value={vaccinationDate} onChangeText={setVaccinationDate} placeholder="Date (YYYY-MM-DD)" autoCapitalize="none" />
-              <Button onPress={() => createRecord('vaccination')} loading={saving === 'vaccination'} style={styles.successButton}>
-                Add vaccine
-              </Button>
-            </>
-          }
-          items={(profile?.vaccinations ?? []).map((item) => (
+        <Section id="disabilities" title="Accessibility needs" detail={list((profile?.disabilities ?? []).map(d => d.name))} open={open} onToggle={toggle}>
+          {(profile?.disabilities ?? []).map((item) => (
+            <RecordRow key={item.id} title={item.name} subtitle={item.notes} onDelete={() => removeRecord(`/health/disabilities/${item.id}`)} />
+          ))}
+          <Input value={disabilityName} onChangeText={setDisabilityName} placeholder="Disability or accessibility need" />
+          <Input value={disabilityNotes} onChangeText={setDisabilityNotes} placeholder="Notes" />
+          <Button onPress={() => createRecord('disability')} loading={saving === 'disability'}>Add</Button>
+        </Section>
+
+        <Section id="vaccines" title="Vaccines" detail={list((profile?.vaccinations ?? []).map(v => v.name))} open={open} onToggle={toggle}>
+          {(profile?.vaccinations ?? []).map((item) => (
             <RecordRow
               key={item.id}
               title={item.name}
@@ -530,23 +421,14 @@ export default function Profile() {
               onDelete={() => removeRecord(`/health/vaccinations/${item.id}`)}
             />
           ))}
-        />
+          <Input value={vaccinationName} onChangeText={setVaccinationName} placeholder="Vaccine" />
+          <Input value={vaccinationProvider} onChangeText={setVaccinationProvider} placeholder="Provider or clinic" />
+          <Input value={vaccinationDate} onChangeText={setVaccinationDate} placeholder="Date (YYYY-MM-DD)" autoCapitalize="none" />
+          <Button onPress={() => createRecord('vaccination')} loading={saving === 'vaccination'}>Add vaccine</Button>
+        </Section>
 
-        <EntryCard
-          title="Appointments"
-          description="This is where you actually input upcoming visits and checkups for the profile screen."
-          fields={
-            <>
-              <Input value={appointmentType} onChangeText={setAppointmentType} placeholder="Type (consultation, emergency, checkup)" />
-              <Input value={appointmentDate} onChangeText={setAppointmentDate} placeholder="Date (YYYY-MM-DD)" autoCapitalize="none" />
-              <Input value={appointmentStatus} onChangeText={setAppointmentStatus} placeholder="Status" />
-              <Input value={appointmentNotes} onChangeText={setAppointmentNotes} placeholder="Notes" />
-              <Button onPress={() => createRecord('appointment')} loading={saving === 'appointment'} style={styles.infoButton}>
-                Add appointment
-              </Button>
-            </>
-          }
-          items={(profile?.appointments ?? []).map((item) => (
+        <Section id="appointments" title="Appointments" detail={profile?.appointments.length ? `${profile.appointments.length} saved` : 'None added'} open={open} onToggle={toggle}>
+          {(profile?.appointments ?? []).map((item) => (
             <RecordRow
               key={item.id}
               title={item.appointmentType}
@@ -554,365 +436,166 @@ export default function Profile() {
               onDelete={() => removeRecord(`/health/appointments/${item.id}`)}
             />
           ))}
-        />
+          <Input value={appointmentType} onChangeText={setAppointmentType} placeholder="Type (consultation, emergency, checkup)" />
+          <Input value={appointmentDate} onChangeText={setAppointmentDate} placeholder="Date (YYYY-MM-DD)" autoCapitalize="none" />
+          <Input value={appointmentStatus} onChangeText={setAppointmentStatus} placeholder="Status" />
+          <Input value={appointmentNotes} onChangeText={setAppointmentNotes} placeholder="Notes" />
+          <Button onPress={() => createRecord('appointment')} loading={saving === 'appointment'}>Add appointment</Button>
+        </Section>
+      </View>
 
-        <EntryCard
-          title="Conditions"
-          description="Add longer-term medical conditions that should live on the passport."
-          fields={
-            <>
-              <Input value={conditionName} onChangeText={setConditionName} placeholder="Condition name" />
-              <Input value={conditionNotes} onChangeText={setConditionNotes} placeholder="Notes" />
-              <Button onPress={() => createRecord('condition')} loading={saving === 'condition'}>
-                Add condition
-              </Button>
-            </>
-          }
-          items={(profile?.conditions ?? []).map((item) => (
-            <RecordRow
-              key={item.id}
-              title={item.name}
-              subtitle={item.notes}
-              onDelete={() => removeRecord(`/health/conditions/${item.id}`)}
-            />
-          ))}
-        />
+      {activeCertifications.length ? (
+        <>
+          <Text style={styles.groupTitle}>Certifications</Text>
+          <View style={styles.group}>
+            {activeCertifications.map((cert: TrainingCertification, i) => (
+              <LinkRow
+                key={cert.id}
+                first={i === 0}
+                icon={<Award size={20} color={colors.primaryStrong} />}
+                title={cert.badgeLabel}
+                detail={`Valid until ${formatDate(cert.expiresAt)}`}
+                onPress={() => router.push({ pathname: '/training/certificate/[id]', params: { id: cert.id } } as never)}
+              />
+            ))}
+          </View>
+        </>
+      ) : null}
 
-        <EntryCard
-          title="Disabilities"
-          description="Capture accessibility needs and chronic disability notes directly inside the generated passport."
-          fields={
-            <>
-              <Input value={disabilityName} onChangeText={setDisabilityName} placeholder="Disability or accessibility need" />
-              <Input value={disabilityNotes} onChangeText={setDisabilityNotes} placeholder="Notes" />
-              <Button onPress={() => createRecord('disability')} loading={saving === 'disability'} style={styles.purpleButton}>
-                Add disability note
-              </Button>
-            </>
-          }
-          items={(profile?.disabilities ?? []).map((item) => (
-            <RecordRow
-              key={item.id}
-              title={item.name}
-              subtitle={item.notes}
-              onDelete={() => removeRecord(`/health/disabilities/${item.id}`)}
-            />
-          ))}
-        />
+      <View style={[styles.group, { marginTop: 8 }]}>
+        <LinkRow first icon={<Users size={20} color={colors.foreground} />} title="Community" detail="Support groups" onPress={() => router.push('/community')} />
+        <Pressable
+          onPress={async () => { await signOut(); router.replace('/'); }}
+          style={({ pressed }) => [styles.row, styles.divider, pressed && styles.pressed]}
+          accessibilityRole="button"
+        >
+          <View style={styles.icon}><LogOut size={20} color={colors.destructive} /></View>
+          <Text style={[styles.rowTitle, { color: colors.destructive }]}>Sign out</Text>
+        </Pressable>
+      </View>
 
-        {loading ? (
-          <Card style={styles.loadingCard}>
-            <Text style={styles.sectionBody}>Loading your Bio Passport...</Text>
-          </Card>
-        ) : null}
-      </ScrollView>
+      {loading ? <Text style={styles.footnote}>Loading your Bio Passport…</Text> : null}
     </AppScreen>
   );
 }
 
-function EntryCard({
-  title,
-  description,
-  fields,
-  items,
-}: {
+function Section({ id, title, detail, open, onToggle, first, children }: {
+  id: string;
   title: string;
-  description: string;
-  fields: ReactNode;
-  items: ReactNode[];
+  detail: string;
+  open: string | null;
+  onToggle: (id: string) => void;
+  first?: boolean;
+  children: ReactNode;
 }) {
+  const expanded = open === id;
   return (
-    <Animated.View entering={FadeInDown.duration(260)}>
-      <Card style={styles.editorCard}>
-        <Text style={styles.sectionTitle}>{title}</Text>
-        <Text style={styles.sectionBody}>{description}</Text>
-        <View style={styles.formStack}>{fields}</View>
-        <View style={styles.listStack}>
-          {items.length ? items : <Text style={styles.emptyText}>Nothing added yet.</Text>}
+    <View style={!first && styles.divider}>
+      <Pressable
+        onPress={() => onToggle(id)}
+        style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+      >
+        <View style={{ flex: 1 }}>
+          <Text style={styles.rowTitle}>{title}</Text>
+          <Text style={styles.rowDetail} numberOfLines={1}>{detail}</Text>
         </View>
-      </Card>
-    </Animated.View>
+        {expanded ? <ChevronUp size={18} color={colors.mutedForeground} /> : <ChevronDown size={18} color={colors.mutedForeground} />}
+      </Pressable>
+      {expanded ? <View style={styles.sectionBody}>{children}</View> : null}
+    </View>
   );
 }
 
-function RecordRow({
-  title,
-  subtitle,
-  badge,
-  onDelete,
-}: {
-  title: string;
-  subtitle?: string;
-  badge?: string;
-  onDelete: () => void;
-}) {
+function LinkRow({ icon, title, detail, onPress, first }: { icon: ReactNode; title: string; detail: string; onPress: () => void; first?: boolean }) {
   return (
-    <View style={styles.recordRow}>
-      <View style={{ flex: 1, gap: 4 }}>
-        <Text style={styles.recordTitle}>{title}</Text>
-        {subtitle ? <Text style={styles.recordBody}>{subtitle}</Text> : null}
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.row, !first && styles.divider, pressed && styles.pressed]} accessibilityRole="button">
+      <View style={styles.icon}>{icon}</View>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.rowTitle}>{title}</Text>
+        <Text style={styles.rowDetail} numberOfLines={1}>{detail}</Text>
       </View>
-      {badge ? (
-        <Badge variant="outline" style={styles.recordBadge}>
-          {badge}
-        </Badge>
-      ) : null}
-      <Pressable onPress={onDelete} style={styles.deleteButton}>
-        <X size={14} color={colors.destructive} />
+      <ChevronRight size={18} color={colors.mutedForeground} />
+    </Pressable>
+  );
+}
+
+function Field({ label, ...props }: { label: string } & TextInputProps) {
+  return (
+    <View style={{ flex: 1, gap: 6 }}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <Input accessibilityLabel={label} {...props} />
+    </View>
+  );
+}
+
+function Choice({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[styles.choice, active && styles.choiceActive]}
+      accessibilityRole="radio"
+      accessibilityState={{ selected: active }}
+    >
+      <Text style={[styles.choiceLabel, active && styles.choiceLabelActive]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function RecordRow({ title, subtitle, badge, onDelete }: { title: string; subtitle?: string; badge?: string; onDelete: () => void }) {
+  return (
+    <View style={styles.record}>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.recordTitle}>{title}</Text>
+        {subtitle ? <Text style={styles.rowDetail}>{subtitle}</Text> : null}
+      </View>
+      {badge ? <Text style={styles.recordBadge}>{badge}</Text> : null}
+      <Pressable onPress={onDelete} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Remove ${title}`}>
+        <X size={18} color={colors.mutedForeground} />
       </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  content: {
-    gap: 16,
-    paddingBottom: 140,
-  },
-  iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.14)',
-  },
-  headerContent: {
-    flexDirection: 'row',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
-  headerChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: radius.full,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-  },
-  headerChipText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'capitalize',
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  statCard: {
-    width: '48%',
-    padding: 16,
-    gap: 10,
-  },
-  statIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: radius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.background,
-  },
-  statValue: {
-    color: colors.foreground,
-    fontSize: 24,
-    fontWeight: '800',
-  },
-  statLabel: {
-    color: colors.mutedForeground,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  passportCard: {
-    padding: 18,
-    gap: 16,
-  },
-  passportHeader: {
-    flexDirection: 'row',
-    gap: 12,
-    alignItems: 'center',
-  },
-  passportIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
-  },
-  passportBodyCard: {
-    borderRadius: radius.xl,
-    backgroundColor: colors.primary,
-    padding: 20,
-    gap: 8,
-  },
-  passportBrand: {
-    color: 'rgba(255,255,255,0.82)',
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 1.1,
-  },
-  passportName: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: '800',
-  },
-  passportMeta: {
-    color: 'rgba(255,255,255,0.82)',
-    fontSize: 13,
-  },
-  qrImage: {
-    width: 138,
-    height: 138,
-    borderRadius: radius.lg,
+  // Wallet card: credit-card proportions so it reads as an object you carry, not a panel.
+  wallet: {
+    aspectRatio: 1.586,
+    width: '100%',
+    maxWidth: 440,
     alignSelf: 'center',
-    marginVertical: 8,
-    backgroundColor: '#fff',
+    borderRadius: radius.xl,
+    backgroundColor: colors.primaryStrong,
+    padding: 20,
+    justifyContent: 'space-between',
   },
-  passportHint: {
-    color: 'rgba(255,255,255,0.85)',
-    fontSize: 12,
-    textAlign: 'center',
-  },
-  tagWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  softBadge: {
-    backgroundColor: `${colors.primary}12`,
-    borderColor: `${colors.primary}22`,
-  },
-  editorCard: {
-    padding: 18,
-    gap: 14,
-  },
-  sectionTitle: {
-    color: colors.foreground,
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  sectionBody: {
-    color: colors.mutedForeground,
-    fontSize: 13,
-    lineHeight: 19,
-  },
-  formGrid: {
-    gap: 10,
-  },
-  formStack: {
-    gap: 10,
-  },
-  selectionRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  choiceChip: {
-    borderRadius: radius.full,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    backgroundColor: colors.soft,
-  },
-  choiceChipActive: {
-    backgroundColor: colors.primary,
-  },
-  destructiveChipActive: {
-    backgroundColor: colors.destructive,
-  },
-  choiceLabel: {
-    color: colors.foreground,
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'capitalize',
-  },
-  choiceLabelActive: {
-    color: '#fff',
-  },
-  listStack: {
-    gap: 10,
-  },
-  recordRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  recordTitle: {
-    color: colors.foreground,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  recordBody: {
-    color: colors.mutedForeground,
-    fontSize: 12,
-  },
-  recordBadge: {
-    backgroundColor: colors.soft,
-  },
-  deleteButton: {
-    width: 30,
-    height: 30,
-    borderRadius: radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.destructiveSoft,
-  },
-  emptyText: {
-    color: colors.mutedForeground,
-    fontSize: 13,
-  },
-  warningButton: {
-    backgroundColor: colors.warning,
-  },
-  destructiveButton: {
-    backgroundColor: colors.destructive,
-  },
-  successButton: {
-    backgroundColor: colors.success,
-  },
-  infoButton: {
-    backgroundColor: colors.info,
-  },
-  purpleButton: {
-    backgroundColor: colors.purple,
-  },
-  loadingCard: {
-    padding: 18,
-  },
-  certCard: {
-    padding: 18,
-    gap: 12,
-  },
-  certHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  certRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  certBadge: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: radius.lg,
-    backgroundColor: colors.accent,
-    gap: 4,
-  },
-  certBadgeText: {
-    color: colors.accentForeground,
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  certBadgeMeta: {
-    color: colors.primaryStrong,
-    fontSize: 10,
-    fontWeight: '600',
-  },
+  walletBrand: { ...type.footnote, fontWeight: '600', color: 'rgba(255,255,255,0.75)' },
+  walletBody: { flexDirection: 'row', alignItems: 'flex-end', gap: 16 },
+  walletLabel: { ...type.footnote, color: 'rgba(255,255,255,0.75)' },
+  walletBlood: { fontFamily: fonts.display, color: '#fff', fontSize: 52, lineHeight: 58, letterSpacing: -1 },
+  walletName: { ...type.headline, color: '#fff', marginTop: 4 },
+  walletMeta: { ...type.footnote, color: 'rgba(255,255,255,0.75)' },
+  qrTile: { backgroundColor: '#fff', borderRadius: radius.md, padding: 6 },
+  qr: { width: 104, height: 104 },
+  footnote: { ...type.footnote, color: colors.mutedForeground, marginTop: -4 },
+  groupTitle: { ...type.footnote, fontWeight: '600', color: colors.mutedForeground, marginTop: 8, marginBottom: -6, marginLeft: 4 },
+  group: { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 16, paddingVertical: 12, minHeight: 60 },
+  divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  pressed: { backgroundColor: colors.muted },
+  icon: { width: 36, height: 36, borderRadius: radius.md, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' },
+  rowTitle: { ...type.headline, color: colors.foreground },
+  rowDetail: { ...type.footnote, color: colors.mutedForeground, marginTop: 2 },
+  sectionBody: { paddingHorizontal: 16, paddingBottom: 16, gap: 10 },
+  fieldLabel: { ...type.footnote, fontWeight: '600', color: colors.mutedForeground },
+  fieldRow: { flexDirection: 'row', gap: 10 },
+  selectionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  choice: { borderRadius: radius.full, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: colors.border },
+  choiceActive: { backgroundColor: colors.primaryStrong, borderColor: colors.primaryStrong },
+  choiceLabel: { ...type.footnote, fontWeight: '600', color: colors.foreground },
+  choiceLabelActive: { color: '#fff' },
+  record: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  recordTitle: { ...type.callout, fontWeight: '600', color: colors.foreground },
+  recordBadge: { ...type.footnote, color: colors.mutedForeground, textTransform: 'capitalize' },
 });
