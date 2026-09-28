@@ -65,9 +65,9 @@ export default function Home() {
       ? [{ label: 'Responder inbox', hint: 'Go on duty, accept calls', icon: <Siren size={18} color={colors.primaryStrong} />, path: '/responder-inbox' as const }]
       : []),
     { label: 'Defibrillators', hint: 'Nearest public AEDs', icon: <Zap size={18} color={colors.warning} />, path: '/aeds' as const },
-    { label: 'Doctors', hint: 'Find a specialist', icon: <Stethoscope size={18} color={colors.info} />, path: '/(tabs)/doctors' as const },
-    { label: 'Supply', hint: 'Blood, organs, medicine', icon: <Heart size={18} color={colors.destructive} />, path: '/(tabs)/blood' as const },
-    { label: 'Community', hint: 'Support groups', icon: <Users size={18} color={colors.purple} />, path: '/(tabs)/community' as const },
+    { label: 'Doctors', hint: 'Find a specialist', icon: <Stethoscope size={18} color={colors.info} />, path: '/doctors' as const },
+    { label: 'Supply', hint: 'Blood, organs, medicine', icon: <Heart size={18} color={colors.destructive} />, path: '/blood' as const },
+    { label: 'Community', hint: 'Support groups', icon: <Users size={18} color={colors.purple} />, path: '/community' as const },
     { label: 'Assistant', hint: 'Health questions', icon: <Bot size={18} color={colors.success} />, path: '/assistant' as const },
   ];
 
@@ -115,7 +115,7 @@ export default function Home() {
           <Text style={styles.sectionBody}>
             Ambulances in a city take 10+ minutes. Pass the 20-minute CPR course and Vitalis can call you to an arrest next door.
           </Text>
-          <Button onPress={() => router.push('/(tabs)/training')} style={styles.secondaryAction}>
+          <Button onPress={() => router.push('/(tabs)/learn')} style={styles.secondaryAction}>
             <GraduationCap size={16} color="#fff" />
             Start CPR training
           </Button>
@@ -142,7 +142,7 @@ export default function Home() {
         <Text style={styles.sectionBody}>
           Blood type, allergies and medication in one QR code a paramedic can scan. Keep it up to date.
         </Text>
-        <Button variant="outline" onPress={() => router.push('/(tabs)/profile')}>
+        <Button variant="outline" onPress={() => router.push('/(tabs)/me')}>
           Open Bio Passport
         </Button>
       </Card>

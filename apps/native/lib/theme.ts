@@ -61,3 +61,18 @@ export const shadows = {
     elevation: 8,
   },
 };
+
+// System font carries the UI; Schibsted Grotesk only for display moments (SOS, countdown, passport card).
+export const fonts = {
+  display: 'SchibstedGrotesk_800ExtraBold',
+  displayBold: 'SchibstedGrotesk_700Bold',
+};
+
+export const type = {
+  largeTitle: { fontSize: 32, lineHeight: 38, fontWeight: '700' as const, letterSpacing: -0.4 },
+  title: { fontSize: 22, lineHeight: 28, fontWeight: '700' as const },
+  headline: { fontSize: 17, lineHeight: 22, fontWeight: '600' as const },
+  body: { fontSize: 17, lineHeight: 24 },
+  callout: { fontSize: 15, lineHeight: 21 },
+  footnote: { fontSize: 13, lineHeight: 18 },
+};

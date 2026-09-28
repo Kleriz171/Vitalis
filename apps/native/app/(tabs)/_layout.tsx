@@ -1,38 +1,24 @@
 import { Tabs } from 'expo-router';
-import { Home as HomeIcon, Droplets, Stethoscope, UserCircle, GraduationCap } from 'lucide-react-native';
-import { colors, radius, shadows } from '@/lib/theme';
+import { GraduationCap, Home as HomeIcon, MapPin, UserCircle } from 'lucide-react-native';
+import { colors } from '@/lib/theme';
 
+// Four sections (HIG: tabs are places, never actions). SOS lives on Home, not in the bar.
 export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         sceneStyle: { backgroundColor: colors.background },
-        tabBarActiveTintColor: colors.primary,
+        tabBarActiveTintColor: colors.primaryStrong,
         tabBarInactiveTintColor: colors.mutedForeground,
-        tabBarStyle: {
-          height: 78,
-          paddingTop: 8,
-          paddingBottom: 10,
-          borderTopWidth: 1,
-          borderTopColor: colors.border,
-          backgroundColor: 'rgba(255,255,255,0.98)',
-          shadowColor: shadows.floating.shadowColor,
-          shadowOpacity: 0.08,
-          shadowRadius: 12,
-          shadowOffset: { width: 0, height: -4 },
-          elevation: 10,
-        },
-        tabBarItemStyle: { borderRadius: radius.lg, marginHorizontal: 4 },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginTop: 2 },
-      }}>
+        tabBarStyle: { borderTopColor: colors.border, backgroundColor: colors.card },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+      }}
+    >
       <Tabs.Screen name="home" options={{ title: 'Home', tabBarIcon: ({ color }) => <HomeIcon size={22} color={color} /> }} />
-      <Tabs.Screen name="blood" options={{ title: 'Supply', tabBarIcon: ({ color }) => <Droplets size={22} color={color} /> }} />
-      <Tabs.Screen name="doctors" options={{ title: 'Doctors', tabBarIcon: ({ color }) => <Stethoscope size={22} color={color} /> }} />
-      {/* Five tabs max (HIG); Community is reached from Home. */}
-      <Tabs.Screen name="community" options={{ href: null, title: 'Community' }} />
-      <Tabs.Screen name="training" options={{ title: 'Training', tabBarIcon: ({ color }) => <GraduationCap size={22} color={color} /> }} />
-      <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: ({ color }) => <UserCircle size={22} color={color} /> }} />
+      <Tabs.Screen name="nearby" options={{ title: 'Nearby', tabBarIcon: ({ color }) => <MapPin size={22} color={color} /> }} />
+      <Tabs.Screen name="learn" options={{ title: 'Learn', tabBarIcon: ({ color }) => <GraduationCap size={22} color={color} /> }} />
+      <Tabs.Screen name="me" options={{ title: 'Me', tabBarIcon: ({ color }) => <UserCircle size={22} color={color} /> }} />
     </Tabs>
   );
 }

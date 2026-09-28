@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useFonts, SchibstedGrotesk_700Bold, SchibstedGrotesk_800ExtraBold } from '@expo-google-fonts/schibsted-grotesk';
 import * as Notifications from 'expo-notifications';
 import '@/lib/dutyLocation'; // registers the background task at startup
 import { registerForPush, routeForNotification } from '@/lib/push';
@@ -15,6 +16,8 @@ import { loadSession, RootState, store } from '@/lib/store';
 
 export default function RootLayout() {
   useEffect(() => { void loadSession(); }, []);
+  // Display face only; UI falls back to the system font if this is still loading.
+  useFonts({ SchibstedGrotesk_700Bold, SchibstedGrotesk_800ExtraBold });
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -31,6 +34,13 @@ export default function RootLayout() {
               <Stack.Screen name="responder-inbox" options={{ animation: 'slide_from_right' }} />
               <Stack.Screen name="aeds" options={{ animation: 'slide_from_right' }} />
               <Stack.Screen name="handover/[id]" options={{ presentation: 'modal' }} />
+              {['blood', 'doctors', 'community'].map(name => (
+                <Stack.Screen
+                  key={name}
+                  name={name}
+                  options={{ headerShown: true, title: '', headerBackTitle: 'Back', headerShadowVisible: false, headerStyle: { backgroundColor: colors.background }, headerTintColor: colors.primaryStrong }}
+                />
+              ))}
               <Stack.Screen name="assistant" options={{ animation: 'slide_from_right' }} />
               <Stack.Screen name="training" options={{ animation: 'slide_from_right' }} />
               <Stack.Screen name="doctor-application" options={{ animation: 'slide_from_right' }} />
@@ -65,7 +75,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!hydrated) return;
-    const inProtected = ['(tabs)', 'emergency', 'responder-inbox', 'aeds', 'handover', 'assistant', 'training', 'doctor-application'].includes(segments[0] as string);
+    const inProtected = ['(tabs)', 'emergency', 'responder-inbox', 'aeds', 'handover', 'assistant', 'training', 'doctor-application', 'blood', 'doctors', 'community'].includes(segments[0] as string);
     if (!token && inProtected) router.replace('/');
   }, [hydrated, token, segments, router]);
 

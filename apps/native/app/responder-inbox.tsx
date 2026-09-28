@@ -180,7 +180,7 @@ export default function ResponderInbox() {
           title="Become a responder"
           description="Pass the CPR or AED course in Training. You'll then be able to go on duty and receive SOS calls near you."
         />
-        <Button onPress={() => router.replace('/(tabs)/training')}>Open training</Button>
+        <Button onPress={() => router.replace('/(tabs)/learn')}>Open training</Button>
       </AppScreen>
     );
   }
@@ -219,7 +219,7 @@ export default function ResponderInbox() {
       toast.error(next ? 'Could not go on duty' : 'Could not go off duty', {
         description: msg ?? 'Try again.',
         ...(err?.response?.status === 403
-          ? { action: { label: 'Training', onClick: () => router.push('/(tabs)/training') } }
+          ? { action: { label: 'Training', onClick: () => router.push('/(tabs)/learn') } }
           : {}),
       });
     } finally {
