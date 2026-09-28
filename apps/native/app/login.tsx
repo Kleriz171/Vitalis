@@ -677,8 +677,6 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.74)',
     fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
   },
   title: {
     color: '#fff',

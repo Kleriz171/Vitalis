@@ -9,7 +9,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Redirect, useRouter } from 'expo-router';
 import { useSelector } from 'react-redux';
@@ -82,6 +82,9 @@ export default function Onboarding() {
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
   const [slideIndex, setSlideIndex] = useState(0);
+  const insets = useSafeAreaInsets();
+  // The teal backdrop ends at the passport card's midline, whatever the text wraps to.
+  const [backdropH, setBackdropH] = useState(460);
 
   const pulse = useSharedValue(0);
   useEffect(() => {
@@ -103,7 +106,7 @@ export default function Onboarding() {
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
-      <View style={styles.heroBackdrop}>
+      <View style={[styles.heroBackdrop, { height: backdropH }]}>
         <View style={styles.glowOne} />
         <View style={styles.glowTwo} />
       </View>
@@ -135,7 +138,11 @@ export default function Onboarding() {
             </Text>
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(120).duration(420)} style={styles.passportWrap}>
+          <Animated.View
+            entering={FadeInDown.delay(120).duration(420)}
+            style={styles.passportWrap}
+            onLayout={e => setBackdropH(insets.top + e.nativeEvent.layout.y + e.nativeEvent.layout.height / 2)}
+          >
             <Animated.View style={[styles.passportPulse, pulseStyle]} />
             <View style={styles.passportCard}>
               <View style={styles.passportTop}>
@@ -159,7 +166,7 @@ export default function Onboarding() {
                 </View>
                 <View style={styles.statChip}>
                   <ShieldCheck size={12} color={colors.success} />
-                  <Text style={styles.statChipText}>Encrypted</Text>
+                  <Text style={styles.statChipText}>Scannable QR</Text>
                 </View>
               </View>
             </View>
@@ -297,18 +304,15 @@ const styles = StyleSheet.create({
     color: colors.accentForeground,
     fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 0.6,
   },
   heroBlock: {
     gap: 10,
     marginBottom: 28,
   },
   heroEyebrow: {
-    color: 'rgba(255,255,255,0.74)',
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
+    color: 'rgba(255,255,255,0.86)',
+    fontSize: 14,
+    fontWeight: '600',
   },
   heroTitle: {
     color: '#fff',
@@ -358,7 +362,6 @@ const styles = StyleSheet.create({
     color: colors.accentForeground,
     fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 0.6,
   },
   passportQr: {
     width: 44,
@@ -395,6 +398,7 @@ const styles = StyleSheet.create({
   },
   pagerWrap: {
     gap: 12,
+    marginTop: 8,
   },
   pagerContent: {
     gap: 0,
@@ -418,11 +422,9 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   slideEyebrow: {
-    color: colors.primary,
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
+    color: colors.primaryStrong,
+    fontSize: 13,
+    fontWeight: '600',
   },
   slideTitle: {
     color: colors.foreground,

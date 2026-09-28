@@ -101,11 +101,11 @@ export default function Training() {
         <View style={styles.heroChips}>
           <View style={styles.heroChip}>
             <Award size={14} color="#fff" />
-            <Text style={styles.heroChipText}>{activeCerts.length} active certs</Text>
+            <Text style={styles.heroChipText}>{activeCerts.length} active {activeCerts.length === 1 ? 'certificate' : 'certificates'}</Text>
           </View>
           <View style={styles.heroChip}>
             <ShieldCheck size={14} color="#fff" />
-            <Text style={styles.heroChipText}>Educational • not a replacement for in-person training</Text>
+            <Text style={[styles.heroChipText, { flexShrink: 1 }]}>Educational. Not a replacement for in-person training.</Text>
           </View>
         </View>
       }
@@ -206,7 +206,7 @@ export default function Training() {
 const styles = StyleSheet.create({
   heroChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   heroChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
+    flexDirection: 'row', alignItems: 'center', gap: 6, maxWidth: '100%',
     paddingHorizontal: 12, paddingVertical: 8,
     borderRadius: radius.full, backgroundColor: 'rgba(255,255,255,0.14)',
   },
@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
     backgroundColor: colors.successSoft,
   },
-  miniBadgeText: { color: colors.success, fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.6 },
+  miniBadgeText: { color: colors.success, fontSize: 10, fontWeight: '800' },
   courseDesc: { color: colors.mutedForeground, fontSize: 12, lineHeight: 18 },
   badgeRowMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   metaBadge: {

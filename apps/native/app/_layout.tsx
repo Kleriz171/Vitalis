@@ -53,5 +53,8 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     if (!token && inProtected) router.replace('/');
   }, [hydrated, token, segments, router]);
 
+  // Rendering routes before the stored session loads fires unauthenticated requests,
+  // and the 401 handler would then wipe the saved session.
+  if (!hydrated) return null;
   return <>{children}</>;
 }

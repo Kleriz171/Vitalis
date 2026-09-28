@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.accent,
   },
-  brand: { color: colors.primary, fontSize: 11, fontWeight: '800', letterSpacing: 1.4 },
+  brand: { color: colors.primary, fontSize: 11, fontWeight: '800' },
   title: { color: colors.mutedForeground, fontSize: 13 },
   badge: { color: colors.foreground, fontSize: 24, fontWeight: '900', textAlign: 'center' },
   score: { color: colors.success, fontSize: 14, fontWeight: '700' },
@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
   verify: { color: colors.primary, fontSize: 11, fontWeight: '600', textAlign: 'center' },
   metaRow: { flexDirection: 'row', gap: 24, marginTop: 6 },
   metaItem: { alignItems: 'center', gap: 4 },
-  metaLabel: { color: colors.mutedForeground, fontSize: 10, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase' },
+  metaLabel: { color: colors.mutedForeground, fontSize: 10, fontWeight: '700' },
   metaValue: { color: colors.foreground, fontSize: 13, fontWeight: '700' },
   disclaimer: { color: colors.mutedForeground, fontSize: 11, textAlign: 'center', lineHeight: 16, marginTop: 8 },
 });

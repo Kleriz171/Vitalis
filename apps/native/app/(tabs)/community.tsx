@@ -298,8 +298,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     marginTop: 8,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
   },
   composerCard: {
     padding: 18,

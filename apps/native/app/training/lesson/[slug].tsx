@@ -438,5 +438,5 @@ const styles = StyleSheet.create({
   outlineTitle: { color: colors.foreground, fontSize: 14, fontWeight: '700' },
   outlineSummary: { color: colors.mutedForeground, fontSize: 12 },
   currentBadge: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
-  currentBadgeText: { color: colors.primary, fontSize: 10, fontWeight: '800', textTransform: 'uppercase' },
+  currentBadgeText: { color: colors.primary, fontSize: 10, fontWeight: '800' },
 });

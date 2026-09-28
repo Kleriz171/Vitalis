@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
   qCard: { padding: 18, gap: 14, marginBottom: 12 },
   questionHeader: { flexDirection: 'row', justifyContent: 'flex-start' },
   indexBadge: { backgroundColor: colors.soft, borderColor: colors.border, paddingHorizontal: 10, paddingVertical: 6 },
-  indexBadgeText: { color: colors.primary, fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
+  indexBadgeText: { color: colors.primary, fontSize: 11, fontWeight: '800' },
   qPrompt: { color: colors.foreground, fontSize: 15, fontWeight: '700', lineHeight: 22 },
   choiceList: { gap: 10 },
   choice: {
