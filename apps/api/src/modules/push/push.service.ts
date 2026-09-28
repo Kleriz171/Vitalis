@@ -5,11 +5,13 @@ const EXPO_PUSH_URL = process.env.EXPO_PUSH_URL ?? 'https://exp.host/--/api/v2/p
 export const PUSH_TOKEN = /^Expo(nent)?PushToken\[[\w-]{10,64}\]$/;
 
 export type PushKind = 'sos' | 'update';
+/** Push text in both app languages; each recipient gets theirs. */
+export type PushText = { en: string; sq: string };
 
 interface PushInput {
   userIds: string[];
-  title: string;
-  body: string;
+  title: PushText;
+  body: PushText;
   data: Record<string, string>;
   kind: PushKind;
 }
@@ -20,15 +22,17 @@ interface PushInput {
  */
 export async function sendPush({ userIds, title, body, data, kind }: PushInput) {
   if (!userIds.length) return;
-  const users = await User.find({ _id: { $in: userIds } }).select('+pushTokens').lean();
-  const tokens = users.flatMap(u => (u as any).pushTokens ?? []).filter((t: string) => PUSH_TOKEN.test(t));
-  if (!tokens.length) return;
+  const users = await User.find({ _id: { $in: userIds } }).select('+pushTokens language').lean();
+  const targets: { to: string; lang: keyof PushText }[] = users.flatMap(u => ((u as any).pushTokens as string[] ?? [])
+    .filter(t => PUSH_TOKEN.test(t))
+    .map(to => ({ to, lang: (u as any).language === 'en' ? 'en' as const : 'sq' as const })));
+  if (!targets.length) return;
 
   const sos = kind === 'sos';
-  const messages = tokens.map((to: string) => ({
+  const messages = targets.map(({ to, lang }) => ({
     to,
-    title,
-    body,
+    title: title[lang],
+    body: body[lang],
     data,
     priority: 'high',
     channelId: sos ? 'sos' : 'updates',

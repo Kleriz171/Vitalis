@@ -50,8 +50,8 @@ async function main() {
   const CIT = 'ExponentPushToken[citizen-test-token-01]';
 
   assert.equal((await call('POST', '/push/token', citizen, { token: 'not-a-token' })).status, 400);
-  assert.equal((await call('POST', '/push/token', doctor, { token: DOC })).status, 204);
-  assert.equal((await call('POST', '/push/token', citizen, { token: CIT })).status, 204);
+  assert.equal((await call('POST', '/push/token', doctor, { token: DOC, language: 'sq' })).status, 204);
+  assert.equal((await call('POST', '/push/token', citizen, { token: CIT, language: 'en' })).status, 204);
   ok('push tokens validated and stored');
 
   const prior = await call('GET', '/emergencies/mine', citizen);
@@ -63,8 +63,8 @@ async function main() {
   const id = sos.data.emergency._id;
   const alert = await waitFor(m => m.to === DOC && m.data?.emergencyId === id);
   assert.equal(alert.channelId, 'sos');
-  assert.equal(alert.title, 'Cardiac arrest nearby');
-  assert.match(alert.body, /m away/);
+  assert.equal(alert.title, 'Arrest kardiak afër jush'); // doctor registered in Albanian
+  assert.match(alert.body, /m larg/);
   assert.ok(!JSON.stringify(alert).includes('Elena'), 'SOS push must not reveal the caller');
   assert.equal(received.filter(m => m.to === CIT && m.data?.emergencyId === id).length, 0, 'caller is not alerted about own SOS');
   ok(`responder alerted on lock screen: "${alert.title} · ${alert.body}"`);
@@ -77,7 +77,7 @@ async function main() {
   ok('caller told who accepted and when they arrive');
 
   await call('PATCH', `/emergencies/${id}/status`, citizen, { status: 'cancelled' });
-  await waitFor(m => m.to === DOC && m.title === 'Call cancelled');
+  await waitFor(m => m.to === DOC && m.title === 'Thirrja u anulua');
   ok('responder told to stand down on cancel');
 
   await call('DELETE', '/push/token', doctor, { token: DOC });

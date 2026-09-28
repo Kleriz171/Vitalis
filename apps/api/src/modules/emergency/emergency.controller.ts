@@ -4,17 +4,23 @@ import { AuthReq } from '../../middleware/auth';
 import { EMERGENCY_STATUS, EMERGENCY_TYPE } from '../../models/Emergency';
 import { emergencyService, fetchActiveCertifications, toResponderView } from './emergency.service';
 import { getIO, OPERATOR_ROLES, emergencyAccess } from '../../realtime/socket';
-import { sendPush } from '../push/push.service';
+import { PushText, sendPush } from '../push/push.service';
 import { User } from '../../models/User';
 import { haversineKm } from '../../utils/geo';
 
-const TYPE_TITLE: Record<string, string> = {
-  cardiac: 'Cardiac arrest nearby',
-  trauma: 'Injury nearby',
-  medical: 'Medical emergency nearby',
+// Push text in both app languages (Albanian is a draft pending native review, like the app's).
+const TYPE_TITLE: Record<string, PushText> = {
+  cardiac: { en: 'Cardiac arrest nearby', sq: 'Arrest kardiak afër jush' },
+  trauma: { en: 'Injury nearby', sq: 'Lëndim afër jush' },
+  medical: { en: 'Medical emergency nearby', sq: 'Urgjencë mjekësore afër jush' },
 };
+const ROLE_NAME: Record<string, PushText> = {
+  doctor: { en: 'doctor', sq: 'mjek' },
+  nurse: { en: 'nurse', sq: 'infermier' },
+};
+const FIRST_AIDER: PushText = { en: 'certified first-aider', sq: 'ndihmës i certifikuar' };
 
-const distanceLabel = (km: number) => (km < 1 ? `${Math.max(50, Math.round(km * 1000 / 50) * 50)} m away` : `${km.toFixed(1)} km away`);
+const distance = (km: number) => (km < 1 ? `${Math.max(50, Math.round(km * 1000 / 50) * 50)} m` : `${km.toFixed(1)} km`);
 
 // Push never blocks the request; failures are logged inside sendPush.
 const push = (p: Parameters<typeof sendPush>[0]) => { void sendPush(p).catch(() => {}); };
@@ -54,8 +60,10 @@ export const emergencyController = {
           push({
             userIds: [String(r._id)],
             kind: 'sos',
-            title: TYPE_TITLE[e.type] ?? 'Emergency nearby',
-            body: `${their ? distanceLabel(haversineKm(their, at)) + '. ' : ''}Tap to respond.`,
+            title: TYPE_TITLE[e.type] ?? { en: 'Emergency nearby', sq: 'Urgjencë afër jush' },
+            body: their
+              ? { en: `${distance(haversineKm(their, at))} away. Tap to respond.`, sq: `${distance(haversineKm(their, at))} larg. Prekni për t’u përgjigjur.` }
+              : { en: 'Tap to respond.', sq: 'Prekni për t’u përgjigjur.' },
             data: { type: 'sos', emergencyId: String(e._id) },
           });
         }
@@ -76,10 +84,15 @@ export const emergencyController = {
       push({
         userIds: [String(e.citizen)],
         kind: 'update',
-        title: role === 'aed' ? 'A defibrillator is on its way' : 'Help is on the way',
+        title: role === 'aed'
+          ? { en: 'A defibrillator is on its way', sq: 'Një defibrilator po vjen' }
+          : { en: 'Help is on the way', sq: 'Ndihma është rrugës' },
         body: role === 'aed'
-          ? `${me?.name ?? 'A responder'} is bringing the nearest AED.`
-          : `${me?.name ?? 'A responder'} (${me?.role === 'doctor' ? 'doctor' : me?.role === 'nurse' ? 'nurse' : 'certified first-aider'}) accepted your SOS.`,
+          ? { en: `${me?.name ?? 'A responder'} is bringing the nearest AED.`, sq: `${me?.name ?? 'Një ndihmës'} po sjell defibrilatorin më të afërt.` }
+          : {
+            en: `${me?.name ?? 'A responder'} (${(ROLE_NAME[me?.role ?? ''] ?? FIRST_AIDER).en}) accepted your SOS.`,
+            sq: `${me?.name ?? 'Një ndihmës'} (${(ROLE_NAME[me?.role ?? ''] ?? FIRST_AIDER).sq}) e pranoi SOS-in tuaj.`,
+          },
         data: { type: 'update', emergencyId: String(e._id) },
       });
       // Other responders drop the call from their inbox, unless it still needs an AED runner.
@@ -112,16 +125,22 @@ export const emergencyController = {
       const e = await emergencyService.updateStatus(req.params.id, req.body.status, req.user!);
       broadcast('emergency:status', e);
       const status = req.body.status as string;
-      const toCaller: Record<string, [string, string]> = {
-        en_route: ['Responder on the way', 'Stay where you are if it is safe.'],
-        on_scene: ['Responder has arrived', 'Help is with you now.'],
+      const toCaller: Record<string, [PushText, PushText]> = {
+        en_route: [
+          { en: 'Responder on the way', sq: 'Ndihmësi është rrugës' },
+          { en: 'Stay where you are if it is safe.', sq: 'Qëndroni ku jeni nëse është e sigurt.' },
+        ],
+        on_scene: [
+          { en: 'Responder has arrived', sq: 'Ndihmësi mbërriti' },
+          { en: 'Help is with you now.', sq: 'Ndihma është me ju tani.' },
+        ],
       };
       if (toCaller[status]) {
         push({ userIds: [String(e.citizen)], kind: 'update', title: toCaller[status][0], body: toCaller[status][1], data: { type: 'update', emergencyId: String(e._id) } });
       }
       if (status === 'cancelled' || (status === 'resolved' && OPERATOR_ROLES.includes(req.user!.role))) {
         const crew = [e.responder, e.aedRunner].filter(Boolean).map(String).filter(id => id !== req.user!.id);
-        push({ userIds: crew, kind: 'update', title: status === 'cancelled' ? 'Call cancelled' : 'Call closed by dispatch', body: 'You can stand down.', data: { type: 'update', emergencyId: String(e._id) } });
+        push({ userIds: crew, kind: 'update', title: status === 'cancelled' ? { en: 'Call cancelled', sq: 'Thirrja u anulua' } : { en: 'Call closed by dispatch', sq: 'Dispeçeria e mbylli thirrjen' }, body: { en: 'You can stand down.', sq: 'Mund të tërhiqeni.' }, data: { type: 'update', emergencyId: String(e._id) } });
       }
       res.json(e);
     } catch (err) { next(err); }

@@ -33,6 +33,8 @@ const UserSchema = new Schema({
   available: { type: Boolean, default: false },
   // Expo push tokens, one per installed device. Pruned when Expo reports them dead.
   pushTokens: { type: [String], default: [], select: false },
+  // App language, reported with the push token; server-written text (push) follows it.
+  language: { type: String, enum: ['sq', 'en'], default: 'sq' },
   refreshTokenHash: { type: String, select: false },
 }, { timestamps: true });
 

@@ -3,7 +3,7 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { api } from './api';
-import { t } from './i18n';
+import { lang, t } from './i18n';
 
 let registeredToken: string | null = null;
 
@@ -53,7 +53,7 @@ export async function registerForPush() {
   }
   const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
   if (token !== registeredToken) {
-    await api.post('/push/token', { token });
+    await api.post('/push/token', { token, language: lang });
     registeredToken = token;
   }
   return token;

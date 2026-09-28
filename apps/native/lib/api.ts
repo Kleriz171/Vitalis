@@ -3,6 +3,7 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { logout, setSession, store } from './store';
+import { lang } from './i18n';
 
 /**
  * Resolve the API base URL.
@@ -48,7 +49,8 @@ if (DEBUG_NET) {
   }
 }
 
-export const api = axios.create({ baseURL: API_BASE_URL, timeout: 15000 });
+// Accept-Language picks the course content language on the server.
+export const api = axios.create({ baseURL: API_BASE_URL, timeout: 15000, headers: { 'Accept-Language': lang } });
 const refreshClient = axios.create({ baseURL: API_BASE_URL, timeout: 15000 });
 let refreshPromise: Promise<string | null> | null = null;
 
