@@ -100,7 +100,7 @@ export const AdminDoctorApplications = () => {
                   <FileText size={14} /> {a.certificateFilename}
                 </a>
               </div>
-              <p className="text-sm whitespace-pre-wrap border-l-2 border-border pl-3">{a.bio}</p>
+              <p className="text-sm whitespace-pre-wrap text-muted-foreground max-w-prose">{a.bio}</p>
               {a.rejectionReason ? <p className="text-xs text-destructive">Rejected: {a.rejectionReason}</p> : null}
               {a.status === 'pending' ? (
                 <div className="flex gap-2 pt-2">
