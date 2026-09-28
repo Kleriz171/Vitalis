@@ -70,11 +70,13 @@ export const Button = forwardRef<View, ButtonProps>(
       <Pressable
         ref={ref as any}
         disabled={isDisabled}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: !!isDisabled, busy: !!loading }}
         style={({ pressed }) => [
           styles.base,
           variantBox[variant],
           sizeBox[size],
-          isDisabled && { opacity: 0.75 },
+          isDisabled && { opacity: 0.45 },
           pressed && { opacity: 0.8 },
           style,
         ]}

@@ -27,6 +27,8 @@ const serializeUser = (user: any) => ({
   role: user.role,
   bloodType: user.bloodType,
   age: ageOf(user),
+  dateOfBirth: user.dateOfBirth,
+  phone: user.phone,
   gender: user.gender,
   heightCm: user.heightCm,
   weightKg: user.weightKg,

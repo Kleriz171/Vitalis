@@ -49,7 +49,7 @@ export default function Home() {
   };
 
   const passportDetail = passport
-    ? [passport.bloodType ? `Blood ${passport.bloodType}` : 'Blood type missing',
+    ? [passport.bloodType ? `Blood ${passport.bloodType}` : 'Blood type unknown',
        passport.allergies.length ? `${passport.allergies.length} ${passport.allergies.length === 1 ? 'allergy' : 'allergies'}` : 'No allergies'].join(' · ')
     : 'Your medical ID for paramedics';
 

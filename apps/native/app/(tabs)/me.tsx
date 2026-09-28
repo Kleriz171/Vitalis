@@ -17,13 +17,14 @@ type Severity = 'mild' | 'moderate' | 'severe';
 
 type ProfileUser = {
   id?: string;
-  email: string;
+  email?: string;
   name: string;
   firstName?: string;
   lastName?: string;
   role: string;
   bloodType?: string;
   age?: number;
+  dateOfBirth?: string;
   gender?: string;
   heightCm?: number;
   weightKg?: number;
@@ -66,7 +67,15 @@ type BioPassport = {
 type SaveTarget = 'overview' | 'medication' | 'allergy' | 'vaccination' | 'appointment' | 'condition' | 'disability' | null;
 
 const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-const genders = ['male', 'female', 'non-binary', 'prefer_not_to_say'];
+// Values must match GENDERS in apps/api/src/models/User.ts.
+const genderLabels: Record<string, string> = {
+  female: 'Female',
+  male: 'Male',
+  non_binary: 'Non-binary',
+  other: 'Other',
+  prefer_not_to_say: 'Prefer not to say',
+};
+const genders = Object.keys(genderLabels);
 const severities: Severity[] = ['mild', 'moderate', 'severe'];
 
 const formatDate = (value?: string) =>
@@ -190,7 +199,7 @@ export default function Profile() {
       setSaving('overview');
       await api.patch('/health/profile', {
         bloodType: bloodType || undefined,
-        age: age ? Number(age) : undefined,
+        age: !profile?.user.dateOfBirth && age ? Number(age) : undefined,
         gender: gender || undefined,
         heightCm: heightCm ? Number(heightCm) : undefined,
         weightKg: weightKg ? Number(weightKg) : undefined,
@@ -314,8 +323,8 @@ export default function Profile() {
 
   const user = profile?.user;
   const pretty = (s?: string) => s && (s[0].toUpperCase() + s.slice(1)).replaceAll('_', ' ');
-  const walletMeta = [user?.age != null ? `${user.age} years` : null, pretty(user?.gender)].filter(Boolean).join(' · ');
-  const basicsDetail = [user?.bloodType, user?.age != null ? `${user.age} y` : null, pretty(user?.gender)].filter(Boolean).join(' · ');
+  const walletMeta = [user?.age != null ? `${user.age} years` : null, user?.gender && genderLabels[user.gender]].filter(Boolean).join(' · ');
+  const basicsDetail = [user?.bloodType, user?.age != null ? `${user.age} y` : null, user?.gender && genderLabels[user.gender]].filter(Boolean).join(' · ');
 
   return (
     <AppScreen
@@ -327,7 +336,7 @@ export default function Profile() {
         <View style={styles.walletBody}>
           <View style={{ flex: 1 }}>
             <Text style={styles.walletLabel}>Blood type</Text>
-            <Text style={styles.walletBlood}>{user?.bloodType ?? '?'}</Text>
+            <Text style={[styles.walletBlood, !user?.bloodType && styles.walletUnknown]}>{user?.bloodType ?? 'Unknown'}</Text>
             <Text style={styles.walletName} numberOfLines={1}>{user?.name ?? auth.user?.name ?? ''}</Text>
             {walletMeta ? <Text style={styles.walletMeta}>{walletMeta}</Text> : null}
           </View>
@@ -345,6 +354,9 @@ export default function Profile() {
       <Text style={styles.groupTitle}>Medical record</Text>
       <View style={styles.group}>
         <Section id="basics" title="Basics" detail={basicsDetail || 'Blood type, age, height, weight'} open={open} onToggle={toggle} first>
+          {user?.dateOfBirth ? (
+            <Text style={styles.fieldLabel}>Born {formatDate(user.dateOfBirth)}</Text>
+          ) : null}
           <Text style={styles.fieldLabel}>Blood type</Text>
           <View style={styles.selectionRow}>
             {bloodTypes.map((item) => (
@@ -354,13 +366,14 @@ export default function Profile() {
           <Text style={styles.fieldLabel}>Gender</Text>
           <View style={styles.selectionRow}>
             {genders.map((item) => (
-              <Choice key={item} label={pretty(item)!} active={gender === item} onPress={() => setGender(item)} />
+              <Choice key={item} label={genderLabels[item]} active={gender === item} onPress={() => setGender(item)} />
             ))}
           </View>
           <View style={styles.fieldRow}>
-            <Field label="Age" value={age} onChangeText={setAge} keyboardType="number-pad" />
-            <Field label="Height, cm" value={heightCm} onChangeText={setHeightCm} keyboardType="decimal-pad" />
-            <Field label="Weight, kg" value={weightKg} onChangeText={setWeightKg} keyboardType="decimal-pad" />
+            {/* Age follows the date of birth when we have one; only older accounts type it in. */}
+            {user?.dateOfBirth ? null : <Field grow label="Age" value={age} onChangeText={setAge} keyboardType="number-pad" />}
+            <Field grow label="Height, cm" value={heightCm} onChangeText={setHeightCm} keyboardType="decimal-pad" />
+            <Field grow label="Weight, kg" value={weightKg} onChangeText={setWeightKg} keyboardType="decimal-pad" />
           </View>
           <Field label="Illnesses" value={illnesses} onChangeText={setIllnesses} placeholder="Comma separated" />
           <Button onPress={saveOverview} loading={saving === 'overview'}>Save</Button>
@@ -521,9 +534,9 @@ function LinkRow({ icon, title, detail, onPress, first }: { icon: ReactNode; tit
   );
 }
 
-function Field({ label, ...props }: { label: string } & TextInputProps) {
+function Field({ label, grow, ...props }: { label: string; grow?: boolean } & TextInputProps) {
   return (
-    <View style={{ flex: 1, gap: 6 }}>
+    <View style={[{ gap: 6 }, grow && { flex: 1 }]}>
       <Text style={styles.fieldLabel}>{label}</Text>
       <Input accessibilityLabel={label} {...props} />
     </View>
@@ -574,6 +587,7 @@ const styles = StyleSheet.create({
   walletBody: { flexDirection: 'row', alignItems: 'flex-end', gap: 16 },
   walletLabel: { ...type.footnote, color: 'rgba(255,255,255,0.75)' },
   walletBlood: { fontFamily: fonts.display, color: '#fff', fontSize: 52, lineHeight: 58, letterSpacing: -1 },
+  walletUnknown: { fontSize: 30, lineHeight: 58 },
   walletName: { ...type.headline, color: '#fff', marginTop: 4 },
   walletMeta: { ...type.footnote, color: 'rgba(255,255,255,0.75)' },
   qrTile: { backgroundColor: '#fff', borderRadius: radius.md, padding: 6 },
