@@ -10,7 +10,7 @@ export const env = {
   corsOrigin: process.env.CORS_ORIGIN ?? 'http://localhost:5173,http://localhost:5174',
   nodeEnv: process.env.NODE_ENV ?? 'development',
   // Public website (apps/landing): certificate QR codes link to its /verify page.
-  publicWebUrl: process.env.PUBLIC_WEB_URL ?? 'http://localhost:5175',
+  publicWebUrl: process.env.PUBLIC_WEB_URL || 'http://localhost:5175',
   geminiApiKey: process.env.GEMINI_API_KEY ?? '',
   // Shared secret the drone bridge presents on connect. Empty = drone bridges disabled.
   droneBridgeKey: process.env.DRONE_BRIDGE_KEY ?? '',
