@@ -684,6 +684,9 @@ export const api: Record<string, string> = {
   'Not your emergency': 'Kjo urgjencë nuk është e juaja',
   'You are not the AED runner on an active call': 'Nuk jeni ndihmësi i defibrilatorit në një thirrje aktive',
   'Course not found': 'Kursi nuk u gjet',
+  // SOS descriptions the app generates (emergency.tsx), shown to responders
+  'Person collapsed, not breathing normally': 'Person i rrëzuar pa ndjenja, nuk merr frymë normalisht',
+  'Citizen SOS': 'SOS nga një qytetar',
   // Doctor specialties (from the directory data)
   'Cardiology': 'Kardiologji',
   'Dermatology': 'Dermatologji',

@@ -60,7 +60,7 @@ const STATUS_LABEL: Record<Status, string> = {
 
 const timeAgo = (iso: string) => {
   const m = Math.floor(Math.max(0, Date.now() - new Date(iso).getTime()) / 60_000);
-  if (m < 1) return 'just now';
+  if (m < 1) return t('Just now');
   if (m < 60) return t('{n} min ago', { n: m });
   const h = Math.floor(m / 60);
   return h < 24 ? t('{n} h ago', { n: h }) : t('{n} d ago', { n: Math.floor(h / 24) });
@@ -400,7 +400,8 @@ export default function ResponderInbox() {
                   {distTo(e.location?.coordinates) ?? t('Distance unknown')}
                   {e.needsAedRunner ? ' · Responder on the way, AED needed' : ''}
                 </Text>
-                {e.description ? <Text style={styles.incidentDesc} numberOfLines={2}>{e.description}</Text> : null}
+                {/* The app writes known descriptions in English; t() shows them in the responder's language. */}
+                {e.description ? <Text style={styles.incidentDesc} numberOfLines={2}>{t(e.description)}</Text> : null}
                 <Button
                   onPress={() => accept(e._id)}
                   loading={busy === e._id}
