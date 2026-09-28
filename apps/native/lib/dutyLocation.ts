@@ -3,6 +3,7 @@ import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from './api';
+import { t } from './i18n';
 
 /**
  * While on duty, the OS wakes this task with new positions even when Vitalis is closed,
@@ -63,8 +64,8 @@ export async function startDutyTracking() {
     pausesUpdatesAutomatically: false,
     showsBackgroundLocationIndicator: true,
     foregroundService: {
-      notificationTitle: 'Vitalis: on duty',
-      notificationBody: 'Sharing your location so SOS calls near you can reach you.',
+      notificationTitle: t('Vitalis: on duty'),
+      notificationBody: t('Sharing your location so SOS calls near you can reach you.'),
       notificationColor: '#14A897',
     },
   });

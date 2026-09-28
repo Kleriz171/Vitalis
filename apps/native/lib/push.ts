@@ -3,6 +3,7 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { api } from './api';
+import { t } from './i18n';
 
 let registeredToken: string | null = null;
 
@@ -19,7 +20,7 @@ Notifications.setNotificationHandler({
 async function ensureAndroidChannels() {
   if (Platform.OS !== 'android') return;
   await Notifications.setNotificationChannelAsync('sos', {
-    name: 'SOS calls near you',
+    name: t('SOS calls near you'),
     importance: Notifications.AndroidImportance.MAX,
     vibrationPattern: [0, 400, 200, 400, 200, 800],
     lightColor: '#E14545',
@@ -28,7 +29,7 @@ async function ensureAndroidChannels() {
     sound: 'default',
   });
   await Notifications.setNotificationChannelAsync('updates', {
-    name: 'Updates on your SOS',
+    name: t('Updates on your SOS'),
     importance: Notifications.AndroidImportance.HIGH,
     sound: 'default',
   });

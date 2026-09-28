@@ -14,6 +14,7 @@ import { RootState, upsertEnrollment } from '@/lib/store';
 import { courseArt } from '@/lib/courseArt';
 import { colors, radius, type } from '@/lib/theme';
 import { resolveLessonVideoUrl, type TrainingLessonView } from './shared';
+import { apiError, t, tn } from '@/lib/i18n';
 
 interface LessonView extends TrainingLessonView {}
 
@@ -59,7 +60,7 @@ export default function CourseDetail() {
         setLoading(true);
         await load();
       } catch (err: any) {
-        toast.error('Could not load course', { description: err.response?.data?.error ?? 'Try again.' });
+        toast.error(t('Could not load course'), { description: apiError(err, 'Try again.') });
       } finally {
         setLoading(false);
       }
@@ -80,7 +81,7 @@ export default function CourseDetail() {
       }
       router.push({ pathname: '/training/lesson/[slug]', params: { slug: course.slug, lessonId } } as never);
     } catch (err: any) {
-      toast.error('Could not enrol', { description: err.response?.data?.error ?? 'Try again.' });
+      toast.error(t('Could not enrol'), { description: apiError(err, 'Try again.') });
     } finally {
       setEnrolling(false);
     }
@@ -89,7 +90,7 @@ export default function CourseDetail() {
   if (loading || !course) {
     return (
       <AppScreen
-        title="Loading course"
+        title={t('Loading course')}
         action={<BackBtn />}
       >
         {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} style={{ height: 80, borderRadius: radius.lg }} />)}
@@ -111,14 +112,14 @@ export default function CourseDetail() {
         <View style={{ flex: 1, gap: 6 }}>
           <Text style={styles.introBody}>{course.shortDescription}</Text>
           <Text style={styles.meta}>
-            {course.estimatedMinutes} min · {course.lessons.length} lessons · {course.passingScore}% to pass
+            {[t('{n} min', { n: course.estimatedMinutes }), tn(course.lessons.length, '1 lesson', '{n} lessons'), t('{n}% to pass', { n: course.passingScore })].join(' · ')}
           </Text>
         </View>
       </View>
 
       {completedIds.size ? (
         <View style={{ gap: 6 }}>
-          <Text style={styles.meta}>{completedIds.size} of {course.lessons.length} lessons done</Text>
+          <Text style={styles.meta}>{t('{done} of {total} lessons done', { done: completedIds.size, total: course.lessons.length })}</Text>
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${progressPct}%` }]} />
           </View>
@@ -135,14 +136,14 @@ export default function CourseDetail() {
               onPress={() => handleStart(lesson.id)}
               style={({ pressed }) => [styles.row, idx > 0 && styles.divider, pressed && styles.pressed]}
               accessibilityRole="button"
-              accessibilityLabel={`Lesson ${idx + 1}: ${lesson.title}${done ? ', completed' : ''}`}
+              accessibilityLabel={done ? t('Lesson {n}: {title}, completed', { n: idx + 1, title: lesson.title }) : t('Lesson {n}: {title}', { n: idx + 1, title: lesson.title })}
             >
               <View style={[styles.step, done && styles.stepDone]}>
                 {done ? <Check size={16} color="#fff" /> : <Text style={styles.stepText}>{idx + 1}</Text>}
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.rowTitle}>{lesson.title}</Text>
-                <Text style={styles.meta}>{lesson.durationMin} min{hasVideo ? ' · Video' : ''}</Text>
+                <Text style={styles.meta}>{t('{n} min', { n: lesson.durationMin })}{hasVideo ? ` · ${t('Video')}` : ''}</Text>
               </View>
               <ChevronRight size={18} color={colors.mutedForeground} />
             </Pressable>
@@ -155,12 +156,12 @@ export default function CourseDetail() {
         disabled={!allLessonsDone || enrolling}
         loading={enrolling}
       >
-        Take the final quiz
+        {t('Take the final quiz')}
       </Button>
       <Text style={[styles.meta, { textAlign: 'center' }]}>
         {allLessonsDone
-          ? `Pass it to earn ${course.badgeLabel}.`
-          : `Unlocks after the last lesson. ${remainingLessons} to go.`}
+          ? t('Pass it to earn {badge}.', { badge: course.badgeLabel })
+          : t('Unlocks after the last lesson. {n} to go.', { n: remainingLessons })}
       </Text>
     </AppScreen>
   );
@@ -169,7 +170,7 @@ export default function CourseDetail() {
 function BackBtn() {
   const router = useRouter();
   return (
-    <HeaderButton icon={ArrowLeft} onPress={() => router.back()} label="Back" />
+    <HeaderButton icon={ArrowLeft} onPress={() => router.back()} label={t('Back')} />
   );
 }
 

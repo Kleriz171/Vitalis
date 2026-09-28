@@ -4,22 +4,23 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronRight, Droplets, Hospital, Stethoscope, Zap } from 'lucide-react-native';
 import { useNearestAed } from '@/lib/geo';
 import { colors, radius, type } from '@/lib/theme';
+import { t } from '@/lib/i18n';
 
 export default function Nearby() {
   const router = useRouter();
   const nearestAed = useNearestAed();
 
   const rows = [
-    { icon: <Zap size={20} color={colors.warning} />, title: 'Defibrillators', detail: nearestAed ?? 'Public AEDs near you', path: '/aeds' },
-    { icon: <Hospital size={20} color={colors.destructive} />, title: 'Hospitals & emergency numbers', detail: 'Call or get directions', path: '/sos' },
-    { icon: <Stethoscope size={20} color={colors.info} />, title: 'Doctors', detail: 'Verified specialists', path: '/doctors' },
-    { icon: <Droplets size={20} color={colors.destructive} />, title: 'Blood & supply', detail: 'Requests, donors and inventory', path: '/blood' },
-  ] as const;
+    { icon: <Zap size={20} color={colors.warning} />, title: t('Defibrillators'), detail: nearestAed ?? t('Public AEDs near you'), path: '/aeds' },
+    { icon: <Hospital size={20} color={colors.destructive} />, title: t('Hospitals & emergency numbers'), detail: t('Call or get directions'), path: '/sos' },
+    { icon: <Stethoscope size={20} color={colors.info} />, title: t('Doctors'), detail: t('Verified specialists'), path: '/doctors' },
+    { icon: <Droplets size={20} color={colors.destructive} />, title: t('Blood & supply'), detail: t('Requests, donors and inventory'), path: '/blood' },
+  ];
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <ScrollView contentContainerStyle={styles.body}>
-        <Text style={styles.title} accessibilityRole="header">Nearby</Text>
+        <Text style={styles.title} accessibilityRole="header">{t('Nearby')}</Text>
         <View style={styles.group}>
           {rows.map((r, i) => (
             <Pressable

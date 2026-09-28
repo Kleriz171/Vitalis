@@ -18,6 +18,7 @@ import {
 } from '@/lib/store';
 import { courseArt } from '@/lib/courseArt';
 import { colors, radius, type } from '@/lib/theme';
+import { apiError, formatDate, t, tn } from '@/lib/i18n';
 
 interface CourseSummary {
   id: string;
@@ -56,7 +57,7 @@ export default function Training() {
         setLoading(true);
         await load();
       } catch (err: any) {
-        toast.error('Could not load training', { description: err.response?.data?.error ?? 'Try again shortly.' });
+        toast.error(t('Could not load training'), { description: apiError(err, 'Try again shortly.') });
       } finally {
         setLoading(false);
       }
@@ -91,8 +92,8 @@ export default function Training() {
 
   return (
     <AppScreen
-      title="Learn"
-      subtitle="Short first-aid courses based on Red Cross guidelines. Pass CPR or AED and Vitalis can call you to emergencies nearby."
+      title={t('Learn')}
+      subtitle={t('Short first-aid courses based on Red Cross guidelines. Pass CPR or AED and Vitalis can call you to emergencies nearby.')}
       scrollProps={{
         refreshControl: <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />,
       }}
@@ -109,7 +110,7 @@ export default function Training() {
               <Award size={20} color={colors.primaryStrong} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.rowTitle}>{cert.badgeLabel}</Text>
-                <Text style={styles.rowDetail}>Certified until {new Date(cert.expiresAt).toLocaleDateString()}</Text>
+                <Text style={styles.rowDetail}>{t('Certified until {date}', { date: formatDate(cert.expiresAt) })}</Text>
               </View>
               <ChevronRight size={18} color={colors.mutedForeground} />
             </Pressable>
@@ -129,7 +130,7 @@ export default function Training() {
             </View>
           ))
         ) : !courses.length ? (
-          <Empty icon={GraduationCap} title="No courses yet" description="Training content will appear once the seed runs." />
+          <Empty icon={GraduationCap} title={t('No courses yet')} description={t('Training content will appear once the seed runs.')} />
         ) : (
           courses.map((course, i) => {
             const enrollment = enrollmentByCourse.get(course.id);
@@ -138,8 +139,10 @@ export default function Training() {
             const progress = course.lessonCount ? done / course.lessonCount : 0;
             const xml = courseArt(course.slug);
             const status = cert
-              ? 'Certified'
-              : done ? `${done} of ${course.lessonCount} lessons done` : `${course.estimatedMinutes} min · ${course.lessonCount} lessons`;
+              ? t('Certified')
+              : done
+                ? t('{done} of {total} lessons done', { done, total: course.lessonCount })
+                : `${t('{n} min', { n: course.estimatedMinutes })} · ${tn(course.lessonCount, '1 lesson', '{n} lessons')}`;
             return (
               <Pressable
                 key={course.id}
@@ -168,7 +171,7 @@ export default function Training() {
         )}
       </View>
 
-      <Text style={styles.footnote}>Educational only. It does not replace hands-on training with an instructor.</Text>
+      <Text style={styles.footnote}>{t('Educational only. It does not replace hands-on training with an instructor.')}</Text>
     </AppScreen>
   );
 }

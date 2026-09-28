@@ -14,6 +14,7 @@ import { api } from '@/lib/api';
 import { socket } from '@/lib/socket';
 import { callNumber, distanceM, etaMinutes, formatDistance, LngLat } from '@/lib/geo';
 import { colors, radius } from '@/lib/theme';
+import { apiError, t, tn } from '@/lib/i18n';
 
 type Phase = 'countdown' | 'sending' | 'live' | 'ended';
 type Person = { _id: string; name: string; role: string } | string | null | undefined;
@@ -33,15 +34,15 @@ interface LiveEmergency {
 const COUNTDOWN_S = 3;
 const CPR_BPM = 110;
 const ROLE_LABEL: Record<string, string> = {
-  doctor: 'Doctor',
-  nurse: 'Nurse',
-  student_responder: 'Certified first-aider',
-  blood_donor: 'Certified first-aider',
+  doctor: t('Doctor'),
+  nurse: t('Nurse'),
+  student_responder: t('Certified first-aider'),
+  blood_donor: t('Certified first-aider'),
 };
 
 const idOf = (p: Person) => (p && typeof p === 'object' ? p._id : p ?? null);
 const nameOf = (p: Person) => (p && typeof p === 'object' ? p.name : null);
-const roleOf = (p: Person) => (p && typeof p === 'object' ? ROLE_LABEL[p.role] ?? 'Responder' : 'Responder');
+const roleOf = (p: Person) => (p && typeof p === 'object' ? ROLE_LABEL[p.role] ?? t('Responder') : t('Responder'));
 
 export default function EmergencyScreen() {
   // A light/dark reload here would drop the CPR coach's timing: hold it while this screen is up.
@@ -109,10 +110,10 @@ export default function EmergencyScreen() {
       sentRef.current = false;
       setPhase('countdown');
       setSecondsLeft(0);
-      toast.error(err?.message === 'location' ? 'Location is off' : 'SOS could not be sent', {
+      toast.error(err?.message === 'location' ? t('Location is off') : t('SOS could not be sent'), {
         description: err?.message === 'location'
-          ? `Turn on location, or call ${ambulance} directly.`
-          : err?.response?.data?.error ?? `Call ${ambulance} now.`,
+          ? t('Turn on location, or call {number} directly.', { number: ambulance })
+          : err?.response ? apiError(err, 'Try again.') : t('Call {number} now.', { number: ambulance }),
       });
     }
   }, [notBreathing, refresh, ambulance]);
@@ -120,11 +121,11 @@ export default function EmergencyScreen() {
   // Countdown gives a chance to cancel an accidental tap without slowing a real emergency much.
   useEffect(() => {
     if (phase !== 'countdown' || secondsLeft <= 0) return;
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
       setSecondsLeft(s => s - 1);
     }, 1000);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [phase, secondsLeft]);
 
   useEffect(() => {
@@ -163,10 +164,10 @@ export default function EmergencyScreen() {
   }, [refresh]);
 
   const cancel = () =>
-    Alert.alert('Cancel SOS?', 'Responders heading to you will be told to stand down.', [
-      { text: 'Keep SOS active', style: 'cancel' },
+    Alert.alert(t('Cancel SOS?'), t('Responders heading to you will be told to stand down.'), [
+      { text: t('Keep SOS active'), style: 'cancel' },
       {
-        text: 'Cancel SOS',
+        text: t('Cancel SOS'),
         style: 'destructive',
         onPress: async () => {
           if (!emergency) return router.back();
@@ -174,7 +175,7 @@ export default function EmergencyScreen() {
             await api.patch(`/emergencies/${emergency._id}/status`, { status: 'cancelled' });
             router.replace('/(tabs)/home');
           } catch (err: any) {
-            toast.error('Could not cancel', { description: err?.response?.data?.error ?? 'Try again.' });
+            toast.error(t('Could not cancel'), { description: apiError(err, 'Try again.') });
           }
         },
       },
@@ -185,12 +186,12 @@ export default function EmergencyScreen() {
       <SafeAreaView style={[styles.safe, { backgroundColor: colors.destructive }]}>
         <StatusBar style="light" />
         <View style={styles.countdownWrap}>
-          <Text style={styles.countdownLabel}>{secondsLeft > 0 ? 'Sending SOS in' : 'SOS not sent'}</Text>
+          <Text style={styles.countdownLabel}>{secondsLeft > 0 ? t('Sending SOS in') : t('SOS not sent')}</Text>
           <Text style={styles.countdownNumber} accessibilityLiveRegion="assertive">
             {secondsLeft > 0 ? secondsLeft : '!'}
           </Text>
           <Text style={styles.countdownHint}>
-            Your location goes to certified responders nearby and the dispatch centre.
+            {t('Your location goes to certified responders nearby and the dispatch centre.')}
           </Text>
 
           <Pressable
@@ -203,8 +204,8 @@ export default function EmergencyScreen() {
               {notBreathing ? <Check size={16} color={colors.destructive} strokeWidth={3} /> : null}
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.toggleTitle}>Someone collapsed and isn't breathing</Text>
-              <Text style={styles.toggleBody}>Sends a second responder for the nearest defibrillator and starts CPR guidance.</Text>
+              <Text style={styles.toggleTitle}>{t("Someone collapsed and isn't breathing")}</Text>
+              <Text style={styles.toggleBody}>{t('Sends a second responder for the nearest defibrillator and starts CPR guidance.')}</Text>
             </View>
           </Pressable>
         </View>
@@ -213,17 +214,17 @@ export default function EmergencyScreen() {
           {secondsLeft === 0 ? (
             <Pressable style={styles.sendNow} onPress={send} accessibilityRole="button">
               <Radio size={20} color={colors.destructive} />
-              <Text style={styles.sendNowText}>Send SOS now</Text>
+              <Text style={styles.sendNowText}>{t('Send SOS now')}</Text>
             </Pressable>
           ) : (
             <Pressable style={styles.sendNow} onPress={() => setSecondsLeft(0)} accessibilityRole="button">
               <Radio size={20} color={colors.destructive} />
-              <Text style={styles.sendNowText}>Send immediately</Text>
+              <Text style={styles.sendNowText}>{t('Send immediately')}</Text>
             </Pressable>
           )}
           <Pressable style={styles.ghostLight} onPress={() => router.back()} accessibilityRole="button">
             <X size={18} color="#fff" />
-            <Text style={styles.ghostLightText}>Cancel</Text>
+            <Text style={styles.ghostLightText}>{t('Cancel')}</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -240,11 +241,11 @@ export default function EmergencyScreen() {
   const aDist = dist(runnerAt);
   const ended = phase === 'ended';
   const headline = ended
-    ? emergency?.status === 'cancelled' ? 'SOS cancelled' : 'Incident closed'
-    : phase === 'sending' ? 'Sending your SOS…'
-    : !responderId ? 'Alerting responders nearby'
-    : emergency?.status === 'on_scene' ? 'Help is with you'
-    : 'Help is on the way';
+    ? emergency?.status === 'cancelled' ? t('SOS cancelled') : t('Incident closed')
+    : phase === 'sending' ? t('Sending your SOS…')
+    : !responderId ? t('Alerting responders nearby')
+    : emergency?.status === 'on_scene' ? t('Help is with you')
+    : t('Help is on the way');
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
@@ -253,51 +254,53 @@ export default function EmergencyScreen() {
         <Text style={styles.headerTitle} accessibilityRole="header" accessibilityLiveRegion="polite">{headline}</Text>
         <Text style={styles.headerBody}>
           {ended
-            ? 'Thank you for using Vitalis. Stay with the person until professional care takes over.'
+            ? t('Thank you for using Vitalis. Stay with the person until professional care takes over.')
             : !responderId
               ? nearbyCount === 0
-                ? 'No certified responders are on duty near you. Call the ambulance now.'
-                : `${nearbyCount ?? 'Nearby'} responder${nearbyCount === 1 ? '' : 's'} alerted. Also call the ambulance.`
-              : 'Stay where you are if it is safe. Keep your phone unlocked and nearby.'}
+                ? t('No certified responders are on duty near you. Call the ambulance now.')
+                : nearbyCount == null
+                  ? t('Nearby responders alerted. Also call the ambulance.')
+                  : tn(nearbyCount, '1 responder alerted. Also call the ambulance.', '{n} responders alerted. Also call the ambulance.')
+              : t('Stay where you are if it is safe. Keep your phone unlocked and nearby.')}
         </Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.body}>
         {!ended ? (
-          <Pressable style={styles.callButton} onPress={() => callNumber(ambulance)} accessibilityRole="button" accessibilityLabel={`Call ambulance ${ambulance}`}>
+          <Pressable style={styles.callButton} onPress={() => callNumber(ambulance)} accessibilityRole="button" accessibilityLabel={t('Call ambulance {number}', { number: ambulance })}>
             <Phone size={22} color="#fff" />
-            <Text style={styles.callText}>Call ambulance · {ambulance}</Text>
+            <Text style={styles.callText}>{t('Call ambulance · {number}', { number: ambulance })}</Text>
           </Pressable>
         ) : null}
 
         {responderId ? (
           <PersonRow
             icon={<UserRound size={20} color={colors.primaryStrong} />}
-            title={nameOf(emergency?.responder) ?? 'Responder'}
+            title={nameOf(emergency?.responder) ?? t('Responder')}
             subtitle={roleOf(emergency?.responder)}
             meta={
-              emergency?.status === 'on_scene' ? 'On scene'
-              : rDist != null ? `${formatDistance(rDist)} · ~${etaMinutes(rDist)} min`
-              : emergency?.etaSeconds ? `~${Math.max(1, Math.round(emergency.etaSeconds / 60))} min`
-              : 'On the way'
+              emergency?.status === 'on_scene' ? t('On scene')
+              : rDist != null ? `${formatDistance(rDist)} · ${t('~{n} min', { n: etaMinutes(rDist) })}`
+              : emergency?.etaSeconds ? t('~{n} min', { n: Math.max(1, Math.round(emergency.etaSeconds / 60)) })
+              : t('On the way')
             }
           />
         ) : !ended ? (
           <View style={styles.waitingRow}>
             <Radio size={18} color={colors.mutedForeground} />
-            <Text style={styles.waitingText}>Waiting for a responder to accept…</Text>
+            <Text style={styles.waitingText}>{t('Waiting for a responder to accept…')}</Text>
           </View>
         ) : null}
 
         {runnerId ? (
           <PersonRow
             icon={<Zap size={20} color={colors.warning} />}
-            title={`Defibrillator · ${nameOf(emergency?.aedRunner) ?? 'runner'}`}
-            subtitle={typeof emergency?.aed === 'object' ? emergency.aed.name : 'Nearest AED'}
+            title={t('Defibrillator · {name}', { name: nameOf(emergency?.aedRunner) ?? t('runner') })}
+            subtitle={typeof emergency?.aed === 'object' ? emergency.aed.name : t('Nearest AED')}
             meta={
-              emergency?.aedStatus === 'delivered' ? 'AED arrived'
-              : emergency?.aedStatus === 'has_aed' ? aDist != null ? `Has AED · ${formatDistance(aDist)}` : 'Has AED, coming'
-              : 'Fetching AED'
+              emergency?.aedStatus === 'delivered' ? t('AED arrived')
+              : emergency?.aedStatus === 'has_aed' ? aDist != null ? t('Has AED · {distance}', { distance: formatDistance(aDist) }) : t('Has AED, coming')
+              : t('Fetching AED')
             }
           />
         ) : null}
@@ -307,7 +310,7 @@ export default function EmergencyScreen() {
         ) : !ended ? (
           <Pressable style={styles.linkRow} onPress={() => setCprOn(v => !v)} accessibilityRole="button">
             <HeartPulse size={18} color={colors.destructive} />
-            <Text style={styles.linkText}>{cprOn ? 'Hide CPR guidance' : 'Person stopped breathing? Show CPR guidance'}</Text>
+            <Text style={styles.linkText}>{cprOn ? t('Hide CPR guidance') : t('Person stopped breathing? Show CPR guidance')}</Text>
           </Pressable>
         ) : null}
         {!ended && emergency?.type !== 'cardiac' && cprOn ? <CprCoach on onToggle={() => setCprOn(false)} /> : null}
@@ -316,7 +319,7 @@ export default function EmergencyScreen() {
           <View style={styles.locRow}>
             <MapPin size={16} color={colors.mutedForeground} />
             <Text style={styles.locText}>
-              Shared location {incident[1].toFixed(5)}, {incident[0].toFixed(5)}
+              {t('Shared location {lat}, {lng}', { lat: incident[1].toFixed(5), lng: incident[0].toFixed(5) })}
             </Text>
           </View>
         ) : null}
@@ -325,11 +328,11 @@ export default function EmergencyScreen() {
       <SafeAreaView edges={['bottom']} style={styles.footer}>
         {ended ? (
           <Pressable style={styles.footerPrimary} onPress={() => router.replace('/(tabs)/home')} accessibilityRole="button">
-            <Text style={styles.footerPrimaryText}>Back to home</Text>
+            <Text style={styles.footerPrimaryText}>{t('Back to home')}</Text>
           </Pressable>
         ) : (
           <Pressable style={styles.footerGhost} onPress={cancel} disabled={phase === 'sending'} accessibilityRole="button">
-            <Text style={styles.footerGhostText}>I'm safe, cancel SOS</Text>
+            <Text style={styles.footerGhostText}>{t("I'm safe, cancel SOS")}</Text>
           </Pressable>
         )}
       </SafeAreaView>
@@ -363,7 +366,7 @@ function CprCoach({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   useEffect(() => {
     if (!on) return;
     setCount(0);
-    const t = setInterval(() => {
+    const timer = setInterval(() => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
       setCount(c => c + 1);
       if (!reduceMotion) {
@@ -373,7 +376,7 @@ function CprCoach({ on, onToggle }: { on: boolean; onToggle: () => void }) {
         );
       }
     }, 60_000 / CPR_BPM);
-    return () => clearInterval(t);
+    return () => clearInterval(timer);
   }, [on, pulse, reduceMotion]);
 
   const beatStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
@@ -381,23 +384,23 @@ function CprCoach({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   return (
     <View style={styles.cpr}>
       <View style={styles.cprHead}>
-        <Text style={styles.cprTitle}>CPR guidance</Text>
+        <Text style={styles.cprTitle}>{t('CPR guidance')}</Text>
         <Pressable onPress={onToggle} hitSlop={12} accessibilityRole="button">
-          <Text style={styles.cprToggle}>{on ? 'Pause' : 'Start'}</Text>
+          <Text style={styles.cprToggle}>{on ? t('Pause') : t('Start')}</Text>
         </Pressable>
       </View>
       {on ? (
         <>
           <Animated.View style={[styles.cprBeat, beatStyle]}>
             <Text style={styles.cprCount}>{(count % 30) + 1}</Text>
-            <Text style={styles.cprPush}>Push</Text>
+            <Text style={styles.cprPush}>{t('Push')}</Text>
           </Animated.View>
-          <Text style={styles.cprStep}>Heel of your hand on the centre of the chest, other hand on top.</Text>
-          <Text style={styles.cprStep}>Push hard, 5–6 cm deep, with every pulse. Let the chest rise fully.</Text>
-          <Text style={styles.cprStep}>Don't stop until a responder or the ambulance takes over. Swap with someone every 2 minutes if you can.</Text>
+          <Text style={styles.cprStep}>{t('Heel of your hand on the centre of the chest, other hand on top.')}</Text>
+          <Text style={styles.cprStep}>{t('Push hard, 5–6 cm deep, with every pulse. Let the chest rise fully.')}</Text>
+          <Text style={styles.cprStep}>{t("Don't stop until a responder or the ambulance takes over. Swap with someone every 2 minutes if you can.")}</Text>
         </>
       ) : (
-        <Text style={styles.cprStep}>Start if the person is unresponsive and not breathing normally. Your phone will pulse at the right pace.</Text>
+        <Text style={styles.cprStep}>{t('Start if the person is unresponsive and not breathing normally. Your phone will pulse at the right pace.')}</Text>
       )}
     </View>
   );

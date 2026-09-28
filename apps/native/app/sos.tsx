@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Empty } from '@/components/ui/Empty';
 import { colors, radius } from '@/lib/theme';
+import { t } from '@/lib/i18n';
 
 interface EmergencyNumber {
   id: string;
@@ -55,10 +56,10 @@ export default function SOSModal() {
           setHospitals(hospitalsResponse.value.data);
         }
         if (numbersResponse.status === 'rejected' || hospitalsResponse.status === 'rejected') {
-          setError('Some emergency resources are using fallback data.');
+          setError(t('Some emergency resources are using fallback data.'));
         }
       } catch {
-        setError('Emergency resources could not be loaded.');
+        setError(t('Emergency resources could not be loaded.'));
       }
     };
 
@@ -70,7 +71,7 @@ export default function SOSModal() {
     const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(target)}`;
     const supported = await Linking.canOpenURL(url);
     if (!supported) {
-      toast.error('Maps unavailable', { description: 'No map app is available on this device.' });
+      toast.error(t('Maps unavailable'), { description: t('No map app is available on this device.') });
       return;
     }
     await Linking.openURL(url);
@@ -78,14 +79,14 @@ export default function SOSModal() {
 
   return (
     <AppScreen
-      eyebrow="Emergency resources"
-      title="SOS directory"
-      subtitle="Call fast, find care, and navigate to open hospitals without leaving the app."
-      action={<HeaderButton icon={X} onPress={() => router.back()} label="Close" />}
+      eyebrow={t('Emergency resources')}
+      title={t('SOS directory')}
+      subtitle={t('Call fast, find care, and navigate to open hospitals without leaving the app.')}
+      action={<HeaderButton icon={X} onPress={() => router.back()} label={t('Close')} />}
       headerContent={
         <View style={styles.headerBadge}>
           <TriangleAlert size={16} color="#fff" />
-          <Text style={styles.headerBadgeText}>Use these resources when emergency dispatch needs a backup path.</Text>
+          <Text style={styles.headerBadgeText}>{t('Use these resources when emergency dispatch needs a backup path.')}</Text>
         </View>
       }
     >
@@ -97,8 +98,8 @@ export default function SOSModal() {
 
       <View style={styles.tabRow}>
         {([
-          { key: 'numbers', label: 'Emergency numbers' },
-          { key: 'hospitals', label: 'Hospitals' },
+          { key: 'numbers', label: t('Emergency numbers') },
+          { key: 'hospitals', label: t('Hospitals') },
         ] as const).map((entry) => {
           const active = tab === entry.key;
           return (
@@ -116,11 +117,11 @@ export default function SOSModal() {
                 {entry.category === 'police' ? <Shield size={20} color={colors.info} /> : <Phone size={20} color={colors.destructive} />}
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.itemTitle}>{entry.name}</Text>
+                <Text style={styles.itemTitle}>{t(entry.name)}</Text>
                 <Text style={styles.itemValue}>{entry.number}</Text>
               </View>
               <Button size="sm" style={styles.callButton} onPress={() => void Linking.openURL(`tel:${entry.number}`)}>
-                Call
+                {t('Call')}
               </Button>
             </Card>
           ))
@@ -138,18 +139,18 @@ export default function SOSModal() {
               <View style={styles.hospitalActions}>
                 {hospital.phone ? (
                   <Button size="sm" variant="outline" onPress={() => void Linking.openURL(`tel:${hospital.phone}`)}>
-                    Call
+                    {t('Call')}
                   </Button>
                 ) : null}
                 <Button size="sm" style={styles.callButton} onPress={() => void openDirections(hospital)}>
-                  Route
+                  {t('Route')}
                 </Button>
               </View>
             </Card>
           ))
         : (
           <Card style={styles.emptyCard}>
-            <Empty icon={MapPin} title="No nearby hospitals" description="We could not find hospital records right now." />
+            <Empty icon={MapPin} title={t('No nearby hospitals')} description={t('We could not find hospital records right now.')} />
           </Card>
         )}
     </AppScreen>

@@ -19,6 +19,7 @@ import { distanceM, formatDistance, LngLat, openDirections } from '@/lib/geo';
 import { RootState } from '@/lib/store';
 import { startDutyTracking, stopDutyTracking } from '@/lib/dutyLocation';
 import { colors, radius } from '@/lib/theme';
+import { apiError, t } from '@/lib/i18n';
 
 type Status = 'pending' | 'assigned' | 'en_route' | 'on_scene' | 'resolved' | 'cancelled';
 
@@ -40,29 +41,29 @@ interface Incident {
 const RESPONDER_ROLES = ['doctor', 'nurse', 'student_responder', 'blood_donor'];
 
 const TYPE_LABEL: Record<string, string> = {
-  cardiac: 'Cardiac arrest',
-  medical: 'Medical emergency',
-  trauma: 'Injury',
-  blood_needed: 'Blood needed',
-  rare_medicine: 'Medicine needed',
-  other: 'Emergency',
+  cardiac: t('Cardiac arrest'),
+  medical: t('Medical emergency'),
+  trauma: t('Injury'),
+  blood_needed: t('Blood needed'),
+  rare_medicine: t('Medicine needed'),
+  other: t('Emergency'),
 };
 
 const STATUS_LABEL: Record<Status, string> = {
-  pending: 'Waiting',
-  assigned: 'Accepted',
-  en_route: 'On the way',
-  on_scene: 'On scene',
-  resolved: 'Closed',
-  cancelled: 'Cancelled',
+  pending: t('Waiting'),
+  assigned: t('Accepted'),
+  en_route: t('On the way'),
+  on_scene: t('On scene'),
+  resolved: t('Closed'),
+  cancelled: t('Cancelled'),
 };
 
 const timeAgo = (iso: string) => {
   const m = Math.floor(Math.max(0, Date.now() - new Date(iso).getTime()) / 60_000);
   if (m < 1) return 'just now';
-  if (m < 60) return `${m} min ago`;
+  if (m < 60) return t('{n} min ago', { n: m });
   const h = Math.floor(m / 60);
-  return h < 24 ? `${h} h ago` : `${Math.floor(h / 24)} d ago`;
+  return h < 24 ? t('{n} h ago', { n: h }) : t('{n} d ago', { n: Math.floor(h / 24) });
 };
 
 export default function ResponderInbox() {
@@ -93,7 +94,7 @@ export default function ResponderInbox() {
       setActive(mine);
       setIncidents(list.filter(e => e !== mine));
     } catch {
-      toast.error('Could not load the inbox', { description: 'Pull down to retry.' });
+      toast.error(t('Could not load the inbox'), { description: t('Pull down to retry.') });
     } finally {
       setLoading(false);
     }
@@ -144,7 +145,7 @@ export default function ResponderInbox() {
       if (!emergency?._id) return;
       setIncidents(prev => [emergency, ...prev.filter(x => x._id !== emergency._id)]);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
-      toast(TYPE_LABEL[emergency.type] ?? 'New emergency', { description: 'Nearby. Open the inbox to accept.' });
+      toast(TYPE_LABEL[emergency.type] ?? t('New emergency'), { description: t('Nearby. Open the inbox to accept.') });
     };
     const onTaken = ({ _id, needsAedRunner }: { _id: string; needsAedRunner: boolean }) =>
       setIncidents(prev =>
@@ -156,7 +157,7 @@ export default function ResponderInbox() {
       setActive(prev => {
         if (!prev || prev._id !== e._id) return prev;
         if (e.status === 'resolved' || e.status === 'cancelled') {
-          toast(e.status === 'cancelled' ? 'Caller cancelled the SOS' : 'Incident closed');
+          toast(e.status === 'cancelled' ? t('Caller cancelled the SOS') : t('Incident closed'));
           return null;
         }
         return { ...prev, status: e.status, aedStatus: e.aedStatus };
@@ -174,13 +175,13 @@ export default function ResponderInbox() {
 
   if (!canAccess) {
     return (
-      <AppScreen title="Responder inbox" subtitle="For doctors, nurses and certified first-aiders.">
+      <AppScreen title={t('Responder inbox')} subtitle={t('For doctors, nurses and certified first-aiders.')}>
         <Empty
           icon={ShieldCheck}
-          title="Become a responder"
-          description="Pass the CPR or AED course in Training. You'll then be able to go on duty and receive SOS calls near you."
+          title={t('Become a responder')}
+          description={t("Pass the CPR or AED course in Training. You'll then be able to go on duty and receive SOS calls near you.")}
         />
-        <Button onPress={() => router.replace('/(tabs)/learn')}>Open training</Button>
+        <Button onPress={() => router.replace('/(tabs)/learn')}>{t('Open training')}</Button>
       </AppScreen>
     );
   }
@@ -192,7 +193,7 @@ export default function ResponderInbox() {
       if (next) {
         const perm = await Location.requestForegroundPermissionsAsync();
         if (perm.status !== 'granted') {
-          toast.error('Location needed', { description: 'Vitalis only alerts responders close to an emergency.' });
+          toast.error(t('Location needed'), { description: t('Vitalis only alerts responders close to an emergency.') });
           return;
         }
         const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
@@ -202,8 +203,8 @@ export default function ResponderInbox() {
         // "Always" location lets calls reach you with Vitalis closed. Without it, duty still
         // works while the app is open, so warn instead of refusing.
         if (!(await startDutyTracking())) {
-          toast('Only while Vitalis is open', {
-            description: 'Allow location "Always" in Settings to receive SOS calls with the app closed.',
+          toast(t('Only while Vitalis is open'), {
+            description: t('Allow location “Always” in Settings to receive SOS calls with the app closed.'),
           });
         }
         lastDutyPush.current = Date.now();
@@ -215,11 +216,10 @@ export default function ResponderInbox() {
         setAvailable(false);
       }
     } catch (err: any) {
-      const msg = err?.response?.data?.error;
-      toast.error(next ? 'Could not go on duty' : 'Could not go off duty', {
-        description: msg ?? 'Try again.',
+      toast.error(next ? t('Could not go on duty') : t('Could not go off duty'), {
+        description: apiError(err, 'Try again.'),
         ...(err?.response?.status === 403
-          ? { action: { label: 'Training', onClick: () => router.push('/(tabs)/learn') } }
+          ? { action: { label: t('Training'), onClick: () => router.push('/(tabs)/learn') } }
           : {}),
       });
     } finally {
@@ -242,14 +242,14 @@ export default function ResponderInbox() {
       setIncidents(prev => prev.filter(i => i._id !== id));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       if (data.myRole === 'aed' && data.aed) {
-        toast.success('You are the AED runner', { description: `Get the defibrillator at ${data.aed.name} first.` });
+        toast.success(t('You are the AED runner'), { description: t('Get the defibrillator at {place} first.', { place: data.aed.name }) });
         openDirections(data.aed.coordinates, data.aed.name);
       } else {
-        toast.success('Accepted', { description: 'Directions are opening.' });
-        if (data.location?.coordinates) openDirections(data.location.coordinates, 'Emergency');
+        toast.success(t('Accepted'), { description: t('Directions are opening.') });
+        if (data.location?.coordinates) openDirections(data.location.coordinates, t('Emergency'));
       }
     } catch (err: any) {
-      toast.error('Could not accept', { description: err?.response?.data?.error ?? 'Someone else may have taken it.' });
+      toast.error(t('Could not accept'), { description: apiError(err, 'Someone else may have taken it.') });
       void load();
     } finally {
       setBusy(null);
@@ -262,9 +262,9 @@ export default function ResponderInbox() {
     try {
       await api.patch(`/emergencies/${active._id}/status`, { status });
       setActive(status === 'resolved' ? null : { ...active, status });
-      if (status === 'resolved') toast.success('Incident closed. Thank you.');
+      if (status === 'resolved') toast.success(t('Incident closed. Thank you.'));
     } catch (err: any) {
-      toast.error('Update failed', { description: err?.response?.data?.error ?? 'Try again.' });
+      toast.error(t('Update failed'), { description: apiError(err, 'Try again.') });
     } finally {
       setBusy(null);
     }
@@ -276,9 +276,9 @@ export default function ResponderInbox() {
     try {
       await api.patch(`/emergencies/${active._id}/aed`, { status });
       setActive({ ...active, aedStatus: status });
-      if (status === 'has_aed' && active.location) openDirections(active.location.coordinates, 'Emergency');
+      if (status === 'has_aed' && active.location) openDirections(active.location.coordinates, t('Emergency'));
     } catch (err: any) {
-      toast.error('Update failed', { description: err?.response?.data?.error ?? 'Try again.' });
+      toast.error(t('Update failed'), { description: apiError(err, 'Try again.') });
     } finally {
       setBusy(null);
     }
@@ -289,34 +289,34 @@ export default function ResponderInbox() {
 
   return (
     <AppScreen
-      title="Responder inbox"
-      subtitle={available ? 'On duty. Nearby SOS calls appear here instantly.' : 'Off duty. You will not receive SOS calls.'}
-      action={<HeaderButton icon={ChevronLeft} onPress={() => router.back()} label="Back" />}
+      title={t('Responder inbox')}
+      subtitle={available ? t('On duty. Nearby SOS calls appear here instantly.') : t('Off duty. You will not receive SOS calls.')}
+      action={<HeaderButton icon={ChevronLeft} onPress={() => router.back()} label={t('Back')} />}
       scrollProps={{ refreshControl: <RefreshControl refreshing={false} onRefresh={load} tintColor={colors.primary} /> }}
     >
       <Card style={styles.dutyCard}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.dutyTitle}>On duty</Text>
-          <Text style={styles.dutyBody}>Share your location with Vitalis while on duty.</Text>
+          <Text style={styles.dutyTitle}>{t('On duty')}</Text>
+          <Text style={styles.dutyBody}>{t('Share your location with Vitalis while on duty.')}</Text>
         </View>
         <Switch
           value={available}
           onValueChange={toggleDuty}
           disabled={busy === 'duty'}
           trackColor={{ true: colors.primary, false: colors.border }}
-          accessibilityLabel="On duty"
+          accessibilityLabel={t('On duty')}
         />
       </Card>
 
       {active ? (
         <Animated.View entering={FadeInDown.duration(220)}>
           <Card style={styles.activeCard}>
-            <Text style={styles.activeLabel}>{isRunner ? 'You are fetching the AED' : 'Your active call'}</Text>
-            <Text style={styles.activeTitle}>{TYPE_LABEL[active.type] ?? 'Emergency'}</Text>
+            <Text style={styles.activeLabel}>{isRunner ? t('You are fetching the AED') : t('Your active call')}</Text>
+            <Text style={styles.activeTitle}>{TYPE_LABEL[active.type] ?? t('Emergency')}</Text>
             <Text style={styles.activeMeta}>
-              {distTo(active.location?.coordinates) ? `${distTo(active.location?.coordinates)} away · ` : ''}
+              {distTo(active.location?.coordinates) ? `${t('{distance} away', { distance: distTo(active.location?.coordinates)! })} · ` : ''}
               {isRunner
-                ? active.aedStatus === 'delivered' ? 'AED delivered' : active.aedStatus === 'has_aed' ? 'AED picked up' : 'Heading to the AED'
+                ? active.aedStatus === 'delivered' ? t('AED delivered') : active.aedStatus === 'has_aed' ? t('AED picked up') : t('Heading to the AED')
                 : STATUS_LABEL[active.status]}
             </Text>
 
@@ -337,11 +337,11 @@ export default function ResponderInbox() {
                 onPress={() => {
                   const toAed = isRunner && active.aedStatus === 'to_aed' && active.aed;
                   const target = toAed ? active.aed!.coordinates : active.location?.coordinates;
-                  if (target) openDirections(target, toAed ? active.aed!.name : 'Emergency');
+                  if (target) openDirections(target, toAed ? active.aed!.name : t('Emergency'));
                 }}
               >
                 <Navigation size={16} color={colors.foreground} />
-                Directions
+                {t('Directions')}
               </Button>
               <Button
                 variant="outline"
@@ -355,23 +355,23 @@ export default function ResponderInbox() {
 
             {isRunner ? (
               active.aedStatus === 'to_aed' ? (
-                <Button onPress={() => setAed('has_aed')} loading={busy === 'status'}>I have the AED</Button>
+                <Button onPress={() => setAed('has_aed')} loading={busy === 'status'}>{t('I have the AED')}</Button>
               ) : active.aedStatus === 'has_aed' ? (
-                <Button onPress={() => setAed('delivered')} loading={busy === 'status'}>AED is with the patient</Button>
+                <Button onPress={() => setAed('delivered')} loading={busy === 'status'}>{t('AED is with the patient')}</Button>
               ) : null
             ) : active.status === 'assigned' ? (
-              <Button onPress={() => setStatus('en_route')} loading={busy === 'status'}>I'm on my way</Button>
+              <Button onPress={() => setStatus('en_route')} loading={busy === 'status'}>{t("I'm on my way")}</Button>
             ) : active.status === 'en_route' ? (
-              <Button onPress={() => setStatus('on_scene')} loading={busy === 'status'}>I've arrived</Button>
+              <Button onPress={() => setStatus('on_scene')} loading={busy === 'status'}>{t("I've arrived")}</Button>
             ) : (
-              <Button onPress={() => setStatus('resolved')} loading={busy === 'status'}>Handed over, close call</Button>
+              <Button onPress={() => setStatus('resolved')} loading={busy === 'status'}>{t('Handed over, close call')}</Button>
             )}
           </Card>
         </Animated.View>
       ) : null}
 
       <View style={styles.listHeader}>
-        <Text style={styles.listTitle}>Nearby calls</Text>
+        <Text style={styles.listTitle}>{t('Nearby calls')}</Text>
         <Text style={styles.listCount}>{incidents.length}</Text>
       </View>
 
@@ -382,10 +382,10 @@ export default function ResponderInbox() {
       ) : incidents.length === 0 ? (
         <Empty
           icon={InboxIcon}
-          title={available ? 'All quiet nearby' : 'You are off duty'}
+          title={available ? t('All quiet nearby') : t('You are off duty')}
           description={available
-            ? 'Keep Vitalis open. New calls within 20 km appear here with a vibration.'
-            : 'Turn on duty to receive SOS calls within 20 km of you.'}
+            ? t('Keep Vitalis open. New calls within 20 km appear here with a vibration.')
+            : t('Turn on duty to receive SOS calls within 20 km of you.')}
         />
       ) : (
         <View style={{ gap: 10 }}>
@@ -393,11 +393,11 @@ export default function ResponderInbox() {
             <Animated.View key={e._id} entering={FadeInDown.duration(200)} exiting={FadeOut.duration(150)} layout={LinearTransition.duration(200)}>
               <Card style={styles.incident}>
                 <View style={styles.incidentTop}>
-                  <Text style={[styles.incidentType, e.priority === 1 && { color: colors.destructive }]}>{TYPE_LABEL[e.type] ?? 'Emergency'}</Text>
+                  <Text style={[styles.incidentType, e.priority === 1 && { color: colors.destructive }]}>{TYPE_LABEL[e.type] ?? t('Emergency')}</Text>
                   <Text style={styles.incidentTime}>{timeAgo(e.createdAt)}</Text>
                 </View>
                 <Text style={styles.incidentMeta}>
-                  {distTo(e.location?.coordinates) ?? 'Distance unknown'}
+                  {distTo(e.location?.coordinates) ?? t('Distance unknown')}
                   {e.needsAedRunner ? ' · Responder on the way, AED needed' : ''}
                 </Text>
                 {e.description ? <Text style={styles.incidentDesc} numberOfLines={2}>{e.description}</Text> : null}
@@ -407,7 +407,7 @@ export default function ResponderInbox() {
                   disabled={!available || !!active}
                   variant={e.needsAedRunner ? 'outline' : 'default'}
                 >
-                  {!available ? 'Go on duty to accept' : active ? 'Finish your current call first' : e.needsAedRunner ? 'Fetch the AED' : 'Accept'}
+                  {!available ? t('Go on duty to accept') : active ? t('Finish your current call first') : e.needsAedRunner ? t('Fetch the AED') : t('Accept')}
                 </Button>
               </Card>
             </Animated.View>

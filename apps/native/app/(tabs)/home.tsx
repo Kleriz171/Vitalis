@@ -10,6 +10,7 @@ import { useNearestAed } from '@/lib/geo';
 import { RootState } from '@/lib/store';
 import { AppScreen } from '@/components/AppScreen';
 import { colors, fonts, radius, type } from '@/lib/theme';
+import { t, tn } from '@/lib/i18n';
 
 type Passport = { bloodType?: string; allergies: unknown[]; available: boolean };
 
@@ -49,35 +50,35 @@ export default function Home() {
   };
 
   const passportDetail = passport
-    ? [passport.bloodType ? `Blood ${passport.bloodType}` : 'Blood type unknown',
-       passport.allergies.length ? `${passport.allergies.length} ${passport.allergies.length === 1 ? 'allergy' : 'allergies'}` : 'No allergies'].join(' · ')
-    : 'Your medical ID for paramedics';
+    ? [passport.bloodType ? t('Blood {type}', { type: passport.bloodType }) : t('Blood type unknown'),
+       passport.allergies.length ? tn(passport.allergies.length, '1 allergy', '{n} allergies') : t('No allergies')].join(' · ')
+    : t('Your medical ID for paramedics');
 
   const rows: { icon: ReactNode; title: string; detail: string; path: string; status?: boolean }[] = [
     isResponder
-      ? { icon: <Siren size={20} color={colors.primaryStrong} />, title: 'Responder duty', detail: passport?.available ? 'On duty · calls near you reach you' : 'Off duty · tap to go on duty', path: '/responder-inbox', status: !!passport?.available }
-      : { icon: <GraduationCap size={20} color={colors.primaryStrong} />, title: 'Become a responder', detail: '20-minute CPR course', path: '/(tabs)/learn' },
-    { icon: <QrCode size={20} color={colors.foreground} />, title: 'Bio Passport', detail: passportDetail, path: '/(tabs)/me' },
-    { icon: <Zap size={20} color={colors.warning} />, title: 'Nearest defibrillator', detail: nearestAed ?? 'Public AEDs near you', path: '/aeds' },
-    { icon: <MessageCircle size={20} color={colors.foreground} />, title: 'Talk to Vitalis', detail: 'First aid and health questions', path: '/assistant' },
-    { icon: <Phone size={20} color={colors.foreground} />, title: 'Emergency numbers', detail: 'Ambulance 127 · Police 129 · Fire 128', path: '/sos' },
+      ? { icon: <Siren size={20} color={colors.primaryStrong} />, title: t('Responder duty'), detail: passport?.available ? t('On duty · calls near you reach you') : t('Off duty · tap to go on duty'), path: '/responder-inbox', status: !!passport?.available }
+      : { icon: <GraduationCap size={20} color={colors.primaryStrong} />, title: t('Become a responder'), detail: t('20-minute CPR course'), path: '/(tabs)/learn' },
+    { icon: <QrCode size={20} color={colors.foreground} />, title: t('Bio Passport'), detail: passportDetail, path: '/(tabs)/me' },
+    { icon: <Zap size={20} color={colors.warning} />, title: t('Nearest defibrillator'), detail: nearestAed ?? t('Public AEDs near you'), path: '/aeds' },
+    { icon: <MessageCircle size={20} color={colors.foreground} />, title: t('Talk to Vitalis'), detail: t('First aid and health questions'), path: '/assistant' },
+    { icon: <Phone size={20} color={colors.foreground} />, title: t('Emergency numbers'), detail: t('Ambulance 127 · Police 129 · Fire 128'), path: '/sos' },
   ];
 
   return (
-    <AppScreen title={firstName ? `Hello, ${firstName}` : 'Vitalis'}>
+    <AppScreen title={firstName ? t('Hello, {name}', { name: firstName }) : 'Vitalis'}>
       <Animated.View style={sosStyle}>
         <Pressable
           onPress={openSos}
           style={({ pressed }) => [styles.sos, pressed && { opacity: 0.9 }]}
           accessibilityRole="button"
-          accessibilityLabel={liveSos ? 'Open your live SOS' : 'Start SOS'}
-          accessibilityHint={liveSos ? undefined : 'Starts a 3 second countdown you can cancel'}
+          accessibilityLabel={liveSos ? t('Open your live SOS') : t('Start SOS')}
+          accessibilityHint={liveSos ? undefined : t('Starts a 3 second countdown you can cancel')}
         >
-          <Text style={styles.sosLabel}>{liveSos ? 'SOS live' : 'SOS'}</Text>
+          <Text style={styles.sosLabel}>{liveSos ? t('SOS live') : 'SOS'}</Text>
           <Text style={styles.sosHint}>
             {liveSos
-              ? liveSos.status === 'pending' ? 'Alerting responders near you. Tap to follow.' : 'A responder is on the way. Tap to follow.'
-              : 'Tap to alert certified responders near you.\nYou have 3 seconds to cancel.'}
+              ? liveSos.status === 'pending' ? t('Alerting responders near you. Tap to follow.') : t('A responder is on the way. Tap to follow.')
+              : t('Tap to alert certified responders near you.\nYou have 3 seconds to cancel.')}
           </Text>
         </Pressable>
       </Animated.View>

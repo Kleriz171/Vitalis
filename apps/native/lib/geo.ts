@@ -3,6 +3,7 @@ import { Linking, Platform } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import * as Location from 'expo-location';
 import { api } from '@/lib/api';
+import { t } from './i18n';
 
 export type LngLat = [number, number];
 
@@ -16,7 +17,7 @@ export const distanceM = (a: LngLat, b: LngLat) => {
 };
 
 export const formatDistance = (m: number) =>
-  m < 50 ? 'Under 50 m' : m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(1)} km`;
+  m < 50 ? t('Under 50 m') : m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(1)} km`;
 
 // Walking/driving mix in a city: same heuristic as the API (×1.4 road factor, 35 km/h).
 export const etaMinutes = (m: number) => Math.max(1, Math.round(((m * 1.4) / 35_000) * 60));

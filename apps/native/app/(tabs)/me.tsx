@@ -2,11 +2,12 @@ import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react
 import { Image, Pressable, RefreshControl, StyleSheet, Text, TextInputProps, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { useRouter } from 'expo-router';
-import { Award, ChevronDown, ChevronRight, ChevronUp, LogOut, Users, X } from 'lucide-react-native';
+import { Award, ChevronDown, ChevronRight, ChevronUp, Languages, LogOut, Users, X } from 'lucide-react-native';
 import { toast } from 'sonner-native';
 import { api } from '@/lib/api';
 import { signOut } from '@/lib/session';
 import { AppScreen } from '@/components/AppScreen';
+import { apiError, lang, locale, setLanguage, t, tn } from '@/lib/i18n';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { RootState, setSession, setTraining } from '@/lib/store';
@@ -69,23 +70,24 @@ type SaveTarget = 'overview' | 'medication' | 'allergy' | 'vaccination' | 'appoi
 const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 // Values must match GENDERS in apps/api/src/models/User.ts.
 const genderLabels: Record<string, string> = {
-  female: 'Female',
-  male: 'Male',
-  non_binary: 'Non-binary',
-  other: 'Other',
-  prefer_not_to_say: 'Prefer not to say',
+  female: t('Female'),
+  male: t('Male'),
+  non_binary: t('Non-binary'),
+  other: t('Other'),
+  prefer_not_to_say: t('Prefer not to say'),
 };
 const genders = Object.keys(genderLabels);
 const severities: Severity[] = ['mild', 'moderate', 'severe'];
+const severityLabels: Record<Severity, string> = { mild: t('Mild'), moderate: t('Moderate'), severe: t('Severe') };
 
 const formatDate = (value?: string) =>
   value
-    ? new Intl.DateTimeFormat('en-US', {
+    ? new Intl.DateTimeFormat(locale, {
         month: 'short',
         day: 'numeric',
         year: 'numeric',
       }).format(new Date(value))
-    : 'Pending';
+    : t('Pending');
 
 const toIsoDate = (value: string) => {
   if (!value.trim()) return undefined;
@@ -170,8 +172,8 @@ export default function Profile() {
         setLoading(true);
         await load();
       } catch (error: any) {
-        toast.error('Could not load profile', {
-          description: error.response?.data?.error ?? 'Please try again shortly.',
+        toast.error(t('Could not load profile'), {
+          description: apiError(error, 'Please try again shortly.'),
         });
       } finally {
         setLoading(false);
@@ -186,8 +188,8 @@ export default function Profile() {
       setRefreshing(true);
       await load();
     } catch (error: any) {
-      toast.error('Refresh failed', {
-        description: error.response?.data?.error ?? 'Please try again shortly.',
+      toast.error(t('Refresh failed'), {
+        description: apiError(error, 'Please try again shortly.'),
       });
     } finally {
       setRefreshing(false);
@@ -209,10 +211,10 @@ export default function Profile() {
           .filter(Boolean),
       });
       await load();
-      toast.success('Profile updated');
+      toast.success(t('Profile updated'));
     } catch (error: any) {
-      toast.error('Could not update profile', {
-        description: error.response?.data?.error ?? 'Please check your details.',
+      toast.error(t('Could not update profile'), {
+        description: apiError(error, 'Please check your details.'),
       });
     } finally {
       setSaving(null);
@@ -234,7 +236,7 @@ export default function Profile() {
 
       if (target === 'medication') {
         if (isDuplicate('medication', medicationName)) {
-          toast.error('Already on your list', { description: `${medicationName.trim()} is already saved.` });
+          toast.error(t('Already on your list'), { description: t('{item} is already saved.', { item: medicationName.trim() }) });
           return;
         }
         await api.post('/health/medications', { name: medicationName.trim(), dosage: medicationDose.trim() || undefined, isActive: true });
@@ -244,7 +246,7 @@ export default function Profile() {
 
       if (target === 'allergy') {
         if (isDuplicate('allergy', allergen)) {
-          toast.error('Already on your list', { description: `${allergen.trim()} is already saved.` });
+          toast.error(t('Already on your list'), { description: t('{item} is already saved.', { item: allergen.trim() }) });
           return;
         }
         await api.post('/health/allergies', { allergen: allergen.trim(), severity });
@@ -275,7 +277,7 @@ export default function Profile() {
 
       if (target === 'condition') {
         if (isDuplicate('condition', conditionName)) {
-          toast.error('Already on your list', { description: `${conditionName.trim()} is already saved.` });
+          toast.error(t('Already on your list'), { description: t('{item} is already saved.', { item: conditionName.trim() }) });
           return;
         }
         await api.post('/health/conditions', {
@@ -296,10 +298,10 @@ export default function Profile() {
       }
 
       await load();
-      toast.success('Saved to Bio Passport');
+      toast.success(t('Saved to Bio Passport'));
     } catch (error: any) {
-      toast.error('Could not save record', {
-        description: error.response?.data?.error ?? 'Please complete the field and try again.',
+      toast.error(t('Could not save record'), {
+        description: apiError(error, 'Please complete the field and try again.'),
       });
     } finally {
       setSaving(null);
@@ -310,60 +312,59 @@ export default function Profile() {
     try {
       await api.delete(path);
       await load();
-      toast.success('Removed');
+      toast.success(t('Removed'));
     } catch (error: any) {
-      toast.error('Could not remove item', {
-        description: error.response?.data?.error ?? 'Please try again.',
+      toast.error(t('Could not remove item'), {
+        description: apiError(error, 'Please try again.'),
       });
     }
   };
   const [open, setOpen] = useState<string | null>(null);
   const toggle = (id: string) => setOpen(o => (o === id ? null : id));
-  const list = (items: string[]) => (items.length ? items.join(', ') : 'None added');
+  const list = (items: string[]) => (items.length ? items.join(', ') : t('None added'));
 
   const user = profile?.user;
-  const pretty = (s?: string) => s && (s[0].toUpperCase() + s.slice(1)).replaceAll('_', ' ');
-  const walletMeta = [user?.age != null ? `${user.age} years` : null, user?.gender && genderLabels[user.gender]].filter(Boolean).join(' · ');
-  const basicsDetail = [user?.bloodType, user?.age != null ? `${user.age} y` : null, user?.gender && genderLabels[user.gender]].filter(Boolean).join(' · ');
+  const walletMeta = [user?.age != null ? tn(user.age, '1 year', '{n} years') : null, user?.gender && genderLabels[user.gender]].filter(Boolean).join(' · ');
+  const basicsDetail = [user?.bloodType, user?.age != null ? tn(user.age, '1 year', '{n} years') : null, user?.gender && genderLabels[user.gender]].filter(Boolean).join(' · ');
 
   return (
     <AppScreen
-      title="Me"
+      title={t('Me')}
       scrollProps={{ refreshControl: <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} /> }}
     >
-      <View style={styles.wallet} accessible accessibilityLabel={`Bio Passport. ${user?.name ?? ''}. Blood type ${user?.bloodType ?? 'unknown'}.`}>
-        <Text style={styles.walletBrand}>Vitalis · Bio Passport</Text>
+      <View style={styles.wallet} accessible accessibilityLabel={t('Bio Passport. {name}. Blood type {type}.', { name: user?.name ?? '', type: user?.bloodType ?? t('unknown') })}>
+        <Text style={styles.walletBrand}>{t('Vitalis · Bio Passport')}</Text>
         <View style={styles.walletBody}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.walletLabel}>Blood type</Text>
-            <Text style={[styles.walletBlood, !user?.bloodType && styles.walletUnknown]}>{user?.bloodType ?? 'Unknown'}</Text>
+            <Text style={styles.walletLabel}>{t('Blood type')}</Text>
+            <Text style={[styles.walletBlood, !user?.bloodType && styles.walletUnknown]}>{user?.bloodType ?? t('Unknown')}</Text>
             <Text style={styles.walletName} numberOfLines={1}>{user?.name ?? auth.user?.name ?? ''}</Text>
             {walletMeta ? <Text style={styles.walletMeta}>{walletMeta}</Text> : null}
           </View>
           {passport?.qr ? (
             <View style={styles.qrTile}>
-              <Image source={{ uri: passport.qr }} style={styles.qr} accessibilityLabel="Bio Passport QR code" />
+              <Image source={{ uri: passport.qr }} style={styles.qr} accessibilityLabel={t('Bio Passport QR code')} />
             </View>
           ) : null}
         </View>
       </View>
       <Text style={styles.footnote}>
-        Paramedics scan the code with any phone camera. It carries only what they need in the first minutes: blood type, allergies, medication, conditions and your emergency contact.
+        {t('Paramedics scan the code with any phone camera. It carries only what they need in the first minutes: blood type, allergies, medication, conditions and your emergency contact.')}
       </Text>
 
-      <Text style={styles.groupTitle}>Medical record</Text>
+      <Text style={styles.groupTitle}>{t('Medical record')}</Text>
       <View style={styles.group}>
-        <Section id="basics" title="Basics" detail={basicsDetail || 'Blood type, age, height, weight'} open={open} onToggle={toggle} first>
+        <Section id="basics" title={t('Basics')} detail={basicsDetail || t('Blood type, age, height, weight')} open={open} onToggle={toggle} first>
           {user?.dateOfBirth ? (
-            <Text style={styles.fieldLabel}>Born {formatDate(user.dateOfBirth)}</Text>
+            <Text style={styles.fieldLabel}>{t('Born {date}', { date: formatDate(user.dateOfBirth) })}</Text>
           ) : null}
-          <Text style={styles.fieldLabel}>Blood type</Text>
+          <Text style={styles.fieldLabel}>{t('Blood type')}</Text>
           <View style={styles.selectionRow}>
             {bloodTypes.map((item) => (
               <Choice key={item} label={item} active={bloodType === item} onPress={() => setBloodType(item)} />
             ))}
           </View>
-          <Text style={styles.fieldLabel}>Gender</Text>
+          <Text style={styles.fieldLabel}>{t('Gender')}</Text>
           <View style={styles.selectionRow}>
             {genders.map((item) => (
               <Choice key={item} label={genderLabels[item]} active={gender === item} onPress={() => setGender(item)} />
@@ -371,61 +372,61 @@ export default function Profile() {
           </View>
           <View style={styles.fieldRow}>
             {/* Age follows the date of birth when we have one; only older accounts type it in. */}
-            {user?.dateOfBirth ? null : <Field grow label="Age" value={age} onChangeText={setAge} keyboardType="number-pad" />}
-            <Field grow label="Height, cm" value={heightCm} onChangeText={setHeightCm} keyboardType="decimal-pad" />
-            <Field grow label="Weight, kg" value={weightKg} onChangeText={setWeightKg} keyboardType="decimal-pad" />
+            {user?.dateOfBirth ? null : <Field grow label={t('Age')} value={age} onChangeText={setAge} keyboardType="number-pad" />}
+            <Field grow label={t('Height, cm')} value={heightCm} onChangeText={setHeightCm} keyboardType="decimal-pad" />
+            <Field grow label={t('Weight, kg')} value={weightKg} onChangeText={setWeightKg} keyboardType="decimal-pad" />
           </View>
-          <Field label="Illnesses" value={illnesses} onChangeText={setIllnesses} placeholder="Comma separated" />
-          <Button onPress={saveOverview} loading={saving === 'overview'}>Save</Button>
+          <Field label={t('Illnesses')} value={illnesses} onChangeText={setIllnesses} placeholder={t('Comma separated')} />
+          <Button onPress={saveOverview} loading={saving === 'overview'}>{t('Save')}</Button>
         </Section>
 
-        <Section id="allergies" title="Allergies" detail={list((profile?.allergies ?? []).map(a => a.allergen))} open={open} onToggle={toggle}>
+        <Section id="allergies" title={t('Allergies')} detail={list((profile?.allergies ?? []).map(a => a.allergen))} open={open} onToggle={toggle}>
           {(profile?.allergies ?? []).map((item) => (
-            <RecordRow key={item.id} title={item.allergen} badge={item.severity} onDelete={() => removeRecord(`/health/allergies/${item.id}`)} />
+            <RecordRow key={item.id} title={item.allergen} badge={severityLabels[item.severity]} onDelete={() => removeRecord(`/health/allergies/${item.id}`)} />
           ))}
-          <Input value={allergen} onChangeText={setAllergen} placeholder="Allergen" />
+          <Input value={allergen} onChangeText={setAllergen} placeholder={t('Allergen')} />
           <View style={styles.selectionRow}>
             {severities.map((item) => (
-              <Choice key={item} label={pretty(item)!} active={severity === item} onPress={() => setSeverity(item)} />
+              <Choice key={item} label={severityLabels[item]} active={severity === item} onPress={() => setSeverity(item)} />
             ))}
           </View>
-          <Button onPress={() => createRecord('allergy')} loading={saving === 'allergy'}>Add allergy</Button>
+          <Button onPress={() => createRecord('allergy')} loading={saving === 'allergy'}>{t('Add allergy')}</Button>
         </Section>
 
-        <Section id="medications" title="Medication" detail={list((profile?.medications ?? []).filter(m => m.isActive).map(m => m.name))} open={open} onToggle={toggle}>
+        <Section id="medications" title={t('Medication')} detail={list((profile?.medications ?? []).filter(m => m.isActive).map(m => m.name))} open={open} onToggle={toggle}>
           {(profile?.medications ?? []).map((item) => (
             <RecordRow
               key={item.id}
               title={item.name}
               subtitle={item.dosage}
-              badge={item.isActive ? undefined : 'Ended'}
+              badge={item.isActive ? undefined : t('Ended')}
               onDelete={() => removeRecord(`/health/medications/${item.id}`)}
             />
           ))}
-          <Input value={medicationName} onChangeText={setMedicationName} placeholder="Medication name" />
-          <Input value={medicationDose} onChangeText={setMedicationDose} placeholder="Dose or schedule" />
-          <Button onPress={() => createRecord('medication')} loading={saving === 'medication'}>Add medication</Button>
+          <Input value={medicationName} onChangeText={setMedicationName} placeholder={t('Medication name')} />
+          <Input value={medicationDose} onChangeText={setMedicationDose} placeholder={t('Dose or schedule')} />
+          <Button onPress={() => createRecord('medication')} loading={saving === 'medication'}>{t('Add medication')}</Button>
         </Section>
 
-        <Section id="conditions" title="Conditions" detail={list([...new Set([...(user?.illnesses ?? []), ...(profile?.conditions ?? []).map(c => c.name)])])} open={open} onToggle={toggle}>
+        <Section id="conditions" title={t('Conditions')} detail={list([...new Set([...(user?.illnesses ?? []), ...(profile?.conditions ?? []).map(c => c.name)])])} open={open} onToggle={toggle}>
           {(profile?.conditions ?? []).map((item) => (
             <RecordRow key={item.id} title={item.name} subtitle={item.notes} onDelete={() => removeRecord(`/health/conditions/${item.id}`)} />
           ))}
-          <Input value={conditionName} onChangeText={setConditionName} placeholder="Condition" />
-          <Input value={conditionNotes} onChangeText={setConditionNotes} placeholder="Notes" />
-          <Button onPress={() => createRecord('condition')} loading={saving === 'condition'}>Add condition</Button>
+          <Input value={conditionName} onChangeText={setConditionName} placeholder={t('Condition')} />
+          <Input value={conditionNotes} onChangeText={setConditionNotes} placeholder={t('Notes')} />
+          <Button onPress={() => createRecord('condition')} loading={saving === 'condition'}>{t('Add condition')}</Button>
         </Section>
 
-        <Section id="disabilities" title="Accessibility needs" detail={list((profile?.disabilities ?? []).map(d => d.name))} open={open} onToggle={toggle}>
+        <Section id="disabilities" title={t('Accessibility needs')} detail={list((profile?.disabilities ?? []).map(d => d.name))} open={open} onToggle={toggle}>
           {(profile?.disabilities ?? []).map((item) => (
             <RecordRow key={item.id} title={item.name} subtitle={item.notes} onDelete={() => removeRecord(`/health/disabilities/${item.id}`)} />
           ))}
-          <Input value={disabilityName} onChangeText={setDisabilityName} placeholder="Disability or accessibility need" />
-          <Input value={disabilityNotes} onChangeText={setDisabilityNotes} placeholder="Notes" />
-          <Button onPress={() => createRecord('disability')} loading={saving === 'disability'}>Add</Button>
+          <Input value={disabilityName} onChangeText={setDisabilityName} placeholder={t('Disability or accessibility need')} />
+          <Input value={disabilityNotes} onChangeText={setDisabilityNotes} placeholder={t('Notes')} />
+          <Button onPress={() => createRecord('disability')} loading={saving === 'disability'}>{t('Add')}</Button>
         </Section>
 
-        <Section id="vaccines" title="Vaccines" detail={list((profile?.vaccinations ?? []).map(v => v.name))} open={open} onToggle={toggle}>
+        <Section id="vaccines" title={t('Vaccines')} detail={list((profile?.vaccinations ?? []).map(v => v.name))} open={open} onToggle={toggle}>
           {(profile?.vaccinations ?? []).map((item) => (
             <RecordRow
               key={item.id}
@@ -434,13 +435,13 @@ export default function Profile() {
               onDelete={() => removeRecord(`/health/vaccinations/${item.id}`)}
             />
           ))}
-          <Input value={vaccinationName} onChangeText={setVaccinationName} placeholder="Vaccine" />
-          <Input value={vaccinationProvider} onChangeText={setVaccinationProvider} placeholder="Provider or clinic" />
-          <Input value={vaccinationDate} onChangeText={setVaccinationDate} placeholder="Date (YYYY-MM-DD)" autoCapitalize="none" />
-          <Button onPress={() => createRecord('vaccination')} loading={saving === 'vaccination'}>Add vaccine</Button>
+          <Input value={vaccinationName} onChangeText={setVaccinationName} placeholder={t('Vaccine')} />
+          <Input value={vaccinationProvider} onChangeText={setVaccinationProvider} placeholder={t('Provider or clinic')} />
+          <Input value={vaccinationDate} onChangeText={setVaccinationDate} placeholder={t('Date (YYYY-MM-DD)')} autoCapitalize="none" />
+          <Button onPress={() => createRecord('vaccination')} loading={saving === 'vaccination'}>{t('Add vaccine')}</Button>
         </Section>
 
-        <Section id="appointments" title="Appointments" detail={profile?.appointments.length ? `${profile.appointments.length} saved` : 'None added'} open={open} onToggle={toggle}>
+        <Section id="appointments" title={t('Appointments')} detail={profile?.appointments.length ? t('{n} saved', { n: profile.appointments.length }) : t('None added')} open={open} onToggle={toggle}>
           {(profile?.appointments ?? []).map((item) => (
             <RecordRow
               key={item.id}
@@ -449,17 +450,17 @@ export default function Profile() {
               onDelete={() => removeRecord(`/health/appointments/${item.id}`)}
             />
           ))}
-          <Input value={appointmentType} onChangeText={setAppointmentType} placeholder="Type (consultation, emergency, checkup)" />
-          <Input value={appointmentDate} onChangeText={setAppointmentDate} placeholder="Date (YYYY-MM-DD)" autoCapitalize="none" />
-          <Input value={appointmentStatus} onChangeText={setAppointmentStatus} placeholder="Status" />
-          <Input value={appointmentNotes} onChangeText={setAppointmentNotes} placeholder="Notes" />
-          <Button onPress={() => createRecord('appointment')} loading={saving === 'appointment'}>Add appointment</Button>
+          <Input value={appointmentType} onChangeText={setAppointmentType} placeholder={t('Type (consultation, emergency, checkup)')} />
+          <Input value={appointmentDate} onChangeText={setAppointmentDate} placeholder={t('Date (YYYY-MM-DD)')} autoCapitalize="none" />
+          <Input value={appointmentStatus} onChangeText={setAppointmentStatus} placeholder={t('Status')} />
+          <Input value={appointmentNotes} onChangeText={setAppointmentNotes} placeholder={t('Notes')} />
+          <Button onPress={() => createRecord('appointment')} loading={saving === 'appointment'}>{t('Add appointment')}</Button>
         </Section>
       </View>
 
       {activeCertifications.length ? (
         <>
-          <Text style={styles.groupTitle}>Certifications</Text>
+          <Text style={styles.groupTitle}>{t('Certifications')}</Text>
           <View style={styles.group}>
             {activeCertifications.map((cert: TrainingCertification, i) => (
               <LinkRow
@@ -467,7 +468,7 @@ export default function Profile() {
                 first={i === 0}
                 icon={<Award size={20} color={colors.primaryStrong} />}
                 title={cert.badgeLabel}
-                detail={`Valid until ${formatDate(cert.expiresAt)}`}
+                detail={t('Valid until {date}', { date: formatDate(cert.expiresAt) })}
                 onPress={() => router.push({ pathname: '/training/certificate/[id]', params: { id: cert.id } } as never)}
               />
             ))}
@@ -476,18 +477,26 @@ export default function Profile() {
       ) : null}
 
       <View style={[styles.group, { marginTop: 8 }]}>
-        <LinkRow first icon={<Users size={20} color={colors.foreground} />} title="Community" detail="Support groups" onPress={() => router.push('/community')} />
+        {/* Always bilingual, so someone who cannot read the current language can still find it. */}
+        <LinkRow
+          first
+          icon={<Languages size={20} color={colors.foreground} />}
+          title="Gjuha · Language"
+          detail={lang === 'sq' ? 'Shqip' : 'English'}
+          onPress={() => void setLanguage(lang === 'sq' ? 'en' : 'sq')}
+        />
+        <LinkRow icon={<Users size={20} color={colors.foreground} />} title={t('Community')} detail={t('Support groups')} onPress={() => router.push('/community')} />
         <Pressable
           onPress={async () => { await signOut(); router.replace('/'); }}
           style={({ pressed }) => [styles.row, styles.divider, pressed && styles.pressed]}
           accessibilityRole="button"
         >
           <View style={styles.icon}><LogOut size={20} color={colors.destructive} /></View>
-          <Text style={[styles.rowTitle, { color: colors.destructive }]}>Sign out</Text>
+          <Text style={[styles.rowTitle, { color: colors.destructive }]}>{t('Sign out')}</Text>
         </Pressable>
       </View>
 
-      {loading ? <Text style={styles.footnote}>Loading your Bio Passport…</Text> : null}
+      {loading ? <Text style={styles.footnote}>{t('Loading your Bio Passport…')}</Text> : null}
     </AppScreen>
   );
 }
@@ -564,7 +573,7 @@ function RecordRow({ title, subtitle, badge, onDelete }: { title: string; subtit
         {subtitle ? <Text style={styles.rowDetail}>{subtitle}</Text> : null}
       </View>
       {badge ? <Text style={styles.recordBadge}>{badge}</Text> : null}
-      <Pressable onPress={onDelete} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Remove ${title}`}>
+      <Pressable onPress={onDelete} hitSlop={10} accessibilityRole="button" accessibilityLabel={t('Remove {item}', { item: title })}>
         <X size={18} color={colors.mutedForeground} />
       </Pressable>
     </View>

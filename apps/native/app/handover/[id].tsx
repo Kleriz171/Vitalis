@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { api } from '@/lib/api';
 import { callNumber } from '@/lib/geo';
 import { colors, radius } from '@/lib/theme';
+import { apiError, locale, t, tn } from '@/lib/i18n';
 
 interface Handover {
   type: string;
@@ -30,18 +31,22 @@ interface Handover {
 }
 
 const mmss = (s: number | null) => (s == null ? '—' : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`);
-const clock = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' });
+const clock = (iso: string) => new Date(iso).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' });
 const cap = (s?: string) => (s ? s[0].toUpperCase() + s.slice(1).replace(/_/g, ' ') : null);
+const GENDER: Record<string, string> = {
+  female: t('Female'), male: t('Male'), non_binary: t('Non-binary'), other: t('Other'), prefer_not_to_say: t('Prefer not to say'),
+};
+const SEVERITY: Record<string, string> = { mild: t('mild'), moderate: t('moderate'), severe: t('severe') };
 const STEP: Record<string, string> = {
-  pending: 'SOS sent',
-  assigned: 'Responder accepted',
-  aed_runner_assigned: 'AED runner accepted',
-  en_route: 'Responder on the way',
-  on_scene: 'Responder on scene',
-  aed_has_aed: 'AED collected',
-  aed_delivered: 'AED at patient',
-  resolved: 'Handed over',
-  cancelled: 'Cancelled',
+  pending: t('SOS sent'),
+  assigned: t('Responder accepted'),
+  aed_runner_assigned: t('AED runner accepted'),
+  en_route: t('Responder on the way'),
+  on_scene: t('Responder on scene'),
+  aed_has_aed: t('AED collected'),
+  aed_delivered: t('AED at patient'),
+  resolved: t('Handed over'),
+  cancelled: t('Cancelled'),
 };
 
 /** What the ambulance crew needs in the first 30 seconds of taking over. */
@@ -54,7 +59,7 @@ export default function HandoverScreen() {
   useEffect(() => {
     api.get(`/emergencies/${id}/handover`)
       .then(r => setData(r.data))
-      .catch(err => setError(err?.response?.data?.error ?? 'Could not load the handover.'));
+      .catch(err => setError(apiError(err, 'Could not load the handover.')));
   }, [id]);
 
   const p = data?.patient;
@@ -63,7 +68,7 @@ export default function HandoverScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.bar}>
-        <Text style={styles.barTitle} accessibilityRole="header">Patient handover</Text>
+        <Text style={styles.barTitle} accessibilityRole="header">{t('Patient handover')}</Text>
         <Pressable onPress={() => router.back()} style={styles.close} accessibilityRole="button" accessibilityLabel="Close">
           <X size={20} color={colors.foreground} />
         </Pressable>
@@ -77,37 +82,37 @@ export default function HandoverScreen() {
       ) : (
         <ScrollView contentContainerStyle={styles.body}>
           <View style={styles.block}>
-            <Text style={styles.name}>{p?.name ?? 'Unknown patient'}</Text>
+            <Text style={styles.name}>{p?.name ?? t('Unknown patient')}</Text>
             <Text style={styles.sub}>
-              {[p?.age != null ? `${p.age} years` : null, cap(p?.gender), p?.bloodType ? `Blood ${p.bloodType}` : null]
-                .filter(Boolean).join(' · ') || 'No profile details'}
+              {[p?.age != null ? tn(p.age, '1 year', '{n} years') : null, p?.gender ? GENDER[p.gender] ?? cap(p.gender) : null, p?.bloodType ? t('Blood {type}', { type: p.bloodType }) : null]
+                .filter(Boolean).join(' · ') || t('No profile details')}
             </Text>
             {severe.length ? (
               <View style={styles.alert}>
-                <Text style={styles.alertText}>Severe allergy: {severe.map(a => a.allergen).join(', ')}</Text>
+                <Text style={styles.alertText}>{t('Severe allergy: {items}', { items: severe.map(a => a.allergen).join(', ') })}</Text>
               </View>
             ) : null}
           </View>
 
-          <Section title="Allergies" items={p?.allergies.map(a => `${a.allergen} (${a.severity})`)} />
-          <Section title="Current medication" items={p?.medications} />
-          <Section title="Conditions" items={p?.conditions} />
+          <Section title={t('Allergies')} items={p?.allergies.map(a => `${a.allergen} (${SEVERITY[a.severity] ?? a.severity})`)} />
+          <Section title={t('Current medication')} items={p?.medications} />
+          <Section title={t('Conditions')} items={p?.conditions} />
 
           {p?.emergencyContact?.phone ? (
             <Pressable style={styles.contact} onPress={() => callNumber(p.emergencyContact!.phone!)} accessibilityRole="button">
-              <Text style={styles.contactLabel}>Emergency contact</Text>
-              <Text style={styles.contactValue}>{p.emergencyContact.name ?? 'Contact'} · {p.emergencyContact.phone}</Text>
+              <Text style={styles.contactLabel}>{t('Emergency contact')}</Text>
+              <Text style={styles.contactValue}>{p.emergencyContact.name ?? t('Contact')} · {p.emergencyContact.phone}</Text>
             </Pressable>
           ) : null}
 
           <View style={styles.metrics}>
-            <Metric label="To accept" value={mmss(data.metrics.secondsToAssign)} />
-            <Metric label="To scene" value={mmss(data.metrics.secondsToScene)} />
-            <Metric label="To AED" value={mmss(data.metrics.secondsToAed)} />
+            <Metric label={t('To accept')} value={mmss(data.metrics.secondsToAssign)} />
+            <Metric label={t('To scene')} value={mmss(data.metrics.secondsToScene)} />
+            <Metric label={t('To AED')} value={mmss(data.metrics.secondsToAed)} />
           </View>
 
           <View style={styles.block}>
-            <Text style={styles.sectionTitle}>Timeline</Text>
+            <Text style={styles.sectionTitle}>{t('Timeline')}</Text>
             {data.timeline.map((t, i) => (
               <View key={i} style={styles.tlRow}>
                 <Text style={styles.tlTime}>{clock(t.at)}</Text>
@@ -125,7 +130,7 @@ function Section({ title, items }: { title: string; items?: string[] }) {
   return (
     <View style={styles.block}>
       <Text style={styles.sectionTitle}>{title}</Text>
-      <Text style={styles.sectionBody}>{items?.length ? items.join('\n') : 'None recorded'}</Text>
+      <Text style={styles.sectionBody}>{items?.length ? items.join('\n') : t('None recorded')}</Text>
     </View>
   );
 }

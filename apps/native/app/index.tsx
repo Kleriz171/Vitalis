@@ -11,6 +11,7 @@ import { courseArt } from '@/lib/courseArt';
 import { callNumber } from '@/lib/geo';
 import { RootState } from '@/lib/store';
 import { colors, fonts, type } from '@/lib/theme';
+import { t } from '@/lib/i18n';
 
 // Before sign-in the only emergency action is the ambulance number: SOS needs an account,
 // so responders know who they are running to and paramedics get the Bio Passport.
@@ -30,17 +31,17 @@ export default function Welcome() {
 
       <View style={styles.middle}>
         <SvgXml xml={courseArt('cpr-adult')!} width={168} height={168} />
-        <Text style={styles.headline} accessibilityRole="header">Help arrives before the ambulance.</Text>
+        <Text style={styles.headline} accessibilityRole="header">{t('Help arrives before the ambulance.')}</Text>
         <Text style={styles.body}>
-          When someone near you collapses, Vitalis alerts people trained in CPR who are close by, and gives paramedics your medical ID.
+          {t('When someone near you collapses, Vitalis alerts people trained in CPR who are close by, and gives paramedics your medical ID.')}
         </Text>
       </View>
 
       <View style={styles.bottom}>
-        <Button size="lg" onPress={() => router.push('/login')}>Get started</Button>
-        <Button size="lg" variant="outline" onPress={() => callNumber('127')} accessibilityHint="Calls the ambulance">
+        <Button size="lg" onPress={() => router.push('/login')}>{t('Get started')}</Button>
+        <Button size="lg" variant="outline" onPress={() => callNumber('127')} accessibilityHint={t('Calls the ambulance')}>
           <Phone size={18} color={colors.destructive} />
-          <Text style={styles.callText}>Emergency? Call 127</Text>
+          <Text style={styles.callText}>{t('Emergency? Call 127')}</Text>
         </Button>
       </View>
     </SafeAreaView>

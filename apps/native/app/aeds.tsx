@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { api } from '@/lib/api';
 import { formatDistance, LngLat, openDirections } from '@/lib/geo';
 import { colors, radius } from '@/lib/theme';
+import { apiError, t } from '@/lib/i18n';
 
 interface AedItem {
   id: string;
@@ -25,9 +26,9 @@ interface AedItem {
 }
 
 const ACCESS_LABEL: Record<AedItem['access'], string> = {
-  '24h': 'Open 24 hours',
-  business_hours: 'Business hours',
-  restricted: 'Ask staff for access',
+  '24h': t('Open 24 hours'),
+  business_hours: t('Business hours'),
+  restricted: t('Ask staff for access'),
 };
 
 export default function AedsScreen() {
@@ -43,7 +44,7 @@ export default function AedsScreen() {
     try {
       const perm = await Location.requestForegroundPermissionsAsync();
       if (perm.status !== 'granted') {
-        setError('Turn on location to find the defibrillators closest to you.');
+        setError(t('Turn on location to find the defibrillators closest to you.'));
         return;
       }
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
@@ -52,7 +53,7 @@ export default function AedsScreen() {
       const { data } = await api.get('/aeds', { params: { lng: coords[0], lat: coords[1] } });
       setItems(data);
     } catch (err: any) {
-      setError(err?.response?.data?.error ?? 'Could not load defibrillators. Pull to retry.');
+      setError(apiError(err, 'Could not load defibrillators. Pull to retry.'));
     } finally {
       setLoading(false);
     }
@@ -62,9 +63,9 @@ export default function AedsScreen() {
 
   return (
     <AppScreen
-      title="Defibrillators"
-      subtitle="Nearest public AEDs. In a cardiac arrest, every minute without one cuts survival."
-      action={<HeaderButton icon={ChevronLeft} onPress={() => router.back()} label="Back" />}
+      title={t('Defibrillators')}
+      subtitle={t('Nearest public AEDs. In a cardiac arrest, every minute without one cuts survival.')}
+      action={<HeaderButton icon={ChevronLeft} onPress={() => router.back()} label={t('Back')} />}
       scrollProps={{ refreshControl: <RefreshControl refreshing={false} onRefresh={load} tintColor={colors.primary} /> }}
     >
       {reporting && here ? (
@@ -84,9 +85,9 @@ export default function AedsScreen() {
           {[0, 1, 2].map(i => <Skeleton key={i} style={{ height: 88, borderRadius: radius.lg }} />)}
         </View>
       ) : error ? (
-        <Empty icon={Zap} title="No location" description={error} />
+        <Empty icon={Zap} title={t('No location')} description={error} />
       ) : items.length === 0 ? (
-        <Empty icon={Zap} title="None registered within 10 km" description="If you know where one hangs, report it. A dispatcher verifies each entry." />
+        <Empty icon={Zap} title={t('None registered within 10 km')} description={t('If you know where one hangs, report it. A dispatcher verifies each entry.')} />
       ) : (
         <View style={{ gap: 10 }}>
           {items.map(a => (
@@ -98,14 +99,14 @@ export default function AedsScreen() {
                 </View>
                 {a.placement ? <Text style={styles.placement} numberOfLines={2}>{a.placement}</Text> : null}
                 <Text style={styles.meta}>
-                  {a.distanceM != null ? `${formatDistance(a.distanceM)} · ` : ''}{ACCESS_LABEL[a.access]}{a.verified ? '' : ' · Unverified'}
+                  {a.distanceM != null ? `${formatDistance(a.distanceM)} · ` : ''}{ACCESS_LABEL[a.access]}{a.verified ? '' : ` · ${t('Unverified')}`}
                 </Text>
               </View>
               <Pressable
                 onPress={() => openDirections(a.coordinates, a.name)}
                 style={styles.navButton}
                 accessibilityRole="button"
-                accessibilityLabel={`Directions to ${a.name}`}
+                accessibilityLabel={t('Directions to {place}', { place: a.name })}
               >
                 <Navigation size={18} color={colors.primaryStrong} />
               </Pressable>
@@ -124,14 +125,14 @@ function ReportForm({ here, onDone }: { here: LngLat; onDone: (created: boolean)
   const [saving, setSaving] = useState(false);
 
   const submit = async () => {
-    if (name.trim().length < 2) return toast.error('Add the name of the place');
+    if (name.trim().length < 2) return toast.error(t('Add the name of the place'));
     setSaving(true);
     try {
       await api.post('/aeds', { name: name.trim(), placement: placement.trim() || undefined, access, coordinates: here });
-      toast.success('Thanks, reported', { description: 'A dispatcher will verify it.' });
+      toast.success(t('Thanks, reported'), { description: t('A dispatcher will verify it.') });
       onDone(true);
     } catch (err: any) {
-      toast.error('Could not report', { description: err?.response?.data?.error ?? 'Try again.' });
+      toast.error(t('Could not report'), { description: apiError(err, 'Try again.') });
     } finally {
       setSaving(false);
     }
@@ -139,12 +140,12 @@ function ReportForm({ here, onDone }: { here: LngLat; onDone: (created: boolean)
 
   return (
     <Card style={styles.form}>
-      <Text style={styles.formTitle}>Report a defibrillator at your location</Text>
-      <Text style={styles.label}>Place</Text>
-      <TextInput value={name} onChangeText={setName} placeholder="e.g. City Hall lobby" placeholderTextColor={colors.mutedForeground} style={styles.input} maxLength={120} />
-      <Text style={styles.label}>Exactly where</Text>
-      <TextInput value={placement} onChangeText={setPlacement} placeholder="e.g. Wall cabinet left of the lifts" placeholderTextColor={colors.mutedForeground} style={styles.input} maxLength={240} />
-      <Text style={styles.label}>Access</Text>
+      <Text style={styles.formTitle}>{t('Report a defibrillator at your location')}</Text>
+      <Text style={styles.label}>{t('Place')}</Text>
+      <TextInput value={name} onChangeText={setName} placeholder={t('e.g. City Hall lobby')} placeholderTextColor={colors.mutedForeground} style={styles.input} maxLength={120} />
+      <Text style={styles.label}>{t('Exactly where')}</Text>
+      <TextInput value={placement} onChangeText={setPlacement} placeholder={t('e.g. Wall cabinet left of the lifts')} placeholderTextColor={colors.mutedForeground} style={styles.input} maxLength={240} />
+      <Text style={styles.label}>{t('Access')}</Text>
       <View style={styles.segment}>
         {(Object.keys(ACCESS_LABEL) as AedItem['access'][]).map(k => (
           <Pressable
@@ -154,13 +155,13 @@ function ReportForm({ here, onDone }: { here: LngLat; onDone: (created: boolean)
             accessibilityRole="radio"
             accessibilityState={{ selected: access === k }}
           >
-            <Text style={[styles.segText, access === k && styles.segTextOn]}>{k === '24h' ? '24 h' : k === 'business_hours' ? 'Hours' : 'Staff'}</Text>
+            <Text style={[styles.segText, access === k && styles.segTextOn]}>{k === '24h' ? t('24 h') : k === 'business_hours' ? t('Hours') : t('Staff')}</Text>
           </Pressable>
         ))}
       </View>
       <View style={styles.formActions}>
-        <Button variant="ghost" onPress={() => onDone(false)} style={{ flex: 1 }}>Cancel</Button>
-        <Button onPress={submit} loading={saving} style={{ flex: 1 }}>Report</Button>
+        <Button variant="ghost" onPress={() => onDone(false)} style={{ flex: 1 }}>{t('Cancel')}</Button>
+        <Button onPress={submit} loading={saving} style={{ flex: 1 }}>{t('Report')}</Button>
       </View>
     </Card>
   );

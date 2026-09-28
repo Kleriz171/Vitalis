@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { api } from '@/lib/api';
 import { setSession } from '@/lib/store';
+import { apiError, t } from '@/lib/i18n';
 import { colors, radius, type } from '@/lib/theme';
 
 type Step = 'phone' | 'code' | 'about' | 'passport' | 'email';
@@ -17,6 +18,7 @@ type Severity = 'mild' | 'moderate' | 'severe';
 
 const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 const SEVERITIES: Severity[] = ['mild', 'moderate', 'severe'];
+const severityLabels: Record<Severity, string> = { mild: t('Mild'), moderate: t('Moderate'), severe: t('Severe') };
 const RESEND_SECONDS = 30;
 
 /** Local Albanian formats (069…, 69…, 355…) and 00-prefixed numbers → E.164. */
@@ -29,8 +31,7 @@ const toE164 = (raw: string) => {
 };
 const isE164 = (p: string) => /^\+[1-9]\d{7,14}$/.test(p);
 
-const errorText = (e: any) =>
-  e?.response?.data?.issues?.[0]?.message ?? e?.response?.data?.error ?? 'Check your connection and try again.';
+const errorText = (e: any) => apiError(e, 'Check your connection and try again.');
 
 /** YYYY-MM-DD from separate fields, or null when it is not a real past date. */
 const isoDob = (d: string, m: string, y: string) => {
@@ -125,7 +126,7 @@ export default function SignIn() {
   const emailSignIn = () => run(async () => {
     const { data } = await api.post('/auth/login', { email: email.trim(), password });
     if (data.user.role === 'admin' || data.user.role === 'dispatcher') {
-      toast.error('This account is for the Vitalis desktop console.');
+      toast.error(t('This account is for the Vitalis desktop console.'));
       return;
     }
     signedIn(data);
@@ -146,12 +147,12 @@ export default function SignIn() {
 
   const screens: Record<Step, { title: string; subtitle: string; body: ReactNode; cta: ReactNode }> = {
     phone: {
-      title: 'Your phone number',
-      subtitle: "We'll text you a 6-digit code. There is no password to remember.",
+      title: t('Your phone number'),
+      subtitle: t("We'll text you a 6-digit code. There is no password to remember."),
       body: (
         <>
           <Field
-            label="Mobile number"
+            label={t("Mobile number")}
             value={phoneRaw}
             onChangeText={setPhoneRaw}
             placeholder="069 123 4567"
@@ -160,14 +161,14 @@ export default function SignIn() {
             textContentType="telephoneNumber"
             autoFocus
           />
-          <Button variant="ghost" onPress={() => setStep('email')}>Sign in with email instead</Button>
+          <Button variant="ghost" onPress={() => setStep('email')}>{t("Sign in with email instead")}</Button>
         </>
       ),
-      cta: <Button size="lg" onPress={sendCode} loading={busy} disabled={!isE164(phone)}>Send code</Button>,
+      cta: <Button size="lg" onPress={sendCode} loading={busy} disabled={!isE164(phone)}>{t("Send code")}</Button>,
     },
     code: {
-      title: 'Enter the code',
-      subtitle: `Sent by SMS to ${phone}.`,
+      title: t('Enter the code'),
+      subtitle: t('Sent by SMS to {phone}.', { phone }),
       body: (
         <>
           <Input
@@ -182,98 +183,98 @@ export default function SignIn() {
             textContentType="oneTimeCode"
             maxLength={6}
             autoFocus
-            accessibilityLabel="6-digit code"
+            accessibilityLabel={t('6-digit code')}
             style={styles.codeInput}
           />
           <Button variant="ghost" onPress={sendCode} disabled={resendIn > 0 || busy}>
-            {resendIn > 0 ? `Send a new code in ${resendIn} s` : 'Send a new code'}
+            {resendIn > 0 ? t('Send a new code in {n} s', { n: resendIn }) : t('Send a new code')}
           </Button>
         </>
       ),
-      cta: <Button size="lg" onPress={() => verify()} loading={busy} disabled={code.length !== 6}>Continue</Button>,
+      cta: <Button size="lg" onPress={() => verify()} loading={busy} disabled={code.length !== 6}>{t("Continue")}</Button>,
     },
     about: {
-      title: 'About you',
-      subtitle: 'Paramedics see this when you call for help. Step 1 of 2.',
+      title: t('About you'),
+      subtitle: t('Paramedics see this when you call for help. Step 1 of 2.'),
       body: (
         <>
           <View style={styles.pair}>
-            <Field grow={1} label="First name" value={firstName} onChangeText={setFirstName} autoComplete="given-name" textContentType="givenName" />
-            <Field grow={1} label="Last name" value={lastName} onChangeText={setLastName} autoComplete="family-name" textContentType="familyName" />
+            <Field grow={1} label={t("First name")} value={firstName} onChangeText={setFirstName} autoComplete="given-name" textContentType="givenName" />
+            <Field grow={1} label={t("Last name")} value={lastName} onChangeText={setLastName} autoComplete="family-name" textContentType="familyName" />
           </View>
-          <Text style={styles.label}>Date of birth</Text>
+          <Text style={styles.label}>{t("Date of birth")}</Text>
           <View style={styles.pair}>
-            <Field grow={1} label="Day" hideLabel value={day} onChangeText={(v) => setDay(v.replace(/\D/g, '').slice(0, 2))} placeholder="DD" keyboardType="number-pad" />
-            <Field grow={1} label="Month" hideLabel value={month} onChangeText={(v) => setMonth(v.replace(/\D/g, '').slice(0, 2))} placeholder="MM" keyboardType="number-pad" />
-            <Field label="Year" hideLabel value={year} onChangeText={(v) => setYear(v.replace(/\D/g, '').slice(0, 4))} placeholder="YYYY" keyboardType="number-pad" grow={1.6} />
+            <Field grow={1} label={t("Day")} hideLabel value={day} onChangeText={(v) => setDay(v.replace(/\D/g, '').slice(0, 2))} placeholder={t("DD")} keyboardType="number-pad" />
+            <Field grow={1} label={t("Month")} hideLabel value={month} onChangeText={(v) => setMonth(v.replace(/\D/g, '').slice(0, 2))} placeholder={t("MM")} keyboardType="number-pad" />
+            <Field label={t("Year")} hideLabel value={year} onChangeText={(v) => setYear(v.replace(/\D/g, '').slice(0, 4))} placeholder={t("YYYY")} keyboardType="number-pad" grow={1.6} />
           </View>
           {day && month && year.length === 4 && !isoDob(day, month, year) ? (
-            <Text style={styles.error}>That date doesn't exist. Check the day and month.</Text>
+            <Text style={styles.error}>{t("That date doesn't exist. Check the day and month.")}</Text>
           ) : null}
-          <Text style={[styles.label, { marginTop: 8 }]}>Emergency contact</Text>
-          <Text style={styles.hint}>Someone we can call if you can't answer.</Text>
-          <Field label="Their name" value={contactName} onChangeText={setContactName} />
-          <Field label="Their phone" value={contactPhoneRaw} onChangeText={setContactPhoneRaw} placeholder="069 123 4567" keyboardType="phone-pad" />
+          <Text style={[styles.label, { marginTop: 8 }]}>{t("Emergency contact")}</Text>
+          <Text style={styles.hint}>{t("Someone we can call if you can't answer.")}</Text>
+          <Field label={t("Their name")} value={contactName} onChangeText={setContactName} />
+          <Field label={t("Their phone")} value={contactPhoneRaw} onChangeText={setContactPhoneRaw} placeholder="069 123 4567" keyboardType="phone-pad" />
           {contactPhoneRaw && contactPhone === phone ? (
-            <Text style={styles.error}>Use someone else's number, not your own.</Text>
+            <Text style={styles.error}>{t("Use someone else's number, not your own.")}</Text>
           ) : null}
         </>
       ),
-      cta: <Button size="lg" onPress={() => setStep('passport')} disabled={!aboutDone}>Continue</Button>,
+      cta: <Button size="lg" onPress={() => setStep('passport')} disabled={!aboutDone}>{t("Continue")}</Button>,
     },
     passport: {
-      title: 'Your Bio Passport',
-      subtitle: "Answer each question. \"I don't know\" and \"None\" are good answers; a guess is not. Step 2 of 2.",
+      title: t('Your Bio Passport'),
+      subtitle: t('Answer each question. “I don’t know” and “None” are good answers; a guess is not. Step 2 of 2.'),
       body: (
         <>
-          <Question title="Blood type">
+          <Question title={t("Blood type")}>
             <View style={styles.chips}>
               {BLOOD_TYPES.map((b) => <Chip key={b} label={b} active={bloodType === b} onPress={() => setBloodType(b)} />)}
-              <Chip label="I don't know" active={bloodType === 'unknown'} onPress={() => setBloodType('unknown')} />
+              <Chip label={t("I don't know")} active={bloodType === 'unknown'} onPress={() => setBloodType('unknown')} />
             </View>
           </Question>
 
-          <YesNo title="Allergies" has={hasAllergies} setHas={setHasAllergies}>
+          <YesNo title={t("Allergies")} has={hasAllergies} setHas={setHasAllergies}>
             <ItemEditor
-              items={allergies.map((a) => `${a.allergen} (${a.severity})`)}
+              items={allergies.map((a) => `${a.allergen} (${severityLabels[a.severity].toLowerCase()})`)}
               onRemove={(i) => setAllergies(allergies.filter((_, j) => j !== i))}
-              placeholder="e.g. Penicillin"
+              placeholder={t("e.g. Penicillin")}
               withSeverity
               onAdd={(allergen, severity) => setAllergies([...allergies, { allergen, severity: severity! }])}
             />
           </YesNo>
 
-          <YesNo title="Medication you take regularly" has={hasMeds} setHas={setHasMeds}>
+          <YesNo title={t("Medication you take regularly")} has={hasMeds} setHas={setHasMeds}>
             <ItemEditor
               items={meds.map((m) => m.name)}
               onRemove={(i) => setMeds(meds.filter((_, j) => j !== i))}
-              placeholder="e.g. Salbutamol inhaler"
+              placeholder={t("e.g. Salbutamol inhaler")}
               onAdd={(name) => setMeds([...meds, { name }])}
             />
           </YesNo>
 
-          <YesNo title="Conditions" has={hasConditions} setHas={setHasConditions}>
+          <YesNo title={t("Conditions")} has={hasConditions} setHas={setHasConditions}>
             <ItemEditor
               items={conditions}
               onRemove={(i) => setConditions(conditions.filter((_, j) => j !== i))}
-              placeholder="e.g. Asthma, diabetes, epilepsy"
+              placeholder={t("e.g. Asthma, diabetes, epilepsy")}
               onAdd={(name) => setConditions([...conditions, name])}
             />
           </YesNo>
         </>
       ),
-      cta: <Button size="lg" onPress={register} loading={busy} disabled={!passportDone}>Create account</Button>,
+      cta: <Button size="lg" onPress={register} loading={busy} disabled={!passportDone}>{t("Create account")}</Button>,
     },
     email: {
-      title: 'Sign in with email',
-      subtitle: 'For accounts created with an email address.',
+      title: t('Sign in with email'),
+      subtitle: t('For accounts created with an email address.'),
       body: (
         <>
-          <Field label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" autoComplete="email" textContentType="emailAddress" />
-          <Field label="Password" value={password} onChangeText={setPassword} secureTextEntry autoComplete="current-password" textContentType="password" />
+          <Field label={t("Email")} value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" autoComplete="email" textContentType="emailAddress" />
+          <Field label={t("Password")} value={password} onChangeText={setPassword} secureTextEntry autoComplete="current-password" textContentType="password" />
         </>
       ),
-      cta: <Button size="lg" onPress={emailSignIn} loading={busy} disabled={!email.trim() || !password}>Sign in</Button>,
+      cta: <Button size="lg" onPress={emailSignIn} loading={busy} disabled={!email.trim() || !password}>{t("Sign in")}</Button>,
     },
   };
   const s = screens[step];
@@ -283,7 +284,7 @@ export default function SignIn() {
       <AppScreen
         title={s.title}
         subtitle={s.subtitle}
-        action={<HeaderButton icon={ArrowLeft} label="Back" onPress={back} />}
+        action={<HeaderButton icon={ArrowLeft} label={t("Back")} onPress={back} />}
         footer={s.cta}
         scrollProps={{ keyboardShouldPersistTaps: 'handled' }}
       >
@@ -329,8 +330,8 @@ function YesNo({ title, has, setHas, children }: { title: string; has: boolean |
   return (
     <Question title={title}>
       <View style={styles.chips}>
-        <Chip label="None" active={has === false} onPress={() => setHas(false)} />
-        <Chip label="Yes" active={has === true} onPress={() => setHas(true)} />
+        <Chip label={t("None")} active={has === false} onPress={() => setHas(false)} />
+        <Chip label={t("Yes")} active={has === true} onPress={() => setHas(true)} />
       </View>
       {has ? children : null}
     </Question>
@@ -358,7 +359,7 @@ function ItemEditor({ items, onRemove, onAdd, placeholder, withSeverity }: {
       {items.map((item, i) => (
         <View key={`${item}-${i}`} style={styles.item}>
           <Text style={styles.itemText}>{item}</Text>
-          <Pressable onPress={() => onRemove(i)} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Remove ${item}`}>
+          <Pressable onPress={() => onRemove(i)} hitSlop={10} accessibilityRole="button" accessibilityLabel={t('Remove {item}', { item })}>
             <X size={18} color={colors.mutedForeground} />
           </Pressable>
         </View>
@@ -367,11 +368,11 @@ function ItemEditor({ items, onRemove, onAdd, placeholder, withSeverity }: {
       {withSeverity && text.trim() ? (
         <View style={styles.chips}>
           {SEVERITIES.map((sv) => (
-            <Chip key={sv} label={sv[0].toUpperCase() + sv.slice(1)} active={severity === sv} onPress={() => setSeverity(sv)} />
+            <Chip key={sv} label={severityLabels[sv]} active={severity === sv} onPress={() => setSeverity(sv)} />
           ))}
         </View>
       ) : null}
-      <Button variant="outline" onPress={add} disabled={!ready}>{items.length ? 'Add another' : 'Add'}</Button>
+      <Button variant="outline" onPress={add} disabled={!ready}>{items.length ? t('Add another') : t('Add')}</Button>
     </View>
   );
 }
