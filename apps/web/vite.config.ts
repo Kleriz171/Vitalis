@@ -25,5 +25,5 @@ export default defineConfig({
       },
     }),
   ],
-  server: { port: 5173, host: true },
+  server: { port: 5173 }, // localhost only: the Vite dev server has open path-traversal advisories
 });

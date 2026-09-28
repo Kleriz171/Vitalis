@@ -7,5 +7,5 @@ export default defineConfig({
     alias: { '@': path.resolve(__dirname, './src') },
   },
   plugins: [react()],
-  server: { port: 5175, host: true },
+  server: { port: 5175 }, // localhost only: the Vite dev server has open path-traversal advisories
 });
