@@ -18,7 +18,8 @@
     "dev:drone:sim": "npm run sim -w @vitalis/drone",
     "check:security": "npx tsx apps/api/scripts/security-check.ts",
     "check:drones": "npx tsx apps/api/scripts/drone-check.ts",
-    "check:i18n": "npx tsx apps/native/scripts/i18n-check.ts"
+    "check:i18n": "npx tsx apps/native/scripts/i18n-check.ts",
+    "check:redispatch": "npx tsx apps/api/scripts/redispatch-check.ts"
   },
   "overrides": {
     "react": "19.2.3",

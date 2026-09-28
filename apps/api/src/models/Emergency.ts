@@ -15,6 +15,9 @@ const EmergencySchema = new Schema({
     coordinates: { type: [Number], required: true },
   },
   etaSeconds: Number,
+  // Re-dispatch (redispatch.ts): distance at accept, and responders taken off this call.
+  responderStartM: Number,
+  releasedResponders: [{ type: Types.ObjectId, ref: 'User' }],
   // Second runner for cardiac arrests: fetches the nearest defibrillator, then joins the patient.
   aedRunner: { type: Types.ObjectId, ref: 'User', index: true },
   aed: { type: Types.ObjectId, ref: 'Aed' },

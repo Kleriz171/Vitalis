@@ -638,6 +638,10 @@ export const ui: Record<string, string> = {
 
   'Verified': 'I verifikuar',
 
+  'You were taken off the call': 'U hoqët nga thirrja',
+  'You did not seem to be moving toward the patient, so the next responders are being alerted.': 'Nuk dukej se po lëviznit drejt pacientit, prandaj po njoftohen ndihmësit e tjerë.',
+  'Responder did not move, re-alerted': 'Ndihmësi nuk lëvizi, u njoftuan të tjerë',
+
   // Notifications (system)
   'SOS calls near you': 'Thirrje SOS pranë jush',
   'Updates on your SOS': 'Përditësime për SOS-in tuaj',

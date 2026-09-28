@@ -163,13 +163,21 @@ export default function ResponderInbox() {
         return { ...prev, status: e.status, aedStatus: e.aedStatus };
       });
     };
+    // The server takes a responder off a call they are not moving toward (redispatch.ts).
+    const onReleased = ({ _id }: { _id: string }) => {
+      setActive(prev => (prev?._id === _id ? null : prev));
+      setIncidents(prev => prev.filter(i => i._id !== _id));
+      toast.error(t('You were taken off the call'), { description: t('You did not seem to be moving toward the patient, so the next responders are being alerted.') });
+    };
     socket.on('emergency:new', onNew);
     socket.on('emergency:taken', onTaken);
     socket.on('emergency:status', onStatus);
+    socket.on('emergency:released', onReleased);
     return () => {
       socket.off('emergency:new', onNew);
       socket.off('emergency:taken', onTaken);
       socket.off('emergency:status', onStatus);
+      socket.off('emergency:released', onReleased);
     };
   }, [canAccess]);
 

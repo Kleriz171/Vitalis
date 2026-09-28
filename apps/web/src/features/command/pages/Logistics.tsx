@@ -259,6 +259,7 @@ const STEP: Record<string, string> = {
   pending: 'SOS received',
   assigned: 'Responder accepted',
   aed_runner_assigned: 'AED runner accepted',
+  released: 'Responder did not move, re-alerted',
   en_route: 'Responder on the way',
   on_scene: 'Responder on scene',
   aed_has_aed: 'AED collected',

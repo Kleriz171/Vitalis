@@ -23,7 +23,7 @@ const FIRST_AIDER: PushText = { en: 'certified first-aider', sq: 'ndihmës i cer
 const distance = (km: number) => (km < 1 ? `${Math.max(50, Math.round(km * 1000 / 50) * 50)} m` : `${km.toFixed(1)} km`);
 
 // Push never blocks the request; failures are logged inside sendPush.
-const push = (p: Parameters<typeof sendPush>[0]) => { void sendPush(p).catch(() => {}); };
+export const push = (p: Parameters<typeof sendPush>[0]) => { void sendPush(p).catch(() => {}); };
 
 export const createEmergencySchema = z.object({
   type: z.enum(EMERGENCY_TYPE),
@@ -36,44 +36,54 @@ export const statusSchema = z.object({ status: z.enum(EMERGENCY_STATUS) });
 export const aedStatusSchema = z.object({ status: z.enum(['has_aed', 'delivered']) });
 
 // Everyone with a stake in the incident hears about changes: its room, the caller, operators.
-const broadcast = (event: string, e: any) => {
+export const broadcast = (event: string, e: any) => {
   const io = getIO();
   io.to(`emergency:${e._id}`).to(`user:${e.citizen}`).emit(event, e);
   io.to('dispatchers').emit('dashboard:emergency', e);
 };
 
+/**
+ * Alert on-duty responders in range (socket + lock-screen push, each with their own distance),
+ * with a view that hides the caller's identity. Used for a new SOS and for re-dispatch.
+ */
+export async function alertResponders(e: any, exclude: string[]) {
+  const at = (e.location as any).coordinates as [number, number];
+  const nearby = await emergencyService.findNearbyResponders(at, exclude);
+  const io = getIO();
+  const payload = { emergency: toResponderView(e) };
+  for (const r of nearby) {
+    io.to(`user:${r._id}`).emit('emergency:new', payload);
+    const their = (r.location as any)?.coordinates as [number, number] | undefined;
+    push({
+      userIds: [String(r._id)],
+      kind: 'sos',
+      title: TYPE_TITLE[e.type as string] ?? { en: 'Emergency nearby', sq: 'Urgjencë afër jush' },
+      body: their
+        ? { en: `${distance(haversineKm(their, at))} away. Tap to respond.`, sq: `${distance(haversineKm(their, at))} larg. Prekni për t’u përgjigjur.` }
+        : { en: 'Tap to respond.', sq: 'Prekni për t’u përgjigjur.' },
+      data: { type: 'sos', emergencyId: String(e._id) },
+    });
+  }
+  return nearby;
+}
+
 export const emergencyController = {
   create: async (req: AuthReq, res: Response, next: NextFunction) => {
     try {
       const { emergency: e, duplicate } = await emergencyService.create(req.user!.id, req.body);
-      const nearby = await emergencyService.findNearbyResponders((e.location as any).coordinates, req.user!.id);
+      let nearbyCount = 0;
       if (!duplicate) {
+        nearbyCount = (await alertResponders(e, [req.user!.id])).length;
         const certs = await fetchActiveCertifications([req.user!.id]);
-        const io = getIO();
-        // Alert only responders in range, with a view that hides the caller's identity.
-        const responderPayload = { emergency: toResponderView(e) };
-        for (const r of nearby) io.to(`user:${r._id}`).emit('emergency:new', responderPayload);
-        // Each responder gets their own distance in the lock-screen alert.
-        const at = (e.location as any).coordinates as [number, number];
-        for (const r of nearby) {
-          const their = (r.location as any)?.coordinates as [number, number] | undefined;
-          push({
-            userIds: [String(r._id)],
-            kind: 'sos',
-            title: TYPE_TITLE[e.type] ?? { en: 'Emergency nearby', sq: 'Urgjencë afër jush' },
-            body: their
-              ? { en: `${distance(haversineKm(their, at))} away. Tap to respond.`, sq: `${distance(haversineKm(their, at))} larg. Prekni për t’u përgjigjur.` }
-              : { en: 'Tap to respond.', sq: 'Prekni për t’u përgjigjur.' },
-            data: { type: 'sos', emergencyId: String(e._id) },
-          });
-        }
-        io.to('dispatchers').emit('dashboard:emergency', {
+        getIO().to('dispatchers').emit('dashboard:emergency', {
           ...e.toObject(),
           callerCertifications: certs.get(req.user!.id) ?? [],
-          nearbyCount: nearby.length,
+          nearbyCount,
         });
+      } else {
+        nearbyCount = (await emergencyService.findNearbyResponders((e.location as any).coordinates, req.user!.id)).length;
       }
-      res.status(duplicate ? 200 : 201).json({ emergency: e, nearbyCount: nearby.length, duplicate });
+      res.status(duplicate ? 200 : 201).json({ emergency: e, nearbyCount, duplicate });
     } catch (err) { next(err); }
   },
   accept: async (req: AuthReq, res: Response, next: NextFunction) => {

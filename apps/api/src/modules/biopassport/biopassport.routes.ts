@@ -76,7 +76,8 @@ r.patch('/me', validate(dutySchema), async (req: AuthReq, res, next) => {
       && !(await hasResponderCertification(req.user!.id))) {
       return res.status(403).json({ error: 'Complete the CPR or AED course to go on duty' });
     }
-    const u = await User.findByIdAndUpdate(req.user!.id, { $set: req.body }, { new: true, runValidators: true })
+    const set = req.body.location ? { ...req.body, locationAt: new Date() } : req.body;
+    const u = await User.findByIdAndUpdate(req.user!.id, { $set: set }, { new: true, runValidators: true })
       .select('available location role').lean();
     if (!u) return res.status(404).json({ error: 'Not found' });
     res.json({ available: u.available, location: u.location, role: u.role });

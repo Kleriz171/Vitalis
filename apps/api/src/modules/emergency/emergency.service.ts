@@ -87,10 +87,11 @@ export const emergencyService = {
     return { emergency: e, duplicate: false };
   },
 
-  async findNearbyResponders(coords: [number, number], excludeId: string) {
+  async findNearbyResponders(coords: [number, number], exclude: string | string[]) {
+    const ids = Array.isArray(exclude) ? exclude : [exclude];
     for (const radius of RINGS_M) {
       const found = await User.find({
-        _id: { $ne: excludeId },
+        _id: { $nin: ids },
         role: { $in: RESPONDER_ROLES },
         available: true,
         ...nearQuery(coords[0], coords[1], radius),
@@ -112,13 +113,16 @@ export const emergencyService = {
     if (String(current.citizen) === responderId) throw httpError(400, 'Cannot respond to your own SOS');
     const incident = (current.location as any)?.coordinates as [number, number];
 
+    const from = (responder.location as any)?.coordinates as [number, number] | undefined;
     const primary = await Emergency.findOneAndUpdate(
-      { _id: emergencyId, status: 'pending' },
+      // A responder taken off this call for not moving cannot take it back.
+      { _id: emergencyId, status: 'pending', releasedResponders: { $ne: responderId } },
       {
         $set: {
           responder: responderId,
           status: 'assigned',
-          etaSeconds: etaSeconds((responder.location as any)?.coordinates, incident),
+          etaSeconds: etaSeconds(from, incident),
+          responderStartM: from ? Math.round(haversineKm(from, incident) * 1000) : undefined,
         },
         $push: { timeline: { status: 'assigned', by: responderId, at: new Date() } },
       },
@@ -284,6 +288,7 @@ export const emergencyService = {
     for (const e of nearby) {
       const v = toResponderView(e);
       if (mineIds.has(v._id)) continue;
+      if ((e as any).releasedResponders?.some((id: any) => String(id) === responderId)) continue;
       if (v.status === 'pending') open.push(v);
       // Only offer the AED role when there is actually a device to fetch.
       else if (v.needsAedRunner && v.responder !== responderId && (await nearestAed((e.location as any).coordinates))) open.push(v);

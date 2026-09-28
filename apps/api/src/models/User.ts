@@ -31,6 +31,7 @@ const UserSchema = new Schema({
     coordinates: { type: [Number], default: [0, 0] },
   },
   available: { type: Boolean, default: false },
+  locationAt: Date,
   // Expo push tokens, one per installed device. Pruned when Expo reports them dead.
   pushTokens: { type: [String], default: [], select: false },
   // App language, reported with the push token; server-written text (push) follows it.

@@ -5,6 +5,7 @@ import { env } from './config/env';
 import { logger } from './config/logger';
 import { initSocket } from './realtime/socket';
 import { User } from './models/User';
+import { startRedispatch } from './modules/emergency/redispatch';
 
 async function main() {
   await connectDB();
@@ -15,6 +16,7 @@ async function main() {
   const server = http.createServer(app);
   initSocket(server);
   server.listen(env.port, () => logger.info(`API on :${env.port}`));
+  startRedispatch();
 }
 
 main().catch(err => {
