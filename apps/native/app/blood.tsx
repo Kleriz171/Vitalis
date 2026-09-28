@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/Label';
 import { api } from '@/lib/api';
 import { RootState } from '@/lib/store';
 import { colors, radius } from '@/lib/theme';
+import { apiError, locale, t, tn } from '@/lib/i18n';
 
 type QueueCategory = 'blood' | 'organ' | 'tissue' | 'medicine';
 type FilterCategory = 'all' | QueueCategory;
@@ -73,31 +74,31 @@ type BloodStatus = {
 };
 
 const requestCategories: { key: QueueCategory; label: string; helper: string; shortLabel: string; icon: ReactNode }[] = [
-  { key: 'blood', label: 'Blood', shortLabel: 'Blood', helper: 'Match a blood type, plasma, or platelet need.', icon: <Droplets size={16} color={colors.destructive} /> },
-  { key: 'organ', label: 'Organ', shortLabel: 'Organ', helper: 'Queue for transplant-ready organs and parts.', icon: <HeartHandshake size={16} color={colors.primary} /> },
-  { key: 'tissue', label: 'Tissue', shortLabel: 'Tissue', helper: 'Track corneas, skin grafts, and tissue needs.', icon: <ShieldPlus size={16} color={colors.info} /> },
-  { key: 'medicine', label: 'Medicine', shortLabel: 'Medicine', helper: 'Request a specific drug or treatment quickly.', icon: <Pill size={16} color={colors.success} /> },
+  { key: 'blood', label: t('Blood'), shortLabel: t('Blood'), helper: t('Match a blood type, plasma, or platelet need.'), icon: <Droplets size={16} color={colors.destructive} /> },
+  { key: 'organ', label: t('Organ'), shortLabel: t('Organ'), helper: t('Queue for transplant-ready organs and parts.'), icon: <HeartHandshake size={16} color={colors.primary} /> },
+  { key: 'tissue', label: t('Tissue'), shortLabel: t('Tissue'), helper: t('Track corneas, skin grafts, and tissue needs.'), icon: <ShieldPlus size={16} color={colors.info} /> },
+  { key: 'medicine', label: t('Medicine'), shortLabel: t('Medicine'), helper: t('Request a specific drug or treatment quickly.'), icon: <Pill size={16} color={colors.success} /> },
 ];
 
 const tabs: { key: FeedTab; label: string }[] = [
-  { key: 'request', label: 'Request' },
-  { key: 'queue', label: 'My queue' },
-  { key: 'exchange', label: 'Exchange' },
-  { key: 'inventory', label: 'Inventory' },
+  { key: 'request', label: t('Request') },
+  { key: 'queue', label: t('My queue') },
+  { key: 'exchange', label: t('Exchange') },
+  { key: 'inventory', label: t('Inventory') },
 ];
 
 const filterCategories: { key: FilterCategory; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'blood', label: 'Blood' },
-  { key: 'organ', label: 'Organs' },
-  { key: 'tissue', label: 'Tissues' },
-  { key: 'medicine', label: 'Medicine' },
+  { key: 'all', label: t('All') },
+  { key: 'blood', label: t('Blood') },
+  { key: 'organ', label: t('Organs') },
+  { key: 'tissue', label: t('Tissues') },
+  { key: 'medicine', label: t('Medicine') },
 ];
 
 const urgencyChoices: { key: Urgency; label: string }[] = [
-  { key: 'normal', label: 'Normal' },
-  { key: 'urgent', label: 'Urgent' },
-  { key: 'critical', label: 'Critical' },
+  { key: 'normal', label: t('Normal') },
+  { key: 'urgent', label: t('Urgent') },
+  { key: 'critical', label: t('Critical') },
 ];
 
 const urgencyTheme: Record<Urgency, { background: string; color: string }> = {
@@ -113,10 +114,11 @@ const queueTheme: Record<'queued' | 'matched', { background: string; color: stri
 
 const formatDate = (value?: string) =>
   value
-    ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(new Date(value))
-    : 'Just now';
+    ? new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric' }).format(new Date(value))
+    : t('Just now');
 
-const titleCase = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
+// Categories and urgencies arrive as lowercase keys; their labels live in the dictionary.
+const titleCase = (value: string) => t(value.charAt(0).toUpperCase() + value.slice(1));
 
 const readList = <T,>(value: unknown, keys: string[] = []): T[] => {
   if (Array.isArray(value)) return value as T[];
@@ -172,8 +174,8 @@ export default function SupplyScreen() {
         setLoading(true);
         await loadData();
       } catch (error: any) {
-        toast.error('Could not load supply center', {
-          description: error.response?.data?.error ?? 'Please try again shortly.',
+        toast.error(t('Could not load supply center'), {
+          description: apiError(error, 'Please try again shortly.'),
         });
       } finally {
         setLoading(false);
@@ -199,8 +201,8 @@ export default function SupplyScreen() {
       setRefreshing(true);
       await loadData();
     } catch (error: any) {
-      toast.error('Refresh failed', {
-        description: error.response?.data?.error ?? 'Please try again shortly.',
+      toast.error(t('Refresh failed'), {
+        description: apiError(error, 'Please try again shortly.'),
       });
     } finally {
       setRefreshing(false);
@@ -221,8 +223,8 @@ export default function SupplyScreen() {
 
   const submitQueueRequest = async () => {
     if (!resourceType.trim() || !quantityLabel.trim()) {
-      toast.error('Finish the request details', {
-        description: 'Add a resource type and quantity before joining the queue.',
+      toast.error(t('Finish the request details'), {
+        description: t('Add a resource type and quantity before joining the queue.'),
       });
       return;
     }
@@ -243,12 +245,12 @@ export default function SupplyScreen() {
       setQuantityLabel(requestCategory === 'blood' ? '1 unit' : '');
       await loadData();
       setTab('queue');
-      toast.success('Request added to the queue', {
-        description: 'We will keep it active until a matching supply is found.',
+      toast.success(t('Request added to the queue'), {
+        description: t('We will keep it active until a matching supply is found.'),
       });
     } catch (error: any) {
-      toast.error('Could not queue your request', {
-        description: error.response?.data?.error ?? 'Please try again.',
+      toast.error(t('Could not queue your request'), {
+        description: apiError(error, 'Please try again.'),
       });
     } finally {
       setSubmittingRequest(false);
@@ -257,7 +259,7 @@ export default function SupplyScreen() {
 
   const submitInquiry = async () => {
     if (!selectedExchange || !messageDraft.trim()) {
-      toast.error('Add a short availability note first.');
+      toast.error(t('Add a short availability note first.'));
       return;
     }
 
@@ -269,12 +271,12 @@ export default function SupplyScreen() {
       setMessageDraft('');
       await loadData();
       setTab('queue');
-      toast.success('Availability message sent', {
-        description: 'The requester will see your note in their replies.',
+      toast.success(t('Availability message sent'), {
+        description: t('The requester will see your note in their replies.'),
       });
     } catch (error: any) {
-      toast.error('Could not send your note', {
-        description: error.response?.data?.error ?? 'Please try again.',
+      toast.error(t('Could not send your note'), {
+        description: apiError(error, 'Please try again.'),
       });
     } finally {
       setSendingInquiry(false);
@@ -283,9 +285,9 @@ export default function SupplyScreen() {
 
   return (
     <AppScreen
-      eyebrow="Supply center"
-      title="Find care fast and track every request in one place."
-      subtitle="Request blood, organs, tissue, or medicine, stay in queue, and answer urgent exchange needs."
+      eyebrow={t('Supply center')}
+      title={t('Find care fast and track every request in one place.')}
+      subtitle={t('Request blood, organs, tissue, or medicine, stay in queue, and answer urgent exchange needs.')}
       contentContainerStyle={{ paddingBottom: 148 }}
       scrollProps={{
         refreshControl: <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />,
@@ -293,16 +295,16 @@ export default function SupplyScreen() {
       headerContent={
         <View style={styles.heroPanel}>
           <View style={styles.heroIdentityRow}>
-            <Badge variant="outline" style={styles.heroBadge}>
-              {user?.bloodType ?? 'Profile incomplete'}
+            <Badge variant="outline" style={styles.heroBadge} textStyle={{ color: '#fff' }}>
+              {user?.bloodType ?? t('Profile incomplete')}
             </Badge>
-            <Text style={styles.heroHint}>Connected to your Vitalis profile and live supply matching.</Text>
+            <Text style={styles.heroHint}>{t('Connected to your Vitalis profile and live supply matching.')}</Text>
           </View>
           <View style={styles.heroStatsRow}>
-            <HeroStat label="Queued" value={String(queuedCount)} />
-            <HeroStat label="Matched" value={String(matchedCount)} />
-            <HeroStat label="Exchange" value={String(exchangeRequests.length)} />
-            <HeroStat label="Replies" value={String(inquiries.length)} />
+            <HeroStat label={t('Queued')} value={String(queuedCount)} />
+            <HeroStat label={t('Matched')} value={String(matchedCount)} />
+            <HeroStat label={t('Exchange')} value={String(exchangeRequests.length)} />
+            <HeroStat label={t('Replies')} value={String(inquiries.length)} />
           </View>
         </View>
       }
@@ -338,9 +340,9 @@ export default function SupplyScreen() {
         <>
           <Card style={styles.sectionCard}>
             <View style={styles.sectionHeaderBlock}>
-              <Text style={styles.sectionTitle}>New request</Text>
+              <Text style={styles.sectionTitle}>{t('New request')}</Text>
               <Text style={styles.sectionBody}>
-                Pick a category, add the exact type you need, and we will keep it in queue until a compatible match appears.
+                {t('Pick a category, add the exact type you need, and we will keep it in queue until a compatible match appears.')}
               </Text>
             </View>
 
@@ -365,48 +367,48 @@ export default function SupplyScreen() {
               <View style={styles.spotlightHeader}>
                 <View style={styles.spotlightIcon}>{selectedCategory.icon}</View>
                 <View style={styles.spotlightCopy}>
-                  <Text style={styles.spotlightTitle}>{selectedCategory.shortLabel} request</Text>
+                  <Text style={styles.spotlightTitle}>{t('{type} request', { type: selectedCategory.shortLabel })}</Text>
                   <Text style={styles.spotlightBody}>{selectedCategory.helper}</Text>
                 </View>
               </View>
               <View style={styles.spotlightFacts}>
-                <DetailPill label={`Open exchange: ${exchangeRequests.filter((item) => item.category === requestCategory).length}`} />
-                <DetailPill label={nextQueuePosition ? `Closest queue slot: ${nextQueuePosition}` : 'No active wait shown'} />
+                <DetailPill label={t('Open exchange: {n}', { n: exchangeRequests.filter((item) => item.category === requestCategory).length })} />
+                <DetailPill label={nextQueuePosition ? t('Closest queue slot: {n}', { n: nextQueuePosition }) : t('No active wait shown')} />
               </View>
             </View>
 
             <View style={styles.formBlock}>
               <Label>
                 {requestCategory === 'blood'
-                  ? 'Blood type or product'
+                  ? t('Blood type or product')
                   : requestCategory === 'medicine'
-                    ? 'Medicine or treatment'
+                    ? t('Medicine or treatment')
                     : requestCategory === 'organ'
-                      ? 'Organ needed'
-                      : 'Tissue needed'}
+                      ? t('Organ needed')
+                      : t('Tissue needed')}
               </Label>
               <Input
                 value={resourceType}
                 onChangeText={setResourceType}
                 placeholder={
                   requestCategory === 'blood'
-                    ? 'O- blood, AB plasma, platelets'
+                    ? t('O- blood, AB plasma, platelets')
                     : requestCategory === 'medicine'
-                      ? 'Insulin, amoxicillin, epinephrine'
+                      ? t('Insulin, amoxicillin, epinephrine')
                       : requestCategory === 'organ'
-                        ? 'Kidney, liver segment, heart'
-                        : 'Cornea, skin graft, bone tissue'
+                        ? t('Kidney, liver segment, heart')
+                        : t('Cornea, skin graft, bone tissue')
                 }
               />
             </View>
 
             <View style={styles.formRow}>
               <View style={styles.formField}>
-                <Label>Quantity</Label>
-                <Input value={quantityLabel} onChangeText={setQuantityLabel} placeholder="1 unit, 2 doses, urgent transplant" />
+                <Label>{t('Quantity')}</Label>
+                <Input value={quantityLabel} onChangeText={setQuantityLabel} placeholder={t('1 unit, 2 doses, urgent transplant')} />
               </View>
               <View style={styles.formField}>
-                <Label>Urgency</Label>
+                <Label>{t('Urgency')}</Label>
                 <View style={styles.segmentRow}>
                   {urgencyChoices.map((item) => {
                     const active = urgency === item.key;
@@ -425,11 +427,11 @@ export default function SupplyScreen() {
             </View>
 
             <View style={styles.formBlock}>
-              <Label>Care notes</Label>
+              <Label>{t('Care notes')}</Label>
               <TextInput
                 value={notes}
                 onChangeText={setNotes}
-                placeholder="Share timing, diagnosis context, or where the match should be delivered."
+                placeholder={t('Share timing, diagnosis context, or where the match should be delivered.')}
                 placeholderTextColor={colors.mutedForeground}
                 multiline
                 textAlignVertical="top"
@@ -440,22 +442,22 @@ export default function SupplyScreen() {
             <View style={styles.submitSection}>
               <View style={styles.submitBubble}>
                 <Button size="lg" loading={submittingRequest} onPress={submitQueueRequest} style={styles.submitButton}>
-                  Join the queue
+                  {t('Join the queue')}
                 </Button>
               </View>
-              <Text style={styles.submitSectionBody}>Once the details look right, send it to the live queue here.</Text>
+              <Text style={styles.submitSectionBody}>{t('Once the details look right, send it to the live queue here.')}</Text>
             </View>
           </Card>
 
           <Card style={styles.sectionCard}>
             <View style={styles.sectionHeaderInline}>
-              <Text style={styles.sectionTitle}>How the queue works</Text>
-              <Badge variant="secondary">Live</Badge>
+              <Text style={styles.sectionTitle}>{t('How the queue works')}</Text>
+              <Badge variant="secondary">{t('Live')}</Badge>
             </View>
             <View style={styles.stepList}>
-              <StepTile title="Queued immediately" body="Your request is grouped by resource type and urgency." />
-              <StepTile title="Monitored continuously" body="Open supply listings and replies are checked while you wait." />
-              <StepTile title="Matched clearly" body="When a close match exists, it moves into your queue updates." />
+              <StepTile title={t('Queued immediately')} body={t('Your request is grouped by resource type and urgency.')} />
+              <StepTile title={t('Monitored continuously')} body={t('Open supply listings and replies are checked while you wait.')} />
+              <StepTile title={t('Matched clearly')} body={t('When a close match exists, it moves into your queue updates.')} />
             </View>
           </Card>
         </>
@@ -464,17 +466,17 @@ export default function SupplyScreen() {
       {tab === 'queue' ? (
         <>
           <View style={styles.summaryRow}>
-            <SummaryCard label="Waiting" value={String(queuedCount)} tone="info" />
-            <SummaryCard label="Matched" value={String(matchedCount)} tone="success" />
-            <SummaryCard label="Replies" value={String(inquiries.length)} tone="primary" />
+            <SummaryCard label={t('Waiting')} value={String(queuedCount)} tone="info" />
+            <SummaryCard label={t('Matched')} value={String(matchedCount)} tone="success" />
+            <SummaryCard label={t('Replies')} value={String(inquiries.length)} tone="primary" />
           </View>
 
           {queueRequests.length === 0 ? (
             <Card style={styles.emptyCard}>
               <PackageSearch size={20} color={colors.primary} />
-              <Text style={styles.emptyTitle}>No active queue requests</Text>
-              <Text style={styles.emptyBody}>Start a request and this screen will show your place in line and any supply matches.</Text>
-              <Button onPress={() => setTab('request')}>Create request</Button>
+              <Text style={styles.emptyTitle}>{t('No active queue requests')}</Text>
+              <Text style={styles.emptyBody}>{t('Start a request and this screen will show your place in line and any supply matches.')}</Text>
+              <Button onPress={() => setTab('request')}>{t('Create request')}</Button>
             </Card>
           ) : (
             queueRequests.map((request) => {
@@ -487,7 +489,7 @@ export default function SupplyScreen() {
                       <View style={styles.queueHeaderCopy}>
                         <Text style={styles.cardTitle}>{request.title}</Text>
                         <Text style={styles.cardMeta}>
-                          {titleCase(request.category)} · {request.quantityLabel} · Added {formatDate(request.createdAt)}
+                          {titleCase(request.category)} · {request.quantityLabel} · {t('Added {date}', { date: formatDate(request.createdAt) })}
                         </Text>
                       </View>
                       <View style={[styles.statusPill, { backgroundColor: tone.background }]}>
@@ -503,10 +505,10 @@ export default function SupplyScreen() {
                     </View>
                     <Text style={styles.cardBody}>
                       {request.status === 'matched'
-                        ? request.matchSummary ?? 'A compatible source has been identified and queued for follow-up.'
-                        : 'You are in line and waiting for the next compatible supply or coordinator reply.'}
+                        ? request.matchSummary ?? t('A compatible source has been identified and queued for follow-up.')
+                        : t('You are in line and waiting for the next compatible supply or coordinator reply.')}
                     </Text>
-                    {request.notes ? <Text style={styles.cardSubtle}>Notes: {request.notes}</Text> : null}
+                    {request.notes ? <Text style={styles.cardSubtle}>{t('Notes: {text}', { text: request.notes })}</Text> : null}
                   </View>
                 </Card>
               );
@@ -515,20 +517,20 @@ export default function SupplyScreen() {
 
           <Card style={styles.sectionCard}>
             <View style={styles.sectionHeaderInline}>
-              <Text style={styles.sectionTitle}>Replies on your requests</Text>
+              <Text style={styles.sectionTitle}>{t('Replies on your requests')}</Text>
               <Badge variant="secondary">{inquiries.length}</Badge>
             </View>
             {inquiries.length === 0 ? (
-              <Text style={styles.sectionBody}>Availability notes and coordinator updates will appear here.</Text>
+              <Text style={styles.sectionBody}>{t('Availability notes and coordinator updates will appear here.')}</Text>
             ) : (
               inquiries.map((inquiry) => (
                 <View key={inquiry.id} style={styles.replyRow}>
                   <View style={styles.replyDot} />
                   <View style={styles.replyCopy}>
-                    <Text style={styles.replyTitle}>{inquiry.request?.title ?? 'Supply update'}</Text>
+                    <Text style={styles.replyTitle}>{inquiry.request?.title ?? t('Supply update')}</Text>
                     <Text style={styles.replyMessage}>{inquiry.message}</Text>
                     <Text style={styles.replyMeta}>
-                      {inquiry.request?.facilityName ?? 'Vitalis coordinator'} · {formatDate(inquiry.createdAt)}
+                      {inquiry.request?.facilityName ?? t('Vitalis coordinator')} · {formatDate(inquiry.createdAt)}
                     </Text>
                   </View>
                 </View>
@@ -558,8 +560,8 @@ export default function SupplyScreen() {
           {filteredExchangeRequests.length === 0 ? (
             <Card style={styles.emptyCard}>
               <PackageSearch size={20} color={colors.primary} />
-              <Text style={styles.emptyTitle}>No open exchange requests</Text>
-              <Text style={styles.emptyBody}>Pull to refresh or switch categories for more live hospital and donor requests.</Text>
+              <Text style={styles.emptyTitle}>{t('No open exchange requests')}</Text>
+              <Text style={styles.emptyBody}>{t('Pull to refresh or switch categories for more live hospital and donor requests.')}</Text>
             </Card>
           ) : (
             filteredExchangeRequests.map((request) => {
@@ -571,7 +573,7 @@ export default function SupplyScreen() {
                     <View style={styles.exchangeHeaderCopy}>
                       <Text style={styles.cardTitle}>{request.title}</Text>
                       <Text style={styles.cardMeta}>
-                        {request.facilityName ?? 'Supply coordinator'} · {formatDate(request.createdAt)}
+                        {request.facilityName ?? t('Supply coordinator')} · {formatDate(request.createdAt)}
                       </Text>
                     </View>
                     <View style={[styles.statusPill, { backgroundColor: urgencyStyle.background }]}>
@@ -589,16 +591,16 @@ export default function SupplyScreen() {
                   {request.notes ? <Text style={styles.cardBody}>{request.notes}</Text> : null}
 
                   <Button variant={expanded ? 'secondary' : 'default'} onPress={() => setSelectedExchangeId(expanded ? null : request.id)}>
-                    {expanded ? 'Hide response' : 'Offer availability'}
+                    {expanded ? t('Hide response') : t('Offer availability')}
                   </Button>
 
                   {expanded ? (
                     <View style={styles.responseBox}>
-                      <Label>Response</Label>
+                      <Label>{t('Response')}</Label>
                       <TextInput
                         value={messageDraft}
                         onChangeText={setMessageDraft}
-                        placeholder="Example: I can help with two units and can coordinate transport this morning."
+                        placeholder={t('Example: I can help with two units and can coordinate transport this morning.')}
                         placeholderTextColor={colors.mutedForeground}
                         multiline
                         textAlignVertical="top"
@@ -606,7 +608,7 @@ export default function SupplyScreen() {
                       />
                       <Button loading={sendingInquiry} onPress={submitInquiry}>
                         <Send size={16} color={colors.primaryForeground} />
-                        Send note
+                        {t('Send note')}
                       </Button>
                     </View>
                   ) : null}
@@ -620,17 +622,17 @@ export default function SupplyScreen() {
       {tab === 'inventory' ? (
         <>
           <View style={styles.summaryRow}>
-            <SummaryCard label="Critical blood" value={String(bloodCritical.length)} tone="danger" />
-            <SummaryCard label="Rare meds" value={String(medicines.length)} tone="success" />
+            <SummaryCard label={t('Critical blood')} value={String(bloodCritical.length)} tone="danger" />
+            <SummaryCard label={t('Rare meds')} value={String(medicines.length)} tone="success" />
           </View>
 
           <Card style={styles.sectionCard}>
             <View style={styles.sectionHeaderInline}>
-              <Text style={styles.sectionTitle}>Critical blood alerts</Text>
+              <Text style={styles.sectionTitle}>{t('Critical blood alerts')}</Text>
               <Badge variant="destructive">{bloodCritical.length}</Badge>
             </View>
             {bloodCritical.length === 0 ? (
-              <Text style={styles.sectionBody}>No blood inventory is flagged as critical right now.</Text>
+              <Text style={styles.sectionBody}>{t('No blood inventory is flagged as critical right now.')}</Text>
             ) : (
               bloodCritical.map((item) => (
                 <View key={`${item.hospital?.name ?? 'blood'}-${item.bloodType}`} style={styles.inventoryRow}>
@@ -640,10 +642,10 @@ export default function SupplyScreen() {
                   <View style={styles.inventoryCopy}>
                     <Text style={styles.inventoryTitle}>{item.bloodType}</Text>
                     <Text style={styles.inventoryMeta}>
-                      {item.hospital?.name ?? 'Regional bank'} · {item.availableUnits} units available
+                      {item.hospital?.name ?? t('Regional bank')} · {tn(item.availableUnits, '1 unit available', '{n} units available')}
                     </Text>
                   </View>
-                  <Badge variant="destructive">{item.criticalLevel ? `Needs ${item.criticalLevel}+` : 'Critical'}</Badge>
+                  <Badge variant="destructive">{item.criticalLevel ? t('Needs {n}+', { n: item.criticalLevel }) : t('Critical')}</Badge>
                 </View>
               ))
             )}
@@ -651,11 +653,11 @@ export default function SupplyScreen() {
 
           <Card style={styles.sectionCard}>
             <View style={styles.sectionHeaderInline}>
-              <Text style={styles.sectionTitle}>Medicine network</Text>
+              <Text style={styles.sectionTitle}>{t('Medicine network')}</Text>
               <Badge variant="secondary">{medicines.length}</Badge>
             </View>
             {medicines.length === 0 ? (
-              <Text style={styles.sectionBody}>No rare medicine inventory results are available right now.</Text>
+              <Text style={styles.sectionBody}>{t('No rare medicine inventory results are available right now.')}</Text>
             ) : (
               medicines.map((item) => (
                 <View key={`${item._id ?? item.name}-${item.locationName ?? 'inventory'}`} style={styles.inventoryRow}>
@@ -666,12 +668,12 @@ export default function SupplyScreen() {
                     <Text style={styles.inventoryTitle}>{item.name}</Text>
                     <Text style={styles.inventoryMeta}>
                       {item.brand ? `${item.brand} · ` : ''}
-                      {item.locationName ?? 'Pharmacy network'}
+                      {item.locationName ?? t('Pharmacy network')}
                     </Text>
                   </View>
                   <View style={styles.inventoryRight}>
-                    <Text style={styles.inventoryStock}>{item.stock ?? 0} in stock</Text>
-                    {item.requiresPrescription ? <Text style={styles.inventoryMeta}>Prescription</Text> : null}
+                    <Text style={styles.inventoryStock}>{t('{n} in stock', { n: item.stock ?? 0 })}</Text>
+                    {item.requiresPrescription ? <Text style={styles.inventoryMeta}>{t('Prescription')}</Text> : null}
                   </View>
                 </View>
               ))

@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { api } from '@/lib/api';
 import { colors, radius } from '@/lib/theme';
+import { apiError, t } from '@/lib/i18n';
 
 export default function DoctorApplication() {
   const router = useRouter();
@@ -32,11 +33,11 @@ export default function DoctorApplication() {
 
   const submit = async () => {
     if (!fullName.trim() || !email.trim() || !phone.trim() || !specialty.trim() || !yearsExperience.trim() || !bio.trim()) {
-      toast.error('Please complete every field');
+      toast.error(t('Please complete every field'));
       return;
     }
     if (!pdf) {
-      toast.error('Attach your specialty certification PDF');
+      toast.error(t('Attach your specialty certification PDF'));
       return;
     }
     setSubmitting(true);
@@ -56,10 +57,10 @@ export default function DoctorApplication() {
       await api.post('/doctor-applications', form, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      toast.success('Application submitted', { description: 'An admin will review and let you know.' });
+      toast.success(t('Application submitted'), { description: t('An admin will review and let you know.') });
       router.back();
     } catch (e: any) {
-      toast.error('Submission failed', { description: e.response?.data?.error ?? 'Try again.' });
+      toast.error(t('Submission failed'), { description: apiError(e, 'Try again.') });
     } finally {
       setSubmitting(false);
     }
@@ -68,41 +69,41 @@ export default function DoctorApplication() {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <AppScreen
-        eyebrow="Care providers"
-        title="Apply to join as a doctor"
-        subtitle="Submit your credentials. An administrator reviews every application."
-        action={<HeaderButton icon={ArrowLeft} onPress={() => router.back()} label="Back" />}
+        eyebrow={t('Care providers')}
+        title={t('Apply to join as a doctor')}
+        subtitle={t('Submit your credentials. An administrator reviews every application.')}
+        action={<HeaderButton icon={ArrowLeft} onPress={() => router.back()} label={t('Back')} />}
       >
         <ScrollView contentContainerStyle={{ gap: 14, paddingBottom: 32 }}>
           <Card style={styles.card}>
-            <View style={styles.field}><Label>Full name</Label><Input value={fullName} onChangeText={setFullName} placeholder="Dr. Jane Doe" /></View>
-            <View style={styles.field}><Label>Email</Label><Input value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" placeholder="you@example.com" /></View>
-            <View style={styles.field}><Label>Phone (with country code, used for WhatsApp)</Label><Input value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="+355691234567" /></View>
-            <View style={styles.field}><Label>Specialty</Label><Input value={specialty} onChangeText={setSpecialty} placeholder="Cardiology" /></View>
-            <View style={styles.field}><Label>Years of experience</Label><Input value={yearsExperience} onChangeText={setYearsExperience} keyboardType="number-pad" placeholder="8" /></View>
-            <View style={styles.field}><Label>Bio</Label><Input value={bio} onChangeText={setBio} multiline placeholder="Tell us about your practice, training, focus areas." style={styles.textarea} /></View>
+            <View style={styles.field}><Label>{t('Full name')}</Label><Input value={fullName} onChangeText={setFullName} placeholder={t('Dr. Jane Doe')} /></View>
+            <View style={styles.field}><Label>{t('Email')}</Label><Input value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" placeholder={t('you@example.com')} /></View>
+            <View style={styles.field}><Label>{t('Phone (with country code, used for WhatsApp)')}</Label><Input value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="+355691234567" /></View>
+            <View style={styles.field}><Label>{t('Specialty')}</Label><Input value={specialty} onChangeText={setSpecialty} placeholder={t('Cardiology')} /></View>
+            <View style={styles.field}><Label>{t('Years of experience')}</Label><Input value={yearsExperience} onChangeText={setYearsExperience} keyboardType="number-pad" placeholder="8" /></View>
+            <View style={styles.field}><Label>{t('Bio')}</Label><Input value={bio} onChangeText={setBio} multiline placeholder={t('Tell us about your practice, training, focus areas.')} style={styles.textarea} /></View>
           </Card>
 
           <Card style={styles.card}>
-            <Text style={styles.sectionTitle}>Specialty certification (PDF, required)</Text>
+            <Text style={styles.sectionTitle}>{t('Specialty certification (PDF, required)')}</Text>
             <Pressable onPress={pickPdf} style={styles.uploadBox}>
               {pdf ? (
                 <>
                   <FileText size={20} color={colors.success} />
                   <Text style={styles.uploadName}>{pdf.name}</Text>
-                  <Text style={styles.uploadHint}>Tap to choose a different file</Text>
+                  <Text style={styles.uploadHint}>{t('Tap to choose a different file')}</Text>
                 </>
               ) : (
                 <>
                   <Upload size={20} color={colors.info} />
-                  <Text style={styles.uploadName}>Tap to attach PDF</Text>
-                  <Text style={styles.uploadHint}>Max 10 MB</Text>
+                  <Text style={styles.uploadName}>{t('Tap to attach PDF')}</Text>
+                  <Text style={styles.uploadHint}>{t('Max 10 MB')}</Text>
                 </>
               )}
             </Pressable>
           </Card>
 
-          <Button onPress={submit} loading={submitting}>Submit application</Button>
+          <Button onPress={submit} loading={submitting}>{t('Submit application')}</Button>
         </ScrollView>
       </AppScreen>
     </KeyboardAvoidingView>

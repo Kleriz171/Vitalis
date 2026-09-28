@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/Card';
 import { Empty } from '@/components/ui/Empty';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { colors, radius } from '@/lib/theme';
+import { apiError, t, tn } from '@/lib/i18n';
 
 interface Group {
   id: string;
@@ -61,7 +62,7 @@ export default function Community() {
         setGroups(response.data ?? []);
       } catch (err: any) {
         setGroups([]);
-        setGroupsError(err.response?.data?.error ?? 'Community groups are unavailable right now.');
+        setGroupsError(apiError(err, 'Community groups are unavailable right now.'));
       } finally {
         setGroupsLoading(false);
       }
@@ -81,7 +82,7 @@ export default function Community() {
         setPosts(response.data ?? []);
       } catch (err: any) {
         setPosts([]);
-        setPostsError(err.response?.data?.error ?? 'This group could not be opened.');
+        setPostsError(apiError(err, 'This group could not be opened.'));
       } finally {
         setPostsLoading(false);
       }
@@ -102,9 +103,9 @@ export default function Community() {
       const refreshed = await api.get(`/community/posts?groupId=${selected.id}`);
       setPosts(refreshed.data ?? []);
       setNewPost('');
-      toast.success('Post published');
+      toast.success(t('Post published'));
     } catch (err: any) {
-      toast.error(err.response?.data?.error ?? 'Post failed');
+      toast.error(apiError(err, 'Post failed'));
     } finally {
       setPosting(false);
     }
@@ -113,19 +114,19 @@ export default function Community() {
   if (selected) {
     return (
       <AppScreen
-        eyebrow="Support group"
+        eyebrow={t('Support group')}
         title={selected.name}
         subtitle={`${selected.memberCount?.toLocaleString() ?? 0} members`}
 
-        action={<HeaderButton icon={ArrowLeft} onPress={() => setSelected(null)} label="Back" />}
+        action={<HeaderButton icon={ArrowLeft} onPress={() => setSelected(null)} label={t('Back')} />}
       >
         <Card style={styles.composerCard}>
-          <Text style={styles.sectionTitle}>Share safely</Text>
+          <Text style={styles.sectionTitle}>{t('Share safely')}</Text>
           <TextInput
             value={newPost}
             onChangeText={setNewPost}
             multiline
-            placeholder="Share your experience or ask for advice…"
+            placeholder={t('Share your experience or ask for advice…')}
             placeholderTextColor="#94A3B8"
             style={styles.composerInput}
           />
@@ -136,13 +137,13 @@ export default function Community() {
             disabled={!newPost.trim()}
             style={styles.postButton}
           >
-            Send
+            {t('Send')}
           </Button>
           <View style={styles.composerFooter}>
             <Pressable onPress={() => setAnonymous((value) => !value)} style={[styles.anonymousPill, anonymous && styles.anonymousPillActive]}>
               <Eye size={12} color={anonymous ? '#fff' : colors.mutedForeground} />
               <Text style={[styles.anonymousText, anonymous && styles.anonymousTextActive]}>
-                {anonymous ? 'Anonymous' : 'Public'}
+                {anonymous ? t('Anonymous') : t('Public')}
               </Text>
             </Pressable>
           </View>
@@ -158,7 +159,7 @@ export default function Community() {
           ))
         ) : postsError ? (
           <Card style={styles.postCard}>
-            <Empty icon={MessageCircle} title="Couldn’t load posts" description={postsError} />
+            <Empty icon={MessageCircle} title={t('Couldn’t load posts')} description={postsError} />
           </Card>
         ) : posts.length ? (
           posts.map((post) => (
@@ -170,20 +171,20 @@ export default function Community() {
                   </Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.postAuthor}>{post.isAnonymous ? 'Anonymous member' : post.authorName ?? 'Member'}</Text>
+                  <Text style={styles.postAuthor}>{post.isAnonymous ? t('Anonymous member') : post.authorName ?? t('Member')}</Text>
                   <Text style={styles.postDate}>{new Date(post.createdAt).toLocaleDateString()}</Text>
                 </View>
               </View>
               <Text style={styles.postContent}>{post.content}</Text>
               <View style={styles.postMeta}>
-                <Text style={styles.postMetaText}>{post.likes} likes</Text>
-                <Text style={styles.postMetaText}>{post.commentsCount} comments</Text>
+                <Text style={styles.postMetaText}>{tn(post.likes, '1 like', '{n} likes')}</Text>
+                <Text style={styles.postMetaText}>{tn(post.commentsCount, '1 comment', '{n} comments')}</Text>
               </View>
             </Card>
           ))
         ) : (
           <Card style={styles.postCard}>
-            <Empty icon={MessageCircle} title="No posts yet" description="Be the first person to share support in this group." />
+            <Empty icon={MessageCircle} title={t('No posts yet')} description={t('Be the first person to share support in this group.')} />
           </Card>
         )}
       </AppScreen>
@@ -192,13 +193,13 @@ export default function Community() {
 
   return (
     <AppScreen
-      eyebrow="Community"
-      title="Find support that feels human."
-      subtitle="Protected groups for experiences, questions, and peer help."
+      eyebrow={t('Community')}
+      title={t('Find support that feels human.')}
+      subtitle={t('Protected groups for experiences, questions, and peer help.')}
       headerContent={
         <View style={styles.safeBanner}>
           <Shield size={16} color="#fff" />
-          <Text style={styles.safeBannerText}>Tap a group to read posts and share your own message — anonymous posting is available.</Text>
+          <Text style={styles.safeBannerText}>{t('Tap a group to read posts and share your own message — anonymous posting is available.')}</Text>
         </View>
       }
     >
@@ -214,7 +215,7 @@ export default function Community() {
         ))
       ) : groupsError ? (
         <Card style={styles.groupCard}>
-          <Empty icon={Users} title="Couldn’t load groups" description={groupsError} />
+          <Empty icon={Users} title={t('Couldn’t load groups')} description={groupsError} />
         </Card>
       ) : (
         groups.map((group) => (
@@ -228,7 +229,7 @@ export default function Community() {
                 <Text style={styles.groupDescription} numberOfLines={2}>
                   {group.description || 'A secure support space for shared experience.'}
                 </Text>
-                <Text style={styles.groupMembers}>{group.memberCount?.toLocaleString() ?? 0} members</Text>
+                <Text style={styles.groupMembers}>{tn(group.memberCount ?? 0, '1 member', '{n} members')}</Text>
               </View>
             </Card>
           </Pressable>

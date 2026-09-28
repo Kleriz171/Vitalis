@@ -349,7 +349,7 @@ export default function ResponderInbox() {
                 onPress={() => router.push({ pathname: '/handover/[id]', params: { id: active._id } } as never)}
               >
                 <ClipboardList size={16} color={colors.foreground} />
-                Patient
+                {t('Patient')}
               </Button>
             </View>
 

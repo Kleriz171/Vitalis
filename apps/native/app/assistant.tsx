@@ -6,6 +6,7 @@ import { AppScreen, HeaderButton } from '@/components/AppScreen';
 import { Card } from '@/components/ui/Card';
 import { api } from '@/lib/api';
 import { colors, radius } from '@/lib/theme';
+import { apiError, t } from '@/lib/i18n';
 
 interface Message {
   id: string;
@@ -14,10 +15,10 @@ interface Message {
 }
 
 const QUICK = [
-  'How does the SOS button work?',
-  'CPR basics',
-  'How do I update my Bio Passport?',
-  'When should I see a doctor?',
+  t('How does the SOS button work?'),
+  t('CPR basics'),
+  t('How do I update my Bio Passport?'),
+  t('When should I see a doctor?'),
 ];
 
 export default function Assistant() {
@@ -28,7 +29,7 @@ export default function Assistant() {
     {
       id: 'welcome',
       role: 'bot',
-      content: 'Hi — I can help with general wellness questions. For emergencies, use the SOS controls on your home screen.',
+      content: t('Hi — I can help with general wellness questions. For emergencies, use the SOS controls on your home screen.'),
     },
   ]);
 
@@ -51,7 +52,7 @@ export default function Assistant() {
       setMessages((current) => [...current, {
         id: `b-${Date.now()}`,
         role: 'bot',
-        content: e.response?.data?.error ?? 'I could not reach the assistant. Please try again.',
+        content: apiError(e, 'I could not reach the assistant. Please try again.'),
       }]);
     }
   };
@@ -59,12 +60,12 @@ export default function Assistant() {
   return (
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <AppScreen
-        eyebrow="Wellness guidance"
-        title="Health assistant"
-        subtitle="A calmer space for quick health questions and everyday guidance."
+        eyebrow={t('Wellness guidance')}
+        title={t('Health assistant')}
+        subtitle={t('A calmer space for quick health questions and everyday guidance.')}
         scroll={false}
         bodyStyle={styles.screenBody}
-        action={<HeaderButton icon={ArrowLeft} onPress={() => router.back()} label="Back" />}
+        action={<HeaderButton icon={ArrowLeft} onPress={() => router.back()} label={t('Back')} />}
         footer={
           <>
             <View style={styles.composerRow}>
@@ -72,7 +73,7 @@ export default function Assistant() {
                 <TextInput
                   value={input}
                   onChangeText={setInput}
-                  placeholder="Ask a health question…"
+                  placeholder={t('Ask a health question…')}
                   placeholderTextColor="#94A3B8"
                   multiline
                   style={styles.input}
@@ -86,7 +87,7 @@ export default function Assistant() {
                 <Send size={20} color="#fff" />
               </Pressable>
             </View>
-            <Text style={styles.disclaimer}>Not a substitute for a real doctor or emergency service.</Text>
+            <Text style={styles.disclaimer}>{t('Not a substitute for a real doctor or emergency service.')}</Text>
           </>
         }
       >
@@ -113,7 +114,7 @@ export default function Assistant() {
 
           {messages.length === 1 ? (
             <Card style={styles.quickCard}>
-              <Text style={styles.quickTitle}>Try a quick question</Text>
+              <Text style={styles.quickTitle}>{t('Try a quick question')}</Text>
               <View style={styles.quickWrap}>
                 {QUICK.map((question) => (
                   <Pressable key={question} onPress={() => void send(question)} style={styles.quickPill}>

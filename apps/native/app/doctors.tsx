@@ -11,6 +11,7 @@ import { Empty } from '@/components/ui/Empty';
 import { Input } from '@/components/ui/Input';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { colors, radius } from '@/lib/theme';
+import { apiError, t, tn } from '@/lib/i18n';
 
 const SPECIALTIES = ['All', 'Cardiology', 'Neurology', 'Orthopedics', 'Pediatrics', 'Dermatology', 'Psychology'];
 
@@ -29,14 +30,14 @@ interface Doctor {
 const openWhatsApp = async (phone: string, name: string) => {
   const cleaned = phone.replace(/[^\d]/g, '');
   if (!cleaned) {
-    toast.error('No phone number on file for this doctor.');
+    toast.error(t('No phone number on file for this doctor.'));
     return;
   }
   const url = `https://wa.me/${cleaned}?text=${encodeURIComponent(`Hello ${name}, I am reaching out via Vitalis.`)}`;
   try {
     await Linking.openURL(url);
   } catch {
-    toast.error('Could not open WhatsApp');
+    toast.error(t('Could not open WhatsApp'));
   }
 };
 
@@ -63,7 +64,7 @@ export default function Doctors() {
         setDoctors(response.data ?? []);
       } catch (err: any) {
         setDoctors([]);
-        setError(err.response?.data?.error ?? 'Doctor directory is unavailable right now.');
+        setError(apiError(err, 'Doctor directory is unavailable right now.'));
       } finally {
         setLoading(false);
       }
@@ -74,13 +75,13 @@ export default function Doctors() {
 
   return (
     <AppScreen
-      eyebrow="Care discovery"
-      title="Doctors and specialist access."
-      subtitle="Search by specialty, online availability, or symptoms."
+      eyebrow={t('Care discovery')}
+      title={t('Doctors and specialist access.')}
+      subtitle={t('Search by specialty, online availability, or symptoms.')}
       headerContent={
         <View style={styles.headerContent}>
           <Text style={styles.headerMetric}>{doctors.length}</Text>
-          <Text style={styles.headerMetricLabel}>results in the current filter</Text>
+          <Text style={styles.headerMetricLabel}>{t('results in the current filter')}</Text>
         </View>
       }
     >
@@ -88,8 +89,8 @@ export default function Doctors() {
         <Card style={styles.applyCard}>
           <View style={styles.applyIcon}><UserPlus size={20} color={colors.info} /></View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.applyTitle}>Are you a doctor?</Text>
-            <Text style={styles.applyBody}>Apply to join Vitalis — upload your specialty certification for admin review.</Text>
+            <Text style={styles.applyTitle}>{t('Are you a doctor?')}</Text>
+            <Text style={styles.applyBody}>{t('Apply to join Vitalis — upload your specialty certification for admin review.')}</Text>
           </View>
         </Card>
       </Pressable>
@@ -101,7 +102,7 @@ export default function Doctors() {
             <Input
               value={search}
               onChangeText={setSearch}
-              placeholder="Search doctor or specialty"
+              placeholder={t('Search doctor or specialty')}
               style={styles.searchInput}
             />
           </View>
@@ -113,14 +114,14 @@ export default function Doctors() {
           <View style={styles.filterPanel}>
             <Pressable onPress={() => setOnlineOnly((value) => !value)} style={[styles.filterPill, onlineOnly && styles.filterPillActive]}>
               <Video size={12} color={onlineOnly ? '#fff' : colors.mutedForeground} />
-              <Text style={[styles.filterPillText, onlineOnly && styles.filterPillTextActive]}>Online only</Text>
+              <Text style={[styles.filterPillText, onlineOnly && styles.filterPillTextActive]}>{t('Online only')}</Text>
             </Pressable>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.specialtyRow}>
               {SPECIALTIES.map((entry) => {
                 const active = specialty === entry;
                 return (
                   <Pressable key={entry} onPress={() => setSpecialty(entry)} style={[styles.specialtyPill, active && styles.specialtyPillActive]}>
-                    <Text style={[styles.specialtyText, active && styles.specialtyTextActive]}>{entry}</Text>
+                    <Text style={[styles.specialtyText, active && styles.specialtyTextActive]}>{t(entry)}</Text>
                   </Pressable>
                 );
               })}
@@ -142,7 +143,7 @@ export default function Doctors() {
         ))
       ) : error ? (
         <Card style={styles.emptyCard}>
-          <Empty icon={Search} title="Couldn’t load doctors" description={error} />
+          <Empty icon={Search} title={t('Couldn’t load doctors')} description={error} />
         </Card>
       ) : doctors.length ? (
         doctors.map((doctor) => (
@@ -155,12 +156,12 @@ export default function Doctors() {
                 <View style={styles.doctorHeading}>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.doctorName}>{doctor.name}</Text>
-                    <Text style={styles.doctorSpecialty}>{doctor.specialty}</Text>
+                    <Text style={styles.doctorSpecialty}>{t(doctor.specialty)}</Text>
                   </View>
                   {doctor.availableOnline ? (
                     <View style={styles.onlineTag}>
                       <Video size={10} color={colors.success} />
-                      <Text style={styles.onlineTagText}>Online</Text>
+                      <Text style={styles.onlineTagText}>{t('Online')}</Text>
                     </View>
                   ) : null}
                 </View>
@@ -168,7 +169,7 @@ export default function Doctors() {
                   <Star size={14} color={colors.warning} fill={colors.warning} />
                   <Text style={styles.ratingText}>{doctor.rating?.toFixed(1) ?? '—'}</Text>
                   {doctor.reviewCount != null ? <Text style={styles.reviewText}>({doctor.reviewCount})</Text> : null}
-                  {doctor.experience ? <Text style={styles.reviewText}>{doctor.experience} years</Text> : null}
+                  {doctor.experience ? <Text style={styles.reviewText}>{tn(doctor.experience, '1 year experience', '{n} years experience')}</Text> : null}
                 </View>
                 {doctor.biography ? <Text style={styles.doctorBio}>{doctor.biography}</Text> : null}
               </View>
@@ -181,15 +182,15 @@ export default function Doctors() {
                   onPress={() => void openWhatsApp(doctor.phone!, doctor.name)}
                 >
                   <MessageCircle size={14} color="#fff" />
-                  Contact on WhatsApp
+                  {t('Contact on WhatsApp')}
                 </Button>
               ) : (
                 <Button
                   size="sm"
                   variant="outline"
-                  onPress={() => toast('No contact number', { description: `${doctor.name} hasn't shared a WhatsApp number yet.` })}
+                  onPress={() => toast(t('No contact number'), { description: t("{name} hasn't shared a WhatsApp number yet.", { name: doctor.name }) })}
                 >
-                  Contact unavailable
+                  {t('Contact unavailable')}
                 </Button>
               )}
             </View>
@@ -197,7 +198,7 @@ export default function Doctors() {
         ))
       ) : (
         <Card style={styles.emptyCard}>
-          <Empty icon={Search} title="No doctors matched" description="Try widening the specialty or turning off online-only." />
+          <Empty icon={Search} title={t('No doctors matched')} description={t('Try widening the specialty or turning off online-only.')} />
         </Card>
       )}
     </AppScreen>

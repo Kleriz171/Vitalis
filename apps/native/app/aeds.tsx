@@ -76,7 +76,7 @@ export default function AedsScreen() {
       ) : (
         <Button variant="outline" onPress={() => setReporting(true)} disabled={!here}>
           <Plus size={16} color={colors.foreground} />
-          Report a defibrillator here
+          {t('Report a defibrillator here')}
         </Button>
       )}
 

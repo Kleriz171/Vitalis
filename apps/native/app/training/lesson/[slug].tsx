@@ -23,6 +23,7 @@ import {
   resolveLessonVideoMeta,
   type TrainingCourseDetailView,
 } from '../shared';
+import { apiError, t, tn } from '@/lib/i18n';
 
 interface CourseDetail extends TrainingCourseDetailView {}
 
@@ -45,7 +46,7 @@ export default function LessonViewer() {
         setLoading(true);
         await load();
       } catch (err: any) {
-        toast.error('Could not load lesson', { description: err.response?.data?.error ?? 'Try again.' });
+        toast.error(t('Could not load lesson'), { description: apiError(err, 'Try again.') });
       } finally {
         setLoading(false);
       }
@@ -78,7 +79,7 @@ export default function LessonViewer() {
         router.replace({ pathname: '/training/[slug]', params: { slug: course.slug } } as never);
       }
     } catch (err: any) {
-      toast.error('Could not save progress', { description: err.response?.data?.error ?? 'Try again.' });
+      toast.error(t('Could not save progress'), { description: apiError(err, 'Try again.') });
     } finally {
       setCompleting(false);
     }
@@ -86,7 +87,7 @@ export default function LessonViewer() {
 
   if (loading) {
     return (
-      <AppScreen title="Loading lesson" action={<BackBtn />}>
+      <AppScreen title={t('Loading lesson')} action={<BackBtn />}>
         <Skeleton style={{ height: 260, borderRadius: radius.xl }} />
         <Skeleton style={{ height: 220, borderRadius: radius.xl }} />
         <Skeleton style={{ height: 160, borderRadius: radius.xl }} />
@@ -96,9 +97,9 @@ export default function LessonViewer() {
 
   if (!course || !lesson) {
     return (
-      <AppScreen title="Lesson unavailable" action={<BackBtn />}>
+      <AppScreen title={t('Lesson unavailable')} action={<BackBtn />}>
         <Card style={{ padding: 18 }}>
-          <Text style={{ color: colors.mutedForeground, fontSize: 14 }}>This lesson could not be loaded.</Text>
+          <Text style={{ color: colors.mutedForeground, fontSize: 14 }}>{t('This lesson could not be loaded.')}</Text>
         </Card>
       </AppScreen>
     );
@@ -112,7 +113,7 @@ export default function LessonViewer() {
     try {
       await Linking.openURL(video.watchUrl);
     } catch {
-      toast.error('Could not open tutorial video');
+      toast.error(t('Could not open tutorial video'));
     }
   };
 
@@ -128,19 +129,19 @@ export default function LessonViewer() {
           <View style={styles.heroBadgeRow}>
             <View style={styles.heroBadge}>
               <BookOpen size={13} color="#fff" />
-              <Text style={styles.heroBadgeText}>Lesson {lessonIndex + 1} of {lessonCount}</Text>
+              <Text style={styles.heroBadgeText}>{t('Lesson {n} of {total}', { n: lessonIndex + 1, total: lessonCount })}</Text>
             </View>
             <View style={styles.heroBadge}>
               <Clock3 size={13} color="#fff" />
-              <Text style={styles.heroBadgeText}>{lesson.durationMin} min</Text>
+              <Text style={styles.heroBadgeText}>{t('{n} min', { n: lesson.durationMin })}</Text>
             </View>
             <View style={styles.heroBadge}>
               <PlayCircle size={13} color="#fff" />
-              <Text style={styles.heroBadgeText}>Topic video</Text>
+              <Text style={styles.heroBadgeText}>{t('Topic video')}</Text>
             </View>
           </View>
           <View style={styles.progressWrap}>
-            <Text style={styles.progressText}>Course progress {progressPct}%</Text>
+            <Text style={styles.progressText}>{t('Course progress {n}%', { n: progressPct })}</Text>
             <View style={styles.progressTrack}>
               <View style={[styles.progressFill, { width: `${progressPct}%` }]} />
             </View>
@@ -151,39 +152,41 @@ export default function LessonViewer() {
       <Card style={styles.videoCard}>
         <View style={styles.sectionHeader}>
           <PlayCircle size={18} color={colors.primary} />
-          <Text style={styles.sectionTitle}>Watch the tutorial</Text>
+          <Text style={styles.sectionTitle}>{t('Watch the tutorial')}</Text>
         </View>
         <Pressable onPress={openVideo} style={({ pressed }) => [styles.videoLinkRow, pressed && styles.videoLinkRowPressed]}>
           <View style={styles.videoLinkIcon}>
             <PlayCircle size={20} color={colors.primary} />
           </View>
           <View style={styles.videoLinkCopy}>
-            <Text style={styles.videoLinkTitle}>Open tutorial video</Text>
-            <Text style={styles.videoLinkText}>Opens directly in YouTube or your browser.</Text>
+            <Text style={styles.videoLinkTitle}>{t('Open tutorial video')}</Text>
+            <Text style={styles.videoLinkText}>{t('Opens directly in YouTube or your browser.')}</Text>
           </View>
           <View style={styles.videoLinkCta}>
-            <Text style={styles.videoLinkCtaText}>Open</Text>
+            <Text style={styles.videoLinkCtaText}>{t('Open')}</Text>
           </View>
         </Pressable>
         <View style={styles.videoMetaRow}>
           <View style={styles.infoBadge}>
             <Clock3 size={10} color={colors.foreground} />
-            <Text style={styles.infoBadgeText}>{lesson.durationMin} min tutorial</Text>
+            <Text style={styles.infoBadgeText}>{t('{n} min tutorial', { n: lesson.durationMin })}</Text>
           </View>
           <View style={styles.infoBadge}>
-            <Text style={styles.infoBadgeText}>Focused on this lesson</Text>
+            <Text style={styles.infoBadgeText}>{t('Focused on this lesson')}</Text>
           </View>
         </View>
         <Text style={styles.videoHint}>
-          Start with the demo above, then use the written guidance below to review the exact steps.
+          {t('Start with the demo above, then use the written guidance below to review the exact steps.')}
         </Text>
       </Card>
 
       <Card style={styles.actionCard}>
         <View style={styles.actionCopy}>
-          <Text style={styles.actionTitle}>Ready for the next step?</Text>
+          <Text style={styles.actionTitle}>{t('Ready for the next step?')}</Text>
           <Text style={styles.actionText}>
-            Save this lesson to your progress, or continue straight into {isLast ? 'the course summary' : 'the next lesson'}.
+            {isLast
+              ? t('Save this lesson to your progress, or continue straight into the course summary.')
+              : t('Save this lesson to your progress, or continue straight into the next lesson.')}
           </Text>
         </View>
         <View style={styles.actionButtons}>
@@ -198,7 +201,7 @@ export default function LessonViewer() {
             ]}
           >
             <Text style={styles.actionTileLabel}>
-              {completing ? 'Saving...' : 'Mark complete'}
+              {completing ? t('Saving...') : t('Mark complete')}
             </Text>
           </Pressable>
           <Pressable
@@ -212,7 +215,7 @@ export default function LessonViewer() {
             ]}
           >
             <Text style={styles.actionTileLabel}>
-              {completing ? 'Saving...' : isLast ? 'Finish course' : 'Next lesson'}
+              {completing ? t('Saving...') : isLast ? t('Finish course') : t('Next lesson')}
             </Text>
           </Pressable>
         </View>
@@ -221,15 +224,15 @@ export default function LessonViewer() {
       <Card style={styles.bodyCard}>
         <View style={styles.sectionHeader}>
           <ListChecks size={18} color={colors.primary} />
-          <Text style={styles.sectionTitle}>What to do</Text>
+          <Text style={styles.sectionTitle}>{t('What to do')}</Text>
         </View>
         <View style={styles.detailBadgeRow}>
           <View style={styles.infoBadge}>
             <Clock3 size={10} color={colors.foreground} />
-            <Text style={styles.infoBadgeText}>{lesson.durationMin} min read</Text>
+            <Text style={styles.infoBadgeText}>{t('{n} min read', { n: lesson.durationMin })}</Text>
           </View>
           <View style={styles.infoBadge}>
-            <Text style={styles.infoBadgeText}>Practical refresher</Text>
+            <Text style={styles.infoBadgeText}>{t('Practical refresher')}</Text>
           </View>
         </View>
         <Text style={styles.body}>{lesson.body}</Text>
@@ -238,7 +241,7 @@ export default function LessonViewer() {
       <Card style={styles.outlineCard}>
         <View style={styles.sectionHeader}>
           <BookOpen size={18} color={colors.primary} />
-          <Text style={styles.sectionTitle}>Course outline</Text>
+          <Text style={styles.sectionTitle}>{t('Course outline')}</Text>
         </View>
         <View style={styles.outlineList}>
           {course.lessons.map((item, index) => {
@@ -254,7 +257,7 @@ export default function LessonViewer() {
                 </View>
                 {active ? (
                   <Badge variant="secondary" style={styles.currentBadge} textStyle={styles.currentBadgeText}>
-                    Current
+                    {t('Current')}
                   </Badge>
                 ) : null}
               </View>
@@ -269,7 +272,7 @@ export default function LessonViewer() {
 function BackBtn() {
   const router = useRouter();
   return (
-    <HeaderButton icon={ArrowLeft} onPress={() => router.back()} label="Back" />
+    <HeaderButton icon={ArrowLeft} onPress={() => router.back()} label={t('Back')} />
   );
 }
 

@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { api } from '@/lib/api';
 import { colors, radius } from '@/lib/theme';
+import { apiError, t } from '@/lib/i18n';
 
 interface CertificateView {
   id: string;
@@ -33,7 +34,7 @@ export default function CertificateScreen() {
       const { data } = await api.get<CertificateView>(`/training/certifications/${id}`);
       setCert(data);
     } catch (err: any) {
-      toast.error('Could not load certificate', { description: err.response?.data?.error ?? 'Try again.' });
+      toast.error(t('Could not load certificate'), { description: apiError(err, 'Try again.') });
     }
   }, [id]);
 
@@ -43,7 +44,7 @@ export default function CertificateScreen() {
     if (!cert) return;
     try {
       await Share.share({
-        message: `I'm certified in ${cert.badgeLabel} via Vitalis. Verify: ${cert.verifyUrl}`,
+        message: t("I'm certified in {badge} via Vitalis. Verify: {url}", { badge: cert.badgeLabel, url: cert.verifyUrl }),
         url: cert.verifyUrl,
       });
     } catch {}
@@ -51,14 +52,14 @@ export default function CertificateScreen() {
 
   return (
     <AppScreen
-      eyebrow="First aid certified"
-      title={cert?.badgeLabel ?? 'Certificate'}
-      subtitle={cert ? `Scored ${cert.score}%` : 'Loading certificate'}
-      action={<HeaderButton icon={ArrowLeft} onPress={() => router.back()} label="Back" />}
+      eyebrow={t('First aid certified')}
+      title={cert?.badgeLabel ?? t('Certificate')}
+      subtitle={cert ? t('Scored {n}%', { n: cert.score }) : t('Loading certificate')}
+      action={<HeaderButton icon={ArrowLeft} onPress={() => router.back()} label={t('Back')} />}
       footer={
         <Button onPress={share} disabled={!cert}>
           <Share2 size={16} color="#fff" />
-          Share certificate
+          {t('Share certificate')}
         </Button>
       }
     >
@@ -66,27 +67,27 @@ export default function CertificateScreen() {
         <Skeleton style={{ height: 320, borderRadius: radius.xl }} />
       ) : (
         <Card style={styles.cert}>
-          <Text style={styles.brand}>VITALIS · FIRST AID TRAINING</Text>
-          <Text style={styles.title}>This certifies completion of</Text>
+          <Text style={styles.brand}>{t('VITALIS · FIRST AID TRAINING')}</Text>
+          <Text style={styles.title}>{t('This certifies completion of')}</Text>
           <Text style={styles.badge}>{cert.badgeLabel}</Text>
-          <Text style={styles.score}>Score {cert.score}%</Text>
+          <Text style={styles.score}>{t('Score {n}%', { n: cert.score })}</Text>
 
           {cert.qr ? <Image source={{ uri: cert.qr }} style={styles.qr} /> : null}
           <Text style={styles.verify}>{cert.verifyUrl}</Text>
 
           <View style={styles.metaRow}>
             <View style={styles.metaItem}>
-              <Text style={styles.metaLabel}>Issued</Text>
+              <Text style={styles.metaLabel}>{t('Issued')}</Text>
               <Text style={styles.metaValue}>{new Date(cert.issuedAt).toLocaleDateString()}</Text>
             </View>
             <View style={styles.metaItem}>
-              <Text style={styles.metaLabel}>Valid until</Text>
+              <Text style={styles.metaLabel}>{t('Valid until')}</Text>
               <Text style={styles.metaValue}>{new Date(cert.expiresAt).toLocaleDateString()}</Text>
             </View>
           </View>
 
           <Text style={styles.disclaimer}>
-            Based on Red Cross / ERC guidelines. Educational use only — not a substitute for in-person certified training.
+            {t('Based on Red Cross / ERC guidelines. Educational use only — not a substitute for in-person certified training.')}
           </Text>
         </Card>
       )}
