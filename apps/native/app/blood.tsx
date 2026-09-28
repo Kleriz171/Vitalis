@@ -838,7 +838,7 @@ const styles = StyleSheet.create({
   },
   categoryTileActive: {
     borderColor: `${colors.primary}55`,
-    backgroundColor: '#F3FBFA',
+    backgroundColor: colors.accent,
   },
   categoryIconWrap: {
     width: 34,
@@ -978,7 +978,7 @@ const styles = StyleSheet.create({
   submitButton: {
     width: 236,
     alignSelf: 'center',
-    backgroundColor: colors.primaryStrong,
+    backgroundColor: colors.primarySurface,
     borderRadius: radius.full,
   },
   stepList: {
@@ -1151,7 +1151,7 @@ const styles = StyleSheet.create({
   },
   exchangeCardActive: {
     borderColor: `${colors.primary}45`,
-    backgroundColor: '#FBFEFD',
+    backgroundColor: colors.accent,
   },
   exchangeHeader: {
     flexDirection: 'row',

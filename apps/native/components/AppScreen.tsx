@@ -54,7 +54,7 @@ export function AppScreen({
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <StatusBar style="dark" />
+      <StatusBar style="auto" />
       {scroll ? (
         <ScrollView contentContainerStyle={[styles.scroll, contentContainerStyle]} showsVerticalScrollIndicator={false} {...scrollProps}>
           {body}

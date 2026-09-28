@@ -386,7 +386,7 @@ const styles = StyleSheet.create({
   questionTitle: { ...type.headline, color: colors.foreground },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { borderRadius: radius.full, paddingHorizontal: 16, paddingVertical: 10, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card },
-  chipActive: { backgroundColor: colors.primaryStrong, borderColor: colors.primaryStrong },
+  chipActive: { backgroundColor: colors.primarySurface, borderColor: colors.primarySurface },
   chipText: { ...type.callout, fontWeight: '600', color: colors.foreground },
   chipTextActive: { color: '#fff' },
   item: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },

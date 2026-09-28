@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { holdAppearanceReload } from '@/lib/appearance';
 import { AccessibilityInfo, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -43,6 +44,8 @@ const nameOf = (p: Person) => (p && typeof p === 'object' ? p.name : null);
 const roleOf = (p: Person) => (p && typeof p === 'object' ? ROLE_LABEL[p.role] ?? 'Responder' : 'Responder');
 
 export default function EmergencyScreen() {
+  // A light/dark reload here would drop the CPR coach's timing: hold it while this screen is up.
+  useEffect(() => holdAppearanceReload(), []);
   const router = useRouter();
   const params = useLocalSearchParams<{ start?: string }>();
   const [phase, setPhase] = useState<Phase>(params.start === '1' ? 'countdown' : 'live');

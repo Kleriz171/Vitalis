@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useFonts, SchibstedGrotesk_700Bold, SchibstedGrotesk_800ExtraBold } from '@expo-google-fonts/schibsted-grotesk';
 import * as Notifications from 'expo-notifications';
 import '@/lib/dutyLocation'; // registers the background task at startup
+import '@/lib/appearance'; // reloads on a light/dark switch, between uses
 import { registerForPush, routeForNotification } from '@/lib/push';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -11,7 +12,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Toaster } from 'sonner-native';
 import 'react-native-reanimated';
 
-import { colors } from '@/lib/theme';
+import { colors, scheme } from '@/lib/theme';
 import { loadSession, RootState, store } from '@/lib/store';
 
 export default function RootLayout() {
@@ -46,8 +47,8 @@ export default function RootLayout() {
               <Stack.Screen name="doctor-application" options={{ animation: 'slide_from_right' }} />
             </Stack>
           </AuthGate>
-          <Toaster position="top-center" />
-          <StatusBar style="dark" />
+          <Toaster position="top-center" theme={scheme} />
+          <StatusBar style="auto" />
         </Provider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

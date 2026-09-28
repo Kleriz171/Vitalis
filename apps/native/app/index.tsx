@@ -23,7 +23,7 @@ export default function Welcome() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar style="dark" />
+      <StatusBar style="auto" />
       <View style={styles.top}>
         <Text style={styles.wordmark}>Vitalis</Text>
       </View>

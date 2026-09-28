@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
   name: { color: colors.foreground, fontSize: 24, fontWeight: '800' },
   sub: { color: colors.mutedForeground, fontSize: 15 },
   alert: { marginTop: 8, backgroundColor: colors.destructiveSoft, borderRadius: radius.md, padding: 10 },
-  alertText: { color: '#A61B1B', fontSize: 15, fontWeight: '700' },
+  alertText: { color: colors.destructive, fontSize: 15, fontWeight: '700' },
   sectionTitle: { color: colors.mutedForeground, fontSize: 13, fontWeight: '700' },
   sectionBody: { color: colors.foreground, fontSize: 16, lineHeight: 23 },
   contact: { backgroundColor: colors.accent, borderRadius: radius.lg, padding: 16, gap: 2 },

@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
   noticeCard: {
     padding: 16,
     backgroundColor: colors.warningSoft,
-    borderColor: '#F6D89B',
+    borderColor: `${colors.warning}66`,
   },
   noticeText: {
     color: colors.foreground,

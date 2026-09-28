@@ -1,5 +1,7 @@
-import { colors } from './theme';
+import { lightColors as colors } from './theme';
 
+// Illustrations always use the light palette: they are spot art on their own disc,
+// and dark ink outlines must stay visible in dark mode too.
 // One illustration set for the first-aid courses, keyed by course slug.
 // Shared grammar: 96×96, soft teal disc, ink outlines (2.5), white bodies,
 // teal for the helpful thing, red only for the hazard. Limbs and pipes are
