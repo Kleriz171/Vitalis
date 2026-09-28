@@ -403,7 +403,7 @@ async function seed() {
       badgeLabel: demoCourse.badgeLabel,
       score: 88,
       issuedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
-      expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      expiresAt: new Date(Date.now() + (365 - 14) * 24 * 60 * 60 * 1000),
       shareToken: randomBytes(12).toString('hex'),
     });
   }
