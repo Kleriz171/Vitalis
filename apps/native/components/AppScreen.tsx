@@ -15,8 +15,6 @@ interface AppScreenProps {
   scroll?: boolean;
   contentContainerStyle?: StyleProp<ViewStyle>;
   bodyStyle?: StyleProp<ViewStyle>;
-  /** Summary under the title (stats, chips). Sits on a dark ink panel: pass light text. */
-  headerContent?: ReactNode;
   scrollProps?: Omit<ScrollViewProps, 'contentContainerStyle'>;
 }
 
@@ -34,7 +32,6 @@ export function AppScreen({
   scroll = true,
   contentContainerStyle,
   bodyStyle,
-  headerContent,
   scrollProps,
 }: AppScreenProps) {
   const body = (
@@ -47,7 +44,6 @@ export function AppScreen({
         </View>
         {action ? <View style={styles.action}>{action}</View> : null}
       </View>
-      {headerContent ? <View style={styles.summary}>{headerContent}</View> : null}
       <View style={styles.content}>{children}</View>
     </View>
   );
@@ -103,8 +99,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.muted,
   },
-  // ponytail: one dark panel keeps every screen's existing light chips legible; restyle per screen later.
-  summary: { backgroundColor: colors.dark, borderRadius: radius.lg, padding: 14 },
   content: { gap: 14 },
   footer: { paddingHorizontal: 16, paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, backgroundColor: colors.background },
   footerSafe: { backgroundColor: colors.background },

@@ -60,7 +60,6 @@ export default function Assistant() {
   return (
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <AppScreen
-        eyebrow={t('Wellness guidance')}
         title={t('Health assistant')}
         subtitle={t('A calmer space for quick health questions and everyday guidance.')}
         scroll={false}

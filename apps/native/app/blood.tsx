@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { api } from '@/lib/api';
 import { RootState } from '@/lib/store';
-import { colors, radius } from '@/lib/theme';
+import { colors, radius, type } from '@/lib/theme';
 import { apiError, locale, t, tn } from '@/lib/i18n';
 
 type QueueCategory = 'blood' | 'organ' | 'tissue' | 'medicine';
@@ -285,30 +285,22 @@ export default function SupplyScreen() {
 
   return (
     <AppScreen
-      eyebrow={t('Supply center')}
-      title={t('Find care fast and track every request in one place.')}
+      title={t('Blood & supply')}
       subtitle={t('Request blood, organs, tissue, or medicine, stay in queue, and answer urgent exchange needs.')}
       contentContainerStyle={{ paddingBottom: 148 }}
       scrollProps={{
         refreshControl: <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />,
       }}
-      headerContent={
-        <View style={styles.heroPanel}>
-          <View style={styles.heroIdentityRow}>
-            <Badge variant="outline" style={styles.heroBadge} textStyle={{ color: '#fff' }}>
-              {user?.bloodType ?? t('Profile incomplete')}
-            </Badge>
-            <Text style={styles.heroHint}>{t('Connected to your Vitalis profile and live supply matching.')}</Text>
-          </View>
-          <View style={styles.heroStatsRow}>
-            <HeroStat label={t('Queued')} value={String(queuedCount)} />
-            <HeroStat label={t('Matched')} value={String(matchedCount)} />
-            <HeroStat label={t('Exchange')} value={String(exchangeRequests.length)} />
-            <HeroStat label={t('Replies')} value={String(inquiries.length)} />
-          </View>
-        </View>
-      }
     >
+      <Text style={styles.summaryLine}>
+        {[
+          user?.bloodType ? t('Blood {type}', { type: user.bloodType }) : t('Profile incomplete'),
+          `${t('Queued')} ${queuedCount}`,
+          `${t('Matched')} ${matchedCount}`,
+          `${t('Exchange')} ${exchangeRequests.length}`,
+          `${t('Replies')} ${inquiries.length}`,
+        ].join(' · ')}
+      </Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabRail}>
         {tabs.map((item) => {
           const active = tab === item.key;
@@ -685,15 +677,6 @@ export default function SupplyScreen() {
   );
 }
 
-function HeroStat({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.heroStat}>
-      <Text style={styles.heroStatValue}>{value}</Text>
-      <Text style={styles.heroStatLabel}>{label}</Text>
-    </View>
-  );
-}
-
 function SummaryCard({
   label,
   value,
@@ -738,44 +721,7 @@ function StepTile({ title, body }: { title: string; body: string }) {
 }
 
 const styles = StyleSheet.create({
-  heroPanel: {
-    gap: 12,
-  },
-  heroIdentityRow: {
-    gap: 8,
-  },
-  heroBadge: {
-    alignSelf: 'flex-start',
-  },
-  heroHint: {
-    fontSize: 13,
-    lineHeight: 18,
-    color: '#F4FBFE',
-  },
-  heroStatsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  heroStat: {
-    minWidth: 88,
-    flexGrow: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: radius.lg,
-    backgroundColor: 'rgba(255,255,255,0.14)',
-    gap: 2,
-  },
-  heroStatValue: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  heroStatLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: 'rgba(255,255,255,0.82)',
-  },
+  summaryLine: { ...type.footnote, color: colors.mutedForeground },
   tabRail: {
     gap: 8,
     paddingRight: 4,
@@ -955,12 +901,6 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingTop: 4,
     alignItems: 'center',
-  },
-  submitSectionTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: colors.foreground,
-    textAlign: 'center',
   },
   submitSectionBody: {
     fontSize: 13,

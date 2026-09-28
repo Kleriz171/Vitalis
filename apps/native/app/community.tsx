@@ -114,9 +114,8 @@ export default function Community() {
   if (selected) {
     return (
       <AppScreen
-        eyebrow={t('Support group')}
         title={selected.name}
-        subtitle={`${selected.memberCount?.toLocaleString() ?? 0} members`}
+        subtitle={tn(selected.memberCount ?? 0, '1 member', '{n} members')}
 
         action={<HeaderButton icon={ArrowLeft} onPress={() => setSelected(null)} label={t('Back')} />}
       >
@@ -193,15 +192,8 @@ export default function Community() {
 
   return (
     <AppScreen
-      eyebrow={t('Community')}
-      title={t('Find support that feels human.')}
-      subtitle={t('Protected groups for experiences, questions, and peer help.')}
-      headerContent={
-        <View style={styles.safeBanner}>
-          <Shield size={16} color="#fff" />
-          <Text style={styles.safeBannerText}>{t('Tap a group to read posts and share your own message — anonymous posting is available.')}</Text>
-        </View>
-      }
+      title={t('Community')}
+      subtitle={t('Tap a group to read posts and share your own message — anonymous posting is available.')}
     >
       {groupsLoading ? (
         Array.from({ length: 4 }).map((_, index) => (
@@ -240,25 +232,6 @@ export default function Community() {
 }
 
 const styles = StyleSheet.create({
-  heroEmoji: { fontSize: 24 },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.14)',
-  },
-  safeBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  safeBannerText: {
-    color: '#fff',
-    fontSize: 13,
-    flex: 1,
-  },
   groupCard: {
     padding: 16,
     flexDirection: 'row',

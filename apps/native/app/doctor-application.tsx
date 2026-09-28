@@ -69,7 +69,6 @@ export default function DoctorApplication() {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <AppScreen
-        eyebrow={t('Care providers')}
         title={t('Apply to join as a doctor')}
         subtitle={t('Submit your credentials. An administrator reviews every application.')}
         action={<HeaderButton icon={ArrowLeft} onPress={() => router.back()} label={t('Back')} />}

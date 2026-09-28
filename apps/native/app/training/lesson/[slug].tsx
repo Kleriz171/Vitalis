@@ -18,7 +18,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { api } from '@/lib/api';
 import { upsertEnrollment } from '@/lib/store';
-import { colors, radius } from '@/lib/theme';
+import { colors, radius, type } from '@/lib/theme';
 import {
   resolveLessonVideoMeta,
   type TrainingCourseDetailView,
@@ -124,31 +124,15 @@ export default function LessonViewer() {
       subtitle={lesson.summary}
       action={<BackBtn />}
       contentContainerStyle={{ paddingBottom: 96 }}
-      headerContent={
-        <View style={styles.heroContent}>
-          <View style={styles.heroBadgeRow}>
-            <View style={styles.heroBadge}>
-              <BookOpen size={13} color="#fff" />
-              <Text style={styles.heroBadgeText}>{t('Lesson {n} of {total}', { n: lessonIndex + 1, total: lessonCount })}</Text>
-            </View>
-            <View style={styles.heroBadge}>
-              <Clock3 size={13} color="#fff" />
-              <Text style={styles.heroBadgeText}>{t('{n} min', { n: lesson.durationMin })}</Text>
-            </View>
-            <View style={styles.heroBadge}>
-              <PlayCircle size={13} color="#fff" />
-              <Text style={styles.heroBadgeText}>{t('Topic video')}</Text>
-            </View>
-          </View>
-          <View style={styles.progressWrap}>
-            <Text style={styles.progressText}>{t('Course progress {n}%', { n: progressPct })}</Text>
-            <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: `${progressPct}%` }]} />
-            </View>
-          </View>
-        </View>
-      }
     >
+      <View style={{ gap: 6 }}>
+        <Text style={styles.metaLine}>
+          {[t('Lesson {n} of {total}', { n: lessonIndex + 1, total: lessonCount }), t('{n} min', { n: lesson.durationMin })].join(' · ')}
+        </Text>
+        <View style={styles.progressTrack} accessibilityLabel={t('Course progress {n}%', { n: progressPct })}>
+          <View style={[styles.progressFill, { width: `${progressPct}%` }]} />
+        </View>
+      </View>
       <Card style={styles.videoCard}>
         <View style={styles.sectionHeader}>
           <PlayCircle size={18} color={colors.primary} />
@@ -277,27 +261,9 @@ function BackBtn() {
 }
 
 const styles = StyleSheet.create({
-  backBtn: {
-    width: 40, height: 40, borderRadius: radius.full,
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.16)',
-  },
-  heroContent: { gap: 10 },
-  heroBadgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  heroBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: radius.full,
-    backgroundColor: 'rgba(255,255,255,0.14)',
-  },
-  heroBadgeText: { color: '#fff', fontSize: 12, fontWeight: '700' },
-  progressWrap: { gap: 8 },
-  progressText: { color: '#fff', fontSize: 12, fontWeight: '700' },
-  progressTrack: { height: 6, borderRadius: radius.full, backgroundColor: 'rgba(255,255,255,0.2)' },
-  progressFill: { height: '100%', backgroundColor: '#fff', borderRadius: radius.full },
+  metaLine: { ...type.footnote, color: colors.mutedForeground },
+  progressTrack: { height: 4, borderRadius: radius.full, backgroundColor: colors.muted, overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: colors.primary },
   videoCard: { padding: 18, gap: 12 },
   actionCard: { padding: 18, gap: 14, backgroundColor: colors.accent, alignItems: 'center' },
   actionCopy: { gap: 6, alignItems: 'center', maxWidth: 320 },
