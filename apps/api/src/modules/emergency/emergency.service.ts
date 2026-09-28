@@ -94,7 +94,7 @@ export const emergencyService = {
         role: { $in: RESPONDER_ROLES },
         available: true,
         ...nearQuery(coords[0], coords[1], radius),
-      }).select('_id').limit(15).lean();
+      }).select('_id location').limit(15).lean();
       if (found.length) return found;
     }
     return [];

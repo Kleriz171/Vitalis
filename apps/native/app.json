@@ -11,7 +11,6 @@
       "supportsTablet": false,
       "bundleIdentifier": "dev.vitalis.app",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Vitalis uses your location to broadcast SOS emergencies to nearby responders.",
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true,
           "NSAllowsLocalNetworking": true
@@ -26,10 +25,7 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "permissions": [
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
-      ]
+      "permissions": []
     },
     "web": {
       "output": "static",
@@ -40,7 +36,11 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Vitalis uses your location to broadcast SOS emergencies to nearby responders."
+          "locationWhenInUsePermission": "Vitalis uses your location to send your SOS and to show help nearby.",
+          "locationAlwaysAndWhenInUsePermission": "While you are on duty as a responder, Vitalis uses your location in the background so SOS calls near you can reach you, even with the app closed.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
         }
       ],
       [
@@ -50,6 +50,12 @@
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#F7F5F0"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#14A897"
         }
       ]
     ],

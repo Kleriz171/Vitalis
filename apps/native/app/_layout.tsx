@@ -1,4 +1,7 @@
 import { useEffect } from 'react';
+import * as Notifications from 'expo-notifications';
+import '@/lib/dutyLocation'; // registers the background task at startup
+import { registerForPush, routeForNotification } from '@/lib/push';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Provider, useSelector } from 'react-redux';
@@ -46,6 +49,19 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const hydrated = useSelector((s: RootState) => s.auth.hydrated);
   const segments = useSegments();
   const router = useRouter();
+
+  // Register for push once signed in; follow taps on notifications (also from a cold start).
+  useEffect(() => {
+    if (!hydrated || !token) return;
+    registerForPush().catch(() => {});
+    const open = (r: Notifications.NotificationResponse | null) => {
+      const to = routeForNotification(r?.notification.request.content.data as Record<string, unknown>);
+      if (to) router.push(to as never);
+    };
+    Notifications.getLastNotificationResponseAsync().then(open).catch(() => {});
+    const sub = Notifications.addNotificationResponseReceivedListener(open);
+    return () => sub.remove();
+  }, [hydrated, token, router]);
 
   useEffect(() => {
     if (!hydrated) return;

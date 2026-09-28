@@ -14,12 +14,13 @@ import { useRouter } from 'expo-router';
 import { AlertTriangle, Award, Calendar, Heart, LogOut, Pill, QrCode, ShieldCheck, Syringe, UserCircle, X } from 'lucide-react-native';
 import { toast } from 'sonner-native';
 import { api } from '@/lib/api';
+import { signOut } from '@/lib/session';
 import { AppScreen } from '@/components/AppScreen';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
-import { logout, RootState, setSession, setTraining } from '@/lib/store';
+import { RootState, setSession, setTraining } from '@/lib/store';
 import type { TrainingCertification, TrainingEnrollment } from '@/lib/store';
 import { colors, radius } from '@/lib/theme';
 
@@ -338,8 +339,8 @@ export default function Profile() {
       icon={<UserCircle size={28} color="#fff" />}
       action={
         <Pressable
-          onPress={() => {
-            dispatch(logout());
+          onPress={async () => {
+            await signOut();
             router.replace('/');
           }}
           style={styles.iconButton}

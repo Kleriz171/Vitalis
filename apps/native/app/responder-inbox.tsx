@@ -17,6 +17,7 @@ import { api } from '@/lib/api';
 import { socket } from '@/lib/socket';
 import { distanceM, formatDistance, LngLat, openDirections } from '@/lib/geo';
 import { RootState } from '@/lib/store';
+import { startDutyTracking, stopDutyTracking } from '@/lib/dutyLocation';
 import { colors, radius } from '@/lib/theme';
 
 type Status = 'pending' | 'assigned' | 'en_route' | 'on_scene' | 'resolved' | 'cancelled';
@@ -84,7 +85,10 @@ export default function ResponderInbox() {
         api.get<Incident[]>('/emergencies'),
         api.get('/biopassport/me'),
       ]);
-      setAvailable(!!passport?.profile?.available);
+      const onDuty = !!passport?.profile?.available;
+      setAvailable(onDuty);
+      // Resume background tracking after an app restart; the OS may have stopped it.
+      if (onDuty) startDutyTracking().catch(() => {});
       const mine = list.find(e => e.responder === me || e.aedRunner === me) ?? null;
       setActive(mine);
       setIncidents(list.filter(e => e !== mine));
@@ -195,11 +199,19 @@ export default function ResponderInbox() {
         const c: LngLat = [pos.coords.longitude, pos.coords.latitude];
         setHere(c);
         await api.patch('/biopassport/me', { available: true, location: { type: 'Point', coordinates: c } });
+        // "Always" location lets calls reach you with Vitalis closed. Without it, duty still
+        // works while the app is open, so warn instead of refusing.
+        if (!(await startDutyTracking())) {
+          toast('Only while Vitalis is open', {
+            description: 'Allow location "Always" in Settings to receive SOS calls with the app closed.',
+          });
+        }
         lastDutyPush.current = Date.now();
         setAvailable(true);
         await load();
       } else {
         await api.patch('/biopassport/me', { available: false });
+        await stopDutyTracking();
         setAvailable(false);
       }
     } catch (err: any) {

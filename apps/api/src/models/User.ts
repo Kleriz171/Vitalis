@@ -28,6 +28,8 @@ const UserSchema = new Schema({
     coordinates: { type: [Number], default: [0, 0] },
   },
   available: { type: Boolean, default: false },
+  // Expo push tokens, one per installed device. Pruned when Expo reports them dead.
+  pushTokens: { type: [String], default: [], select: false },
   refreshTokenHash: { type: String, select: false },
 }, { timestamps: true });
 

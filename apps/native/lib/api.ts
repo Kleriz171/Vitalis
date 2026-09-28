@@ -1,6 +1,7 @@
 import axios from 'axios';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
 import { logout, setSession, store } from './store';
 
 /**
@@ -84,7 +85,8 @@ api.interceptors.response.use(
     const message = error.response?.data?.error;
     const refreshToken = store.getState().auth.refreshToken;
 
-    if (!originalRequest || status !== 401 || originalRequest._retry || !refreshToken) {
+    // At most two recoveries per request: adopt background tokens, then refresh.
+    if (!originalRequest || status !== 401 || (originalRequest._attempts ?? 0) >= 2 || !refreshToken) {
       if (status === 401 && !refreshToken) store.dispatch(logout());
       return Promise.reject(error);
     }
@@ -99,11 +101,25 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    originalRequest._retry = true;
+    originalRequest._attempts = (originalRequest._attempts ?? 0) + 1;
+
+    // The background duty-location task may have rotated the tokens while the app was closed.
+    // Adopt its newer pair before refreshing, or our stale refresh token would log the user out.
+    if (Platform.OS !== 'web') {
+      const [at, rt] = await Promise.all([SecureStore.getItemAsync('at'), SecureStore.getItemAsync('rt')]);
+      const current = store.getState().auth;
+      if (at && rt && rt !== current.refreshToken && current.user) {
+        store.dispatch(setSession({ accessToken: at, refreshToken: rt, user: current.user }));
+        originalRequest.headers = originalRequest.headers ?? {};
+        originalRequest.headers.Authorization = `Bearer ${at}`;
+        return api(originalRequest);
+      }
+    }
 
     try {
+      const latestRefresh = store.getState().auth.refreshToken ?? refreshToken;
       refreshPromise ??= refreshClient
-        .post('/auth/refresh', { refreshToken })
+        .post('/auth/refresh', { refreshToken: latestRefresh })
         .then(({ data }) => {
           store.dispatch(setSession(data));
           return data.accessToken as string;

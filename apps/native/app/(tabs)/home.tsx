@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
 import * as Haptics from 'expo-haptics';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import {
@@ -18,7 +18,8 @@ import {
   Zap,
 } from 'lucide-react-native';
 import { api } from '@/lib/api';
-import { logout, RootState } from '@/lib/store';
+import { signOut } from '@/lib/session';
+import { RootState } from '@/lib/store';
 import { AppScreen } from '@/components/AppScreen';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -26,7 +27,6 @@ import { colors, radius } from '@/lib/theme';
 
 export default function Home() {
   const user = useSelector((s: RootState) => s.auth.user);
-  const dispatch = useDispatch();
   const router = useRouter();
   const [liveSos, setLiveSos] = useState<{ _id: string; status: string } | null>(null);
   const pulse = useSharedValue(1);
@@ -55,8 +55,8 @@ export default function Home() {
     router.push(liveSos ? '/emergency' : ({ pathname: '/emergency', params: { start: '1' } } as never));
   };
 
-  const signOut = () => {
-    dispatch(logout());
+  const handleSignOut = async () => {
+    await signOut();
     router.replace('/');
   };
 
@@ -78,7 +78,7 @@ export default function Home() {
       subtitle="Your emergency tools and medical identity, ready when you need them."
       icon={<Heart size={24} color="#fff" fill="#fff" />}
       action={
-        <Pressable onPress={signOut} style={styles.iconButton} accessibilityRole="button" accessibilityLabel="Sign out">
+        <Pressable onPress={handleSignOut} style={styles.iconButton} accessibilityRole="button" accessibilityLabel="Sign out">
           <LogOut size={16} color="#fff" />
         </Pressable>
       }
