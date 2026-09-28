@@ -280,13 +280,7 @@ export const ui: Record<string, string> = {
   'Emergency resources could not be loaded.': 'Burimet e urgjencës nuk u ngarkuan.',
   'Maps unavailable': 'Hartat nuk janë të disponueshme',
   'No map app is available on this device.': 'Nuk ka aplikacion hartash në këtë pajisje.',
-  'Emergency resources': 'Burime urgjence',
-  'SOS directory': 'Numrat dhe spitalet',
-  'Call fast, find care, and navigate to open hospitals without leaving the app.': 'Telefononi shpejt, gjeni kujdes dhe shkoni te spitalet e hapura pa dalë nga aplikacioni.',
-  'Use these resources when emergency dispatch needs a backup path.': 'Përdorini këto burime kur dispeçeria ka nevojë për një rrugë rezervë.',
   'Hospitals': 'Spitalet',
-  'Call': 'Telefono',
-  'Route': 'Rruga',
   'No nearby hospitals': 'Nuk ka spitale afër',
   'We could not find hospital records right now.': 'Nuk gjetëm të dhëna për spitalet tani.',
 
@@ -652,6 +646,8 @@ export const ui: Record<string, string> = {
 
   'Emergency contact saved': 'Kontakti në urgjencë u ruajt',
   'Not set': 'Nuk është vendosur',
+
+  'Call {name}, {number}': 'Telefono {name}, {number}',
 
   // Notifications (system)
   'SOS calls near you': 'Thirrje SOS pranë jush',

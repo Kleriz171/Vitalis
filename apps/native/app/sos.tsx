@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Heart, MapPin, Phone, Shield, TriangleAlert, X } from 'lucide-react-native';
+import { MapPin, Navigation, Phone, X } from 'lucide-react-native';
 import { toast } from 'sonner-native';
 import { api } from '@/lib/api';
 import { AppScreen, HeaderButton } from '@/components/AppScreen';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
 import { Empty } from '@/components/ui/Empty';
-import { colors, radius } from '@/lib/theme';
+import { colors, fonts, radius, type } from '@/lib/theme';
+import { callNumber } from '@/lib/geo';
 import { t } from '@/lib/i18n';
 
 interface EmergencyNumber {
@@ -35,7 +34,6 @@ const fallbackNumbers: EmergencyNumber[] = [
 
 export default function SOSModal() {
   const router = useRouter();
-  const [tab, setTab] = useState<'numbers' | 'hospitals'>('numbers');
   const [numbers, setNumbers] = useState<EmergencyNumber[]>(fallbackNumbers);
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -79,175 +77,77 @@ export default function SOSModal() {
 
   return (
     <AppScreen
-      eyebrow={t('Emergency resources')}
-      title={t('SOS directory')}
-      subtitle={t('Call fast, find care, and navigate to open hospitals without leaving the app.')}
+      title={t('Hospitals & emergency numbers')}
       action={<HeaderButton icon={X} onPress={() => router.back()} label={t('Close')} />}
-      headerContent={
-        <View style={styles.headerBadge}>
-          <TriangleAlert size={16} color="#fff" />
-          <Text style={styles.headerBadgeText}>{t('Use these resources when emergency dispatch needs a backup path.')}</Text>
-        </View>
-      }
     >
-      {error ? (
-        <Card style={styles.noticeCard}>
-          <Text style={styles.noticeText}>{error}</Text>
-        </Card>
-      ) : null}
+      {error ? <Text style={styles.notice}>{error}</Text> : null}
 
-      <View style={styles.tabRow}>
-        {([
-          { key: 'numbers', label: t('Emergency numbers') },
-          { key: 'hospitals', label: t('Hospitals') },
-        ] as const).map((entry) => {
-          const active = tab === entry.key;
+      <View style={styles.group}>
+        {numbers.map((entry, i) => {
+          const ambulance = entry.category === 'ambulance';
           return (
-            <Pressable key={entry.key} onPress={() => setTab(entry.key)} style={[styles.tab, active && styles.tabActive]}>
-              <Text style={[styles.tabText, active && styles.tabTextActive]}>{entry.label}</Text>
+            <Pressable
+              key={entry.id}
+              onPress={() => callNumber(entry.number)}
+              style={({ pressed }) => [styles.row, i > 0 && styles.divider, pressed && styles.pressed]}
+              accessibilityRole="button"
+              accessibilityLabel={t('Call {name}, {number}', { name: t(entry.name), number: entry.number })}
+            >
+              <Phone size={20} color={ambulance ? colors.destructive : colors.mutedForeground} />
+              <Text style={styles.rowTitle}>{t(entry.name)}</Text>
+              <Text style={[styles.number, ambulance && { color: colors.destructive }]}>{entry.number}</Text>
             </Pressable>
           );
         })}
       </View>
 
-      {tab === 'numbers'
-        ? numbers.map((entry) => (
-            <Card key={entry.id} style={styles.itemCard}>
-              <View style={styles.itemIcon}>
-                {entry.category === 'police' ? <Shield size={20} color={colors.info} /> : <Phone size={20} color={colors.destructive} />}
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.itemTitle}>{t(entry.name)}</Text>
-                <Text style={styles.itemValue}>{entry.number}</Text>
-              </View>
-              <Button size="sm" style={styles.callButton} onPress={() => void Linking.openURL(`tel:${entry.number}`)}>
-                {t('Call')}
-              </Button>
-            </Card>
-          ))
-        : hospitals.length
-        ? hospitals.map((hospital) => (
-            <Card key={hospital.id} style={styles.itemCard}>
-              <View style={styles.itemIcon}>
-                <MapPin size={20} color={colors.destructive} />
-              </View>
-              <View style={{ flex: 1, gap: 4 }}>
-                <Text style={styles.itemTitle}>{hospital.name}</Text>
-                {hospital.address ? <Text style={styles.itemBody}>{hospital.address}</Text> : null}
-                {hospital.phone ? <Text style={styles.itemBody}>{hospital.phone}</Text> : null}
-              </View>
-              <View style={styles.hospitalActions}>
-                {hospital.phone ? (
-                  <Button size="sm" variant="outline" onPress={() => void Linking.openURL(`tel:${hospital.phone}`)}>
-                    {t('Call')}
-                  </Button>
-                ) : null}
-                <Button size="sm" style={styles.callButton} onPress={() => void openDirections(hospital)}>
-                  {t('Route')}
-                </Button>
-              </View>
-            </Card>
-          ))
-        : (
-          <Card style={styles.emptyCard}>
-            <Empty icon={MapPin} title={t('No nearby hospitals')} description={t('We could not find hospital records right now.')} />
-          </Card>
-        )}
+      <Text style={styles.groupTitle}>{t('Hospitals')}</Text>
+      {hospitals.length ? (
+        <View style={styles.group}>
+          {hospitals.map((hospital, i) => (
+            <View key={hospital.id} style={[styles.row, i > 0 && styles.divider]}>
+              <Pressable
+                onPress={() => void openDirections(hospital)}
+                style={{ flex: 1 }}
+                accessibilityRole="button"
+                accessibilityLabel={t('Directions to {place}', { place: hospital.name })}
+              >
+                <Text style={styles.rowTitle}>{hospital.name}</Text>
+                {hospital.address ? <Text style={styles.rowDetail} numberOfLines={2}>{hospital.address}</Text> : null}
+              </Pressable>
+              {hospital.phone ? (
+                <Pressable
+                  onPress={() => callNumber(hospital.phone!)}
+                  hitSlop={8}
+                  style={styles.iconButton}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('Call {name}, {number}', { name: hospital.name, number: hospital.phone })}
+                >
+                  <Phone size={18} color={colors.foreground} />
+                </Pressable>
+              ) : null}
+              <Pressable onPress={() => void openDirections(hospital)} hitSlop={8} style={styles.iconButton} accessibilityElementsHidden importantForAccessibility="no">
+                <Navigation size={18} color={colors.foreground} />
+              </Pressable>
+            </View>
+          ))}
+        </View>
+      ) : (
+        <Empty icon={MapPin} title={t('No nearby hospitals')} description={t('We could not find hospital records right now.')} />
+      )}
     </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  closeBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.14)',
-  },
-  headerBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  headerBadgeText: {
-    color: '#fff',
-    fontSize: 13,
-    flex: 1,
-  },
-  noticeCard: {
-    padding: 16,
-    backgroundColor: colors.warningSoft,
-    borderColor: `${colors.warning}66`,
-  },
-  noticeText: {
-    color: colors.foreground,
-    fontSize: 13,
-  },
-  tabRow: {
-    flexDirection: 'row',
-    gap: 8,
-    padding: 4,
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
-  },
-  tab: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderRadius: radius.lg,
-  },
-  tabActive: {
-    backgroundColor: colors.destructiveSoft,
-  },
-  tabText: {
-    color: colors.mutedForeground,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  tabTextActive: {
-    color: colors.destructive,
-  },
-  itemCard: {
-    padding: 16,
-    flexDirection: 'row',
-    gap: 12,
-    alignItems: 'center',
-  },
-  itemIcon: {
-    width: 46,
-    height: 46,
-    borderRadius: radius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.background,
-  },
-  itemTitle: {
-    color: colors.foreground,
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  itemValue: {
-    color: colors.destructive,
-    fontSize: 18,
-    fontWeight: '800',
-    marginTop: 2,
-  },
-  itemBody: {
-    color: colors.mutedForeground,
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  hospitalActions: {
-    gap: 8,
-  },
-  callButton: {
-    backgroundColor: colors.destructive,
-  },
-  emptyCard: {
-    padding: 18,
-  },
+  notice: { ...type.footnote, color: colors.mutedForeground },
+  groupTitle: { ...type.footnote, fontWeight: '600', color: colors.mutedForeground, marginTop: 8, marginBottom: -6, marginLeft: 4 },
+  group: { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 16, paddingVertical: 12, minHeight: 60 },
+  divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  pressed: { backgroundColor: colors.muted },
+  rowTitle: { ...type.headline, color: colors.foreground, flexShrink: 1 },
+  rowDetail: { ...type.footnote, color: colors.mutedForeground, marginTop: 2 },
+  number: { fontFamily: fonts.display, fontSize: 24, color: colors.foreground, marginLeft: 'auto', fontVariant: ['tabular-nums'] },
+  iconButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.muted, alignItems: 'center', justifyContent: 'center' },
 });
