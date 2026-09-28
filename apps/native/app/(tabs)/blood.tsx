@@ -1,5 +1,4 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { BellRing, Clock3, Droplets, HeartHandshake, PackageSearch, Pill, Send, ShieldPlus } from 'lucide-react-native';
 import { useSelector } from 'react-redux';
@@ -131,7 +130,6 @@ const readList = <T,>(value: unknown, keys: string[] = []): T[] => {
 };
 
 export default function SupplyScreen() {
-  const tabBarHeight = useBottomTabBarHeight();
   const user = useSelector((state: RootState) => state.auth.user);
   const [tab, setTab] = useState<FeedTab>('request');
   const [categoryFilter, setCategoryFilter] = useState<FilterCategory>('all');
@@ -290,7 +288,7 @@ export default function SupplyScreen() {
       title="Find care fast and track every request in one place."
       subtitle="Request blood, organs, tissue, or medicine, stay in queue, and answer urgent exchange needs."
       icon={<HeartHandshake size={24} color="#fff" />}
-      contentContainerStyle={{ paddingBottom: Math.max(tabBarHeight + 48, 148) }}
+      contentContainerStyle={{ paddingBottom: 148 }}
       scrollProps={{
         refreshControl: <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />,
       }}
