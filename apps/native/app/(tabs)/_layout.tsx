@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Home as HomeIcon, Droplets, Stethoscope, Users, UserCircle, GraduationCap } from 'lucide-react-native';
+import { Home as HomeIcon, Droplets, Stethoscope, UserCircle, GraduationCap } from 'lucide-react-native';
 import { colors, radius, shadows } from '@/lib/theme';
 
 export default function TabLayout() {
@@ -29,7 +29,8 @@ export default function TabLayout() {
       <Tabs.Screen name="home" options={{ title: 'Home', tabBarIcon: ({ color }) => <HomeIcon size={22} color={color} /> }} />
       <Tabs.Screen name="blood" options={{ title: 'Supply', tabBarIcon: ({ color }) => <Droplets size={22} color={color} /> }} />
       <Tabs.Screen name="doctors" options={{ title: 'Doctors', tabBarIcon: ({ color }) => <Stethoscope size={22} color={color} /> }} />
-      <Tabs.Screen name="community" options={{ title: 'Community', tabBarIcon: ({ color }) => <Users size={22} color={color} /> }} />
+      {/* Five tabs max (HIG); Community is reached from Home. */}
+      <Tabs.Screen name="community" options={{ href: null, title: 'Community' }} />
       <Tabs.Screen name="training" options={{ title: 'Training', tabBarIcon: ({ color }) => <GraduationCap size={22} color={color} /> }} />
       <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: ({ color }) => <UserCircle size={22} color={color} /> }} />
     </Tabs>

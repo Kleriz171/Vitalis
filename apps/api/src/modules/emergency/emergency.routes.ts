@@ -8,11 +8,12 @@ import { Hospital } from '../../models/Hospital';
 const r = Router();
 r.use(authRequired);
 
+// Albania. 127 is the ambulance line; 112 routes to all services.
 const EMERGENCY_NUMBERS = [
-  { id: 'ambulance', name: 'Ambulance', number: '112', category: 'ambulance' as const },
+  { id: 'ambulance', name: 'Ambulance', number: '127', category: 'ambulance' as const },
+  { id: 'general', name: 'European emergency number', number: '112', category: 'general' as const },
   { id: 'police', name: 'Police', number: '129', category: 'police' as const },
   { id: 'fire', name: 'Fire brigade', number: '128', category: 'fire' as const },
-  { id: 'poison', name: 'Poison control', number: '127', category: 'poison' as const },
 ];
 r.get('/numbers', (_req, res) => res.json(EMERGENCY_NUMBERS));
 

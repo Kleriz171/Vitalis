@@ -1,180 +1,214 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Pressable, RefreshControl, StyleSheet, Switch, Text, View } from 'react-native';
 import * as Location from 'expo-location';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { toast } from 'sonner-native';
-import {
-  Ambulance,
-  CheckCircle2,
-  Inbox as InboxIcon,
-  LogOut,
-  MapPin,
-  Radio,
-  ShieldCheck,
-} from 'lucide-react-native';
-import Animated, { FadeInDown, FadeOut, Layout } from 'react-native-reanimated';
+import { ChevronLeft, ClipboardList, Inbox as InboxIcon, Navigation, Radio, ShieldCheck, Zap } from 'lucide-react-native';
+import Animated, { FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
 
 import { AppScreen } from '@/components/AppScreen';
-import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Empty } from '@/components/ui/Empty';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { api } from '@/lib/api';
 import { socket } from '@/lib/socket';
-import { logout, RootState } from '@/lib/store';
+import { distanceM, formatDistance, LngLat, openDirections } from '@/lib/geo';
+import { RootState } from '@/lib/store';
 import { colors, radius } from '@/lib/theme';
 
-type Status = 'pending' | 'accepted' | 'en_route' | 'on_scene' | 'resolved';
+type Status = 'pending' | 'assigned' | 'en_route' | 'on_scene' | 'resolved' | 'cancelled';
 
-interface Emergency {
+interface Incident {
   _id: string;
   type: string;
   priority: number;
   status: Status;
   createdAt: string;
   description?: string;
-  etaSeconds?: number;
-  coordinates?: [number, number];
-  location?: { type: 'Point'; coordinates: [number, number] };
+  location?: { coordinates: LngLat };
+  responder?: string;
+  aedRunner?: string;
+  aedStatus?: 'to_aed' | 'has_aed' | 'delivered';
+  needsAedRunner?: boolean;
+  aed?: { name: string; placement?: string; coordinates: LngLat };
 }
 
-const hasCoords = (e: Emergency) =>
-  Array.isArray(e.coordinates) || Array.isArray(e.location?.coordinates);
+const RESPONDER_ROLES = ['doctor', 'nurse', 'student_responder', 'blood_donor'];
 
-const RESPONDER_ROLES = ['doctor', 'nurse', 'student_responder'];
+const TYPE_LABEL: Record<string, string> = {
+  cardiac: 'Cardiac arrest',
+  medical: 'Medical emergency',
+  trauma: 'Injury',
+  blood_needed: 'Blood needed',
+  rare_medicine: 'Medicine needed',
+  other: 'Emergency',
+};
+
+const STATUS_LABEL: Record<Status, string> = {
+  pending: 'Waiting',
+  assigned: 'Accepted',
+  en_route: 'On the way',
+  on_scene: 'On scene',
+  resolved: 'Closed',
+  cancelled: 'Cancelled',
+};
 
 const timeAgo = (iso: string) => {
-  const diff = Math.max(0, Date.now() - new Date(iso).getTime());
-  const m = Math.floor(diff / 60_000);
+  const m = Math.floor(Math.max(0, Date.now() - new Date(iso).getTime()) / 60_000);
   if (m < 1) return 'just now';
-  if (m < 60) return `${m}m ago`;
+  if (m < 60) return `${m} min ago`;
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
+  return h < 24 ? `${h} h ago` : `${Math.floor(h / 24)} d ago`;
 };
-
-const formatEta = (s?: number) => {
-  if (s == null) return '—';
-  const m = Math.floor(s / 60);
-  const r = s % 60;
-  return `${m}:${r.toString().padStart(2, '0')}`;
-};
-
-const shortId = (id: string) => id.slice(-6).toUpperCase();
 
 export default function ResponderInbox() {
   const router = useRouter();
-  const dispatch = useDispatch();
   const user = useSelector((s: RootState) => s.auth.user);
-  const [available, setAvailable] = useState(false);
-  const [busy, setBusy] = useState<'duty' | string | null>(null);
-  const [incidents, setIncidents] = useState<Emergency[]>([]);
-  const [active, setActive] = useState<Emergency | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const me = user?.id ?? user?._id ?? '';
+  const canAccess = !!user && RESPONDER_ROLES.includes(user.role);
 
-  const canAccess = !!user && RESPONDER_ROLES.includes(user.role ?? '');
+  const [available, setAvailable] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [active, setActive] = useState<Incident | null>(null);
+  const [here, setHere] = useState<LngLat | null>(null);
+  const [loading, setLoading] = useState(true);
+  const lastDutyPush = useRef(0);
 
   const load = useCallback(async () => {
     try {
-      const { data } = await api.get('/emergencies', {
-        params: { status: 'pending,assigned' },
-      });
-      const list: Emergency[] = data?.emergencies ?? data ?? [];
-      setIncidents(list.filter(e => e.status === 'pending').slice(0, 30));
-      setActive(list.find(e => e.status !== 'pending' && e.status !== 'resolved') ?? null);
+      const [{ data: list }, { data: passport }] = await Promise.all([
+        api.get<Incident[]>('/emergencies'),
+        api.get('/biopassport/me'),
+      ]);
+      setAvailable(!!passport?.profile?.available);
+      const mine = list.find(e => e.responder === me || e.aedRunner === me) ?? null;
+      setActive(mine);
+      setIncidents(list.filter(e => e !== mine));
     } catch {
-      // silent — inbox stays empty
+      toast.error('Could not load the inbox', { description: 'Pull down to retry.' });
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [me]);
 
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await load();
-    setRefreshing(false);
-  }, [load]);
+  useEffect(() => { if (canAccess) void load(); }, [canAccess, load]);
+
+  // While on duty (or handling a call), keep our position fresh: the server uses it to decide
+  // who gets alerted, and the caller sees us approach.
+  const activeId = active?._id ?? null;
+  const activeIdRef = useRef<string | null>(null);
+  activeIdRef.current = activeId;
+  useEffect(() => {
+    if (!available && !activeId) return;
+    let sub: Location.LocationSubscription | null = null;
+    let cancelled = false;
+    (async () => {
+      const perm = await Location.getForegroundPermissionsAsync();
+      if (perm.status !== 'granted' || cancelled) return;
+      sub = await Location.watchPositionAsync(
+        { accuracy: Location.Accuracy.High, distanceInterval: activeId ? 15 : 150 },
+        pos => {
+          const c: LngLat = [pos.coords.longitude, pos.coords.latitude];
+          setHere(c);
+          if (activeIdRef.current) socket.emit('responder:location', { emergencyId: activeIdRef.current, coordinates: c });
+          if (available && Date.now() - lastDutyPush.current > 60_000) {
+            lastDutyPush.current = Date.now();
+            api.patch('/biopassport/me', { location: { type: 'Point', coordinates: c } }).catch(() => {});
+          }
+        },
+      );
+      if (cancelled) { try { sub.remove(); } catch {} }
+    })();
+    return () => {
+      cancelled = true;
+      // expo-location's web shim throws on remove(); native is fine.
+      try { sub?.remove(); } catch {}
+    };
+  }, [available, activeId]);
+
+  useEffect(() => {
+    if (activeId) socket.emit('emergency:join', activeId);
+  }, [activeId]);
 
   useEffect(() => {
     if (!canAccess) return;
-    load();
-
-    const onNew = (e: any) => {
-      const incoming: Emergency = e?.emergency ?? e;
-      if (!incoming?._id) return;
-      setIncidents(prev => [incoming, ...prev.filter(x => x._id !== incoming._id)].slice(0, 30));
+    const onNew = ({ emergency }: { emergency: Incident }) => {
+      if (!emergency?._id) return;
+      setIncidents(prev => [emergency, ...prev.filter(x => x._id !== emergency._id)]);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
-      toast(`New ${incoming.type ?? 'incident'}`, {
-        description: `P${incoming.priority} · just received`,
+      toast(TYPE_LABEL[emergency.type] ?? 'New emergency', { description: 'Nearby. Open the inbox to accept.' });
+    };
+    const onTaken = ({ _id, needsAedRunner }: { _id: string; needsAedRunner: boolean }) =>
+      setIncidents(prev =>
+        needsAedRunner
+          ? prev.map(i => (i._id === _id ? { ...i, status: 'assigned', needsAedRunner: true } : i))
+          : prev.filter(i => i._id !== _id),
+      );
+    const onStatus = (e: Incident & { responder?: any; aedRunner?: any }) => {
+      setActive(prev => {
+        if (!prev || prev._id !== e._id) return prev;
+        if (e.status === 'resolved' || e.status === 'cancelled') {
+          toast(e.status === 'cancelled' ? 'Caller cancelled the SOS' : 'Incident closed');
+          return null;
+        }
+        return { ...prev, status: e.status, aedStatus: e.aedStatus };
       });
     };
-
-    const onAssigned = (e: any) => {
-      if (e?.responder === user?.id) setActive(e);
-      setIncidents(prev => prev.filter(i => i._id !== e?._id));
-    };
-
     socket.on('emergency:new', onNew);
-    socket.on('emergency:assigned', onAssigned);
+    socket.on('emergency:taken', onTaken);
+    socket.on('emergency:status', onStatus);
     return () => {
       socket.off('emergency:new', onNew);
-      socket.off('emergency:assigned', onAssigned);
+      socket.off('emergency:taken', onTaken);
+      socket.off('emergency:status', onStatus);
     };
-  }, [canAccess, load, user?.id]);
+  }, [canAccess]);
 
   if (!canAccess) {
     return (
-      <AppScreen
-        tone="info"
-        eyebrow="Restricted"
-        title="Responder area"
-        subtitle="Doctors, nurses, and student responders only."
-      >
+      <AppScreen tone="dark" title="Responder inbox" subtitle="For doctors, nurses and certified first-aiders.">
         <Empty
           icon={ShieldCheck}
-          title="No access"
-          description="Sign in with a responder account to view the inbox."
+          title="Become a responder"
+          description="Pass the CPR or AED course in Training. You'll then be able to go on duty and receive SOS calls near you."
         />
-        <View style={{ height: 12 }} />
-        <Button onPress={() => router.replace('/(tabs)/home')}>Back to home</Button>
+        <Button onPress={() => router.replace('/(tabs)/training')}>Open training</Button>
       </AppScreen>
     );
   }
 
-  const toggleDuty = async () => {
+  const toggleDuty = async (next: boolean) => {
     if (busy) return;
     setBusy('duty');
     try {
-      if (!available) {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-          toast.error('Location needed', {
-            description: 'Enable location to receive nearby SOS.',
-            action: { label: 'Try again', onClick: () => toggleDuty() },
-          });
+      if (next) {
+        const perm = await Location.requestForegroundPermissionsAsync();
+        if (perm.status !== 'granted') {
+          toast.error('Location needed', { description: 'Vitalis only alerts responders close to an emergency.' });
           return;
         }
-        const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-        await api.patch('/biopassport/me', {
-          location: {
-            type: 'Point',
-            coordinates: [position.coords.longitude, position.coords.latitude],
-          },
-          available: true,
-        });
+        const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+        const c: LngLat = [pos.coords.longitude, pos.coords.latitude];
+        setHere(c);
+        await api.patch('/biopassport/me', { available: true, location: { type: 'Point', coordinates: c } });
+        lastDutyPush.current = Date.now();
         setAvailable(true);
-        toast.success('On duty', { description: "You'll receive nearby SOS broadcasts." });
+        await load();
       } else {
         await api.patch('/biopassport/me', { available: false });
         setAvailable(false);
-        toast('Off duty');
       }
     } catch (err: any) {
-      toast.error('Could not update status', {
-        description: err.response?.data?.error ?? 'Please try again.',
+      const msg = err?.response?.data?.error;
+      toast.error(next ? 'Could not go on duty' : 'Could not go off duty', {
+        description: msg ?? 'Try again.',
+        ...(err?.response?.status === 403
+          ? { action: { label: 'Training', onClick: () => router.push('/(tabs)/training') } }
+          : {}),
       });
     } finally {
       setBusy(null);
@@ -186,289 +220,218 @@ export default function ResponderInbox() {
     setBusy(id);
     try {
       const { data } = await api.post(`/emergencies/${id}/accept`);
-      setActive(data);
+      const incident: Incident = {
+        ...data,
+        responder: String(data.responder ?? ''),
+        aedRunner: data.aedRunner ? String(data.aedRunner) : undefined,
+        aed: data.aed,
+      };
+      setActive(incident);
       setIncidents(prev => prev.filter(i => i._id !== id));
-      socket.emit('emergency:join', id);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      toast.success('Accepted', { description: `ETA ${formatEta(data.etaSeconds)}` });
+      if (data.myRole === 'aed' && data.aed) {
+        toast.success('You are the AED runner', { description: `Get the defibrillator at ${data.aed.name} first.` });
+        openDirections(data.aed.coordinates, data.aed.name);
+      } else {
+        toast.success('Accepted', { description: 'Directions are opening.' });
+        if (data.location?.coordinates) openDirections(data.location.coordinates, 'Emergency');
+      }
     } catch (err: any) {
-      toast.error('Accept failed', {
-        description: err.response?.data?.error ?? 'Someone else may have taken it.',
-      });
+      toast.error('Could not accept', { description: err?.response?.data?.error ?? 'Someone else may have taken it.' });
+      void load();
     } finally {
       setBusy(null);
     }
   };
 
   const setStatus = async (status: Status) => {
-    if (!active) return;
+    if (!active || busy) return;
+    setBusy('status');
     try {
-      const { data } = await api.patch(`/emergencies/${active._id}/status`, { status });
-      setActive(status === 'resolved' ? null : data);
-      toast(`Marked ${status.replace('_', ' ')}`);
+      await api.patch(`/emergencies/${active._id}/status`, { status });
+      setActive(status === 'resolved' ? null : { ...active, status });
+      if (status === 'resolved') toast.success('Incident closed. Thank you.');
     } catch (err: any) {
-      toast.error('Status update failed', {
-        description: err.response?.data?.error ?? 'Please try again.',
-      });
+      toast.error('Update failed', { description: err?.response?.data?.error ?? 'Try again.' });
+    } finally {
+      setBusy(null);
     }
   };
 
-  const signOut = () => {
-    dispatch(logout());
-    router.replace('/');
+  const setAed = async (status: 'has_aed' | 'delivered') => {
+    if (!active || busy) return;
+    setBusy('status');
+    try {
+      await api.patch(`/emergencies/${active._id}/aed`, { status });
+      setActive({ ...active, aedStatus: status });
+      if (status === 'has_aed' && active.location) openDirections(active.location.coordinates, 'Emergency');
+    } catch (err: any) {
+      toast.error('Update failed', { description: err?.response?.data?.error ?? 'Try again.' });
+    } finally {
+      setBusy(null);
+    }
   };
+
+  const isRunner = !!active && active.aedRunner === me;
+  const distTo = (c?: LngLat) => (here && c ? formatDistance(distanceM(here, c)) : null);
 
   return (
     <AppScreen
-      tone="info"
-      eyebrow="Responder"
-      title={`Inbox · ${user?.name?.split(' ')[0] ?? 'On call'}`}
-      subtitle="Live broadcasts from nearby citizens needing help."
+      tone="dark"
+      title="Responder inbox"
+      subtitle={available ? 'On duty. Nearby SOS calls appear here instantly.' : 'Off duty. You will not receive SOS calls.'}
       icon={<Radio size={22} color="#fff" />}
       action={
-        <Pressable onPress={signOut} style={styles.iconButton}>
-          <LogOut size={16} color="#fff" />
+        <Pressable onPress={() => router.back()} style={styles.iconButton} accessibilityRole="button" accessibilityLabel="Back">
+          <ChevronLeft size={20} color="#fff" />
         </Pressable>
       }
-      scrollProps={{
-        refreshControl: <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />,
-      }}
+      scrollProps={{ refreshControl: <RefreshControl refreshing={false} onRefresh={load} tintColor={colors.primary} /> }}
     >
       <Card style={styles.dutyCard}>
-        <View style={styles.dutyHeader}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.dutyTitle}>Duty status</Text>
-            <Text style={styles.dutyBody}>Receive nearby SOS broadcasts when on duty.</Text>
-          </View>
-          <Badge
-            variant={available ? 'default' : 'outline'}
-            style={available ? styles.onDutyBadge : undefined}
-          >
-            {available ? 'ON DUTY' : 'OFF DUTY'}
-          </Badge>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.dutyTitle}>On duty</Text>
+          <Text style={styles.dutyBody}>Share your location with Vitalis while on duty.</Text>
         </View>
-        <Button onPress={toggleDuty} loading={busy === 'duty'} style={{ marginTop: 14 }}>
-          {available ? 'Go off duty' : 'Go on duty'}
-        </Button>
+        <Switch
+          value={available}
+          onValueChange={toggleDuty}
+          disabled={busy === 'duty'}
+          trackColor={{ true: colors.primary, false: colors.border }}
+          accessibilityLabel="On duty"
+        />
       </Card>
 
-      {active && (
-        <Animated.View entering={FadeInDown.duration(280)}>
+      {active ? (
+        <Animated.View entering={FadeInDown.duration(220)}>
           <Card style={styles.activeCard}>
-            <View style={styles.activeHeader}>
-              <View>
-                <Text style={styles.activeEyebrow}>Active incident</Text>
-                <Text style={styles.activeId}>#{shortId(active._id)}</Text>
-              </View>
-              <Badge variant="default" style={styles.activeStatus}>
-                {active.status.replace('_', ' ')}
-              </Badge>
-            </View>
+            <Text style={styles.activeLabel}>{isRunner ? 'You are fetching the AED' : 'Your active call'}</Text>
+            <Text style={styles.activeTitle}>{TYPE_LABEL[active.type] ?? 'Emergency'}</Text>
             <Text style={styles.activeMeta}>
-              {active.type?.replace('_', ' ') ?? 'incident'} · P{active.priority}
+              {distTo(active.location?.coordinates) ? `${distTo(active.location?.coordinates)} away · ` : ''}
+              {isRunner
+                ? active.aedStatus === 'delivered' ? 'AED delivered' : active.aedStatus === 'has_aed' ? 'AED picked up' : 'Heading to the AED'
+                : STATUS_LABEL[active.status]}
             </Text>
-            {active.etaSeconds != null && (
-              <Text style={styles.etaValue}>ETA {formatEta(active.etaSeconds)}</Text>
-            )}
-            <View style={styles.statusRow}>
-              <Button variant="outline" onPress={() => setStatus('en_route')} style={styles.statusBtn}>
-                En route
+
+            {isRunner && active.aed && active.aedStatus === 'to_aed' ? (
+              <View style={styles.aedBox}>
+                <Zap size={18} color={colors.warning} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.aedName}>{active.aed.name}</Text>
+                  {active.aed.placement ? <Text style={styles.aedPlace}>{active.aed.placement}</Text> : null}
+                </View>
+              </View>
+            ) : null}
+
+            <View style={styles.actionRow}>
+              <Button
+                variant="outline"
+                style={{ flex: 1 }}
+                onPress={() => {
+                  const toAed = isRunner && active.aedStatus === 'to_aed' && active.aed;
+                  const target = toAed ? active.aed!.coordinates : active.location?.coordinates;
+                  if (target) openDirections(target, toAed ? active.aed!.name : 'Emergency');
+                }}
+              >
+                <Navigation size={16} color={colors.foreground} />
+                Directions
               </Button>
-              <Button variant="outline" onPress={() => setStatus('on_scene')} style={styles.statusBtn}>
-                On scene
-              </Button>
-              <Button onPress={() => setStatus('resolved')} style={styles.statusBtn}>
-                Resolve
+              <Button
+                variant="outline"
+                style={{ flex: 1 }}
+                onPress={() => router.push({ pathname: '/handover/[id]', params: { id: active._id } } as never)}
+              >
+                <ClipboardList size={16} color={colors.foreground} />
+                Patient
               </Button>
             </View>
+
+            {isRunner ? (
+              active.aedStatus === 'to_aed' ? (
+                <Button onPress={() => setAed('has_aed')} loading={busy === 'status'}>I have the AED</Button>
+              ) : active.aedStatus === 'has_aed' ? (
+                <Button onPress={() => setAed('delivered')} loading={busy === 'status'}>AED is with the patient</Button>
+              ) : null
+            ) : active.status === 'assigned' ? (
+              <Button onPress={() => setStatus('en_route')} loading={busy === 'status'}>I'm on my way</Button>
+            ) : active.status === 'en_route' ? (
+              <Button onPress={() => setStatus('on_scene')} loading={busy === 'status'}>I've arrived</Button>
+            ) : (
+              <Button onPress={() => setStatus('resolved')} loading={busy === 'status'}>Handed over, close call</Button>
+            )}
           </Card>
         </Animated.View>
-      )}
+      ) : null}
 
-      <View style={styles.inboxHeader}>
-        <Text style={styles.inboxTitle}>Inbox</Text>
-        <Text style={styles.inboxCount}>{incidents.length} waiting</Text>
+      <View style={styles.listHeader}>
+        <Text style={styles.listTitle}>Nearby calls</Text>
+        <Text style={styles.listCount}>{incidents.length}</Text>
       </View>
 
-      {loading && !incidents.length ? (
+      {loading ? (
         <View style={{ gap: 10 }}>
-          {[0, 1, 2].map(i => (
-            <Card key={i} style={[styles.skeletonCard]}>
-              <View style={{ height: 12, width: '40%', borderRadius: 6, backgroundColor: colors.muted }} />
-              <View style={{ height: 10, width: '70%', borderRadius: 5, backgroundColor: colors.muted, marginTop: 8 }} />
-            </Card>
-          ))}
+          {[0, 1].map(i => <Skeleton key={i} style={{ height: 110, borderRadius: radius.lg }} />)}
         </View>
       ) : incidents.length === 0 ? (
         <Empty
           icon={InboxIcon}
-          title={available ? 'No incidents yet' : 'Go on duty to receive SOS'}
-          description={
-            available
-              ? 'Stand by — new broadcasts will appear here in real time.'
-              : 'You will only receive incidents while on duty.'
-          }
+          title={available ? 'All quiet nearby' : 'You are off duty'}
+          description={available
+            ? 'Keep Vitalis open. New calls within 20 km appear here with a vibration.'
+            : 'Turn on duty to receive SOS calls within 20 km of you.'}
         />
       ) : (
         <View style={{ gap: 10 }}>
-          {incidents.map((e, i) => (
-            <Animated.View
-              key={e._id}
-              entering={FadeInDown.duration(280).delay(i * 30)}
-              exiting={FadeOut.duration(160)}
-              layout={Layout.springify()}
-            >
-              <Card style={styles.incidentCard}>
+          {incidents.map(e => (
+            <Animated.View key={e._id} entering={FadeInDown.duration(200)} exiting={FadeOut.duration(150)} layout={LinearTransition.duration(200)}>
+              <Card style={styles.incident}>
                 <View style={styles.incidentTop}>
-                  <View style={styles.incidentMetaRow}>
-                    <Text style={styles.incidentId}>#{shortId(e._id)}</Text>
-                    <Badge
-                      variant={e.priority === 1 ? 'destructive' : 'outline'}
-                      style={e.priority === 1 ? undefined : styles.prioBadge}
-                    >
-                      P{e.priority}
-                    </Badge>
-                  </View>
+                  <Text style={[styles.incidentType, e.priority === 1 && { color: colors.destructive }]}>{TYPE_LABEL[e.type] ?? 'Emergency'}</Text>
                   <Text style={styles.incidentTime}>{timeAgo(e.createdAt)}</Text>
                 </View>
-                <Text style={styles.incidentType}>
-                  {e.type?.replace('_', ' ') ?? 'incident'}
+                <Text style={styles.incidentMeta}>
+                  {distTo(e.location?.coordinates) ?? 'Distance unknown'}
+                  {e.needsAedRunner ? ' · Responder on the way, AED needed' : ''}
                 </Text>
-                {e.description && (
-                  <Text style={styles.incidentDesc} numberOfLines={2}>
-                    {e.description}
-                  </Text>
-                )}
-                <View style={styles.incidentBottom}>
-                  <View style={styles.incidentHint}>
-                    <MapPin size={12} color={colors.mutedForeground} />
-                    <Text style={styles.incidentHintText}>
-                      {hasCoords(e) ? 'Location attached' : 'Location pending'}
-                    </Text>
-                  </View>
-                  <Button
-                    onPress={() => accept(e._id)}
-                    loading={busy === e._id}
-                    disabled={!available}
-                  >
-                    {available ? 'Accept' : 'Go on duty first'}
-                  </Button>
-                </View>
+                {e.description ? <Text style={styles.incidentDesc} numberOfLines={2}>{e.description}</Text> : null}
+                <Button
+                  onPress={() => accept(e._id)}
+                  loading={busy === e._id}
+                  disabled={!available || !!active}
+                  variant={e.needsAedRunner ? 'outline' : 'default'}
+                >
+                  {!available ? 'Go on duty to accept' : active ? 'Finish your current call first' : e.needsAedRunner ? 'Fetch the AED' : 'Accept'}
+                </Button>
               </Card>
             </Animated.View>
           ))}
         </View>
       )}
-
-      <View style={styles.footerHint}>
-        <Ambulance size={14} color={colors.mutedForeground} />
-        <Text style={styles.footerHintText}>
-          Patient bio-passport context loads automatically on accept.
-        </Text>
-      </View>
-
-      <View style={styles.footerHint}>
-        <CheckCircle2 size={14} color={colors.success} />
-        <Text style={styles.footerHintText}>
-          Every status change is recorded to the tamper-evident ledger.
-        </Text>
-      </View>
     </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  iconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dutyCard: { padding: 18, gap: 4 },
-  dutyHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  dutyTitle: { fontSize: 16, fontWeight: '600', color: colors.foreground },
-  dutyBody: { fontSize: 13, color: colors.mutedForeground, marginTop: 4, lineHeight: 18 },
-  onDutyBadge: { backgroundColor: colors.success },
-
-  activeCard: {
-    padding: 18,
-    borderColor: colors.primary,
-    borderWidth: 1.5,
-    backgroundColor: colors.accent,
-    marginTop: 14,
-  },
-  activeHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  activeEyebrow: {
-    fontSize: 10,
-    letterSpacing: 1.6,
-    textTransform: 'uppercase',
-    color: colors.primaryStrong,
-    fontWeight: '600',
-  },
-  activeId: { fontFamily: 'Menlo', fontSize: 18, color: colors.foreground, marginTop: 4 },
-  activeStatus: { backgroundColor: colors.primary },
-  activeMeta: {
-    marginTop: 10,
-    fontSize: 14,
-    color: colors.foreground,
-    textTransform: 'capitalize',
-  },
-  etaValue: {
-    marginTop: 8,
-    fontFamily: 'Menlo',
-    fontSize: 24,
-    color: colors.primaryStrong,
-    fontWeight: '700',
-  },
-  statusRow: { flexDirection: 'row', gap: 8, marginTop: 14 },
-  statusBtn: { flex: 1 },
-
-  inboxHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 22,
-    marginBottom: 10,
-    paddingHorizontal: 2,
-  },
-  inboxTitle: {
-    fontSize: 11,
-    letterSpacing: 1.6,
-    textTransform: 'uppercase',
-    color: colors.mutedForeground,
-    fontWeight: '600',
-  },
-  inboxCount: { fontSize: 11, color: colors.mutedForeground },
-
-  skeletonCard: { padding: 16, opacity: 0.7 },
-  incidentCard: { padding: 16, gap: 8 },
-  incidentTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  incidentMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  incidentId: { fontFamily: 'Menlo', fontSize: 11, color: colors.mutedForeground },
-  incidentTime: { fontSize: 11, color: colors.mutedForeground },
-  incidentType: { fontSize: 15, fontWeight: '600', color: colors.foreground, textTransform: 'capitalize' },
-  incidentDesc: { fontSize: 13, color: colors.mutedForeground, lineHeight: 18 },
-  incidentBottom: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  incidentHint: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  incidentHintText: { fontSize: 11, color: colors.mutedForeground },
-  prioBadge: { borderColor: colors.border },
-
-  footerHint: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 14,
-    paddingHorizontal: 4,
-  },
-  footerHintText: { fontSize: 12, color: colors.mutedForeground, flex: 1 },
+  iconButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.14)' },
+  dutyCard: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderRadius: radius.lg },
+  dutyTitle: { color: colors.foreground, fontSize: 16, fontWeight: '700' },
+  dutyBody: { color: colors.mutedForeground, fontSize: 14, marginTop: 2 },
+  activeCard: { padding: 16, gap: 10, borderRadius: radius.lg, borderColor: colors.primary, borderWidth: 1.5 },
+  activeLabel: { color: colors.primaryStrong, fontSize: 13, fontWeight: '700' },
+  activeTitle: { color: colors.foreground, fontSize: 22, fontWeight: '800' },
+  activeMeta: { color: colors.mutedForeground, fontSize: 14 },
+  aedBox: { flexDirection: 'row', gap: 10, padding: 12, backgroundColor: colors.warningSoft, borderRadius: radius.md },
+  aedName: { color: colors.foreground, fontSize: 15, fontWeight: '700' },
+  aedPlace: { color: colors.foreground, fontSize: 14, marginTop: 2 },
+  actionRow: { flexDirection: 'row', gap: 10 },
+  listHeader: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginTop: 4 },
+  listTitle: { color: colors.foreground, fontSize: 18, fontWeight: '800' },
+  listCount: { color: colors.mutedForeground, fontSize: 15, fontVariant: ['tabular-nums'] },
+  incident: { padding: 16, gap: 8, borderRadius: radius.lg },
+  incidentTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  incidentType: { color: colors.foreground, fontSize: 17, fontWeight: '700' },
+  incidentTime: { color: colors.mutedForeground, fontSize: 13 },
+  incidentMeta: { color: colors.foreground, fontSize: 14 },
+  incidentDesc: { color: colors.mutedForeground, fontSize: 14, lineHeight: 20 },
 });
-
-// (radius referenced indirectly via Card styles)
-void radius;

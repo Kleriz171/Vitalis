@@ -58,6 +58,9 @@ export const toResponderView = (e: any) => ({
   aedStatus: e.aedStatus,
   // Cardiac calls stay open for a second runner until someone is fetching a defibrillator.
   needsAedRunner: e.type === 'cardiac' && !!e.responder && !e.aedRunner && ACTIVE_STATUSES.includes(e.status),
+  aed: e.aed && typeof e.aed === 'object' && e.aed.location
+    ? { name: e.aed.name, placement: e.aed.placement, coordinates: e.aed.location.coordinates }
+    : undefined,
 });
 
 export const emergencyService = {
@@ -202,7 +205,7 @@ export const emergencyService = {
         bloodType: patient.bloodType,
         allergies: allergies.map(a => ({ allergen: a.allergen, severity: a.severity })),
         medications: medications.map(m => [m.name, m.dosage].filter(Boolean).join(' ')),
-        conditions: [...conditions.map(c => c.name), ...(patient.illnesses ?? [])],
+        conditions: [...new Set([...conditions.map(c => c.name), ...(patient.illnesses ?? [])])],
         emergencyContact: patient.emergencyContact,
       },
       responder: e.responder && { name: e.responder.name, role: e.responder.role },
@@ -274,7 +277,7 @@ export const emergencyService = {
       Emergency.find({
         $or: [{ responder: responderId }, { aedRunner: responderId }],
         status: { $in: ACTIVE_STATUSES },
-      }).sort('-createdAt').limit(5).lean(),
+      }).sort('-createdAt').limit(5).populate('aed', 'name placement location').lean(),
     ]);
     const mineIds = new Set(mine.map(e => String(e._id)));
     const open: ReturnType<typeof toResponderView>[] = [];

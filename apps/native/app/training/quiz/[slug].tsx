@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { api } from '@/lib/api';
-import { upsertCertification, upsertEnrollment } from '@/lib/store';
+import { setSession, store, upsertCertification, upsertEnrollment } from '@/lib/store';
 import { colors, radius } from '@/lib/theme';
 
 interface Question {
@@ -32,7 +32,7 @@ interface CourseQuiz {
 interface ReviewEntry {
   questionId: string;
   correct: boolean;
-  correctIndex: number;
+  correctIndex?: number;
   explanation?: string;
 }
 
@@ -77,15 +77,24 @@ export default function Quiz() {
       const payload = {
         answers: course.quiz.map((q) => ({ questionId: q.id, choiceIndex: answers[q.id] })),
       };
-      const { data } = await api.post<QuizResult & { enrollment: any; certification: any }>(
+      const { data } = await api.post<QuizResult & { enrollment: any; certification: any; roleChanged?: boolean }>(
         `/training/enrollments/${course.id}/quiz`,
         payload
       );
       setResult(data);
       if (data.enrollment) dispatch(upsertEnrollment(data.enrollment));
+      if (data.roleChanged) {
+        // New role lives in the JWT; refresh so responder features unlock right away.
+        const refreshToken = store.getState().auth.refreshToken;
+        if (refreshToken) {
+          const { data: session } = await api.post('/auth/refresh', { refreshToken });
+          dispatch(setSession(session));
+        }
+        toast.success('You are now a Vitalis responder', { description: 'Go on duty from the Responder inbox on Home.' });
+      }
       if (data.certification) {
         dispatch(upsertCertification(data.certification));
-        toast.success(`Earned ${course.badgeLabel}!`);
+        if (!data.roleChanged) toast.success(`Earned ${course.badgeLabel}!`);
       } else {
         toast(`Score ${data.score}%. Try again to pass.`);
       }
@@ -133,8 +142,8 @@ export default function Quiz() {
                   Your answer: {q.choices[userAnswer]}
                 </Text>
               </View>
-              {!right ? (
-                <Text style={styles.reviewCorrect}>Correct: {q.choices[review?.correctIndex ?? 0]}</Text>
+              {!right && review?.correctIndex != null ? (
+                <Text style={styles.reviewCorrect}>Correct: {q.choices[review.correctIndex]}</Text>
               ) : null}
               {review?.explanation ? <Text style={styles.reviewExplain}>{review.explanation}</Text> : null}
             </Card>

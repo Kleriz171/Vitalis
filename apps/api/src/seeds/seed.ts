@@ -345,7 +345,8 @@ async function seed() {
 
   logger.info('Seeding training courses…');
   const seededCourses = await Course.insertMany(trainingCourses);
-  const cprCourse = seededCourses.find((c) => c.slug === 'cpr-adult');
+  // Not CPR/AED: the demo citizen should be able to walk the train-to-respond path.
+  const demoCourse = seededCourses.find((c) => c.slug === 'recovery-position');
 
   logger.info('Seeding demo citizen Bio Passport…');
   await Medication.insertMany([
@@ -385,21 +386,21 @@ async function seed() {
     },
   ]);
 
-  if (cprCourse) {
-    logger.info('Seeding demo citizen CPR certification…');
+  if (demoCourse) {
+    logger.info('Seeding demo citizen certification…');
     await Enrollment.create({
       user: demoCitizen._id,
-      course: cprCourse._id,
-      completedLessonIds: cprCourse.lessons?.map((l: any) => l._id) ?? [],
+      course: demoCourse._id,
+      completedLessonIds: demoCourse.lessons?.map((l: any) => l._id) ?? [],
       lastScore: 88,
       attempts: 1,
       completedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
     });
     await Certification.create({
       user: demoCitizen._id,
-      course: cprCourse._id,
-      courseSlug: cprCourse.slug,
-      badgeLabel: cprCourse.badgeLabel,
+      course: demoCourse._id,
+      courseSlug: demoCourse.slug,
+      badgeLabel: demoCourse.badgeLabel,
       score: 88,
       issuedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
       expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),

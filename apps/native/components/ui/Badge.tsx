@@ -33,14 +33,12 @@ export const Badge = ({ variant = 'default', style, textStyle, children }: Badge
 const styles = StyleSheet.create({
   box: {
     paddingHorizontal: 10,
-    paddingVertical: 2,
+    paddingVertical: 3,
     borderRadius: radius.full,
     alignSelf: 'flex-start',
   },
   text: {
-    fontSize: 10,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

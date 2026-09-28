@@ -14,7 +14,7 @@ interface EmergencyNumber {
   id: string;
   name: string;
   number: string;
-  category: 'ambulance' | 'police' | 'fire' | 'poison' | 'hospital' | 'other';
+  category: 'ambulance' | 'general' | 'police' | 'fire' | 'poison' | 'hospital' | 'other';
 }
 
 interface Hospital {
@@ -26,10 +26,10 @@ interface Hospital {
 }
 
 const fallbackNumbers: EmergencyNumber[] = [
-  { id: 'ambulance', name: 'Ambulance', number: '112', category: 'ambulance' },
+  { id: 'ambulance', name: 'Ambulance', number: '127', category: 'ambulance' },
+  { id: 'general', name: 'European emergency number', number: '112', category: 'other' },
   { id: 'police', name: 'Police', number: '129', category: 'police' },
   { id: 'fire', name: 'Fire brigade', number: '128', category: 'fire' },
-  { id: 'poison', name: 'Poison control', number: '127', category: 'poison' },
 ];
 
 export default function SOSModal() {

@@ -23,6 +23,11 @@ export default function RootLayout() {
               <Stack.Screen name="login" />
               <Stack.Screen name="(tabs)" />
               <Stack.Screen name="sos" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+              {/* No swipe-to-dismiss: leaving a live SOS must be a deliberate choice. */}
+              <Stack.Screen name="emergency" options={{ presentation: 'fullScreenModal', animation: 'fade', gestureEnabled: false }} />
+              <Stack.Screen name="responder-inbox" options={{ animation: 'slide_from_right' }} />
+              <Stack.Screen name="aeds" options={{ animation: 'slide_from_right' }} />
+              <Stack.Screen name="handover/[id]" options={{ presentation: 'modal' }} />
               <Stack.Screen name="assistant" options={{ animation: 'slide_from_right' }} />
               <Stack.Screen name="training" options={{ animation: 'slide_from_right' }} />
               <Stack.Screen name="doctor-application" options={{ animation: 'slide_from_right' }} />
@@ -44,7 +49,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!hydrated) return;
-    const inProtected = segments[0] === '(tabs)';
+    const inProtected = ['(tabs)', 'emergency', 'responder-inbox', 'aeds', 'handover', 'assistant', 'training', 'doctor-application'].includes(segments[0] as string);
     if (!token && inProtected) router.replace('/');
   }, [hydrated, token, segments, router]);
 

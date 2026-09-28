@@ -29,7 +29,7 @@ r.get('/me', async (req: AuthReq, res, next) => {
       bloodType: u.bloodType,
       age: u.age,
       allergies: allergies.map(a => `${a.allergen} (${a.severity})`),
-      conditions: [...conditions.map(c => c.name), ...(u.illnesses ?? [])],
+      conditions: [...new Set([...conditions.map(c => c.name), ...(u.illnesses ?? [])])],
       medications: medications.filter(m => m.isActive).map(m => [m.name, m.dosage].filter(Boolean).join(' ')),
       contact: u.emergencyContact,
     });
