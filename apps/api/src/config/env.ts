@@ -12,6 +12,8 @@ export const env = {
   // Public website (apps/landing): certificate QR codes link to its /verify page.
   publicWebUrl: process.env.PUBLIC_WEB_URL ?? 'http://localhost:5175',
   geminiApiKey: process.env.GEMINI_API_KEY ?? '',
+  // Shared secret the drone bridge presents on connect. Empty = drone bridges disabled.
+  droneBridgeKey: process.env.DRONE_BRIDGE_KEY ?? '',
 };
 
 if (env.nodeEnv === 'production') {

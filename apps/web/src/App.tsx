@@ -11,7 +11,6 @@ import { Analytics } from './features/command/pages/Analytics';
 import { AdminUsers } from './features/command/pages/admin/AdminUsers';
 import { AdminUserDetail } from './features/command/pages/admin/AdminUserDetail';
 import { AdminDoctorApplications } from './features/command/pages/admin/AdminDoctorApplications';
-import { ToastHost } from './components/toast/ToastHost';
 import { Toaster } from './components/ui/sonner';
 
 const Protected = ({ children }: { children: JSX.Element }) => {
@@ -22,7 +21,6 @@ const Protected = ({ children }: { children: JSX.Element }) => {
 // Operator console only. Marketing and certificate verification live on the public website.
 export const App = () => (
   <>
-    <ToastHost />
     <Toaster position="top-center" />
     <Routes>
       <Route path="/login" element={<Login />} />

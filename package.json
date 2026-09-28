@@ -13,7 +13,11 @@
     "dev:native": "npm run start -w @vitalis/native",
     "dev:ios": "npm run ios -w @vitalis/native",
     "seed": "npm run seed -w @vitalis/api",
-    "build": "npm run build -w @vitalis/api && npm run build -w @vitalis/web && npm run build -w @vitalis/landing"
+    "build": "npm run build -w @vitalis/api && npm run build -w @vitalis/web && npm run build -w @vitalis/landing",
+    "dev:drone": "npm run start -w @vitalis/drone",
+    "dev:drone:sim": "npm run sim -w @vitalis/drone",
+    "check:security": "npx tsx apps/api/scripts/security-check.ts",
+    "check:drones": "npx tsx apps/api/scripts/drone-check.ts"
   },
   "overrides": {
     "react": "19.1.0",

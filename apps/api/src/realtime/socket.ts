@@ -5,6 +5,7 @@ import { verifyAccess } from '../utils/jwt';
 import { logger } from '../config/logger';
 import { Emergency } from '../models/Emergency';
 import { registerWebRTC } from './webrtc';
+import { registerDrones, registerOperatorDroneControls } from './drones';
 
 let io: Server;
 
@@ -58,6 +59,8 @@ export const initSocket = (server: http.Server) => {
     }
   });
 
+  registerDrones(io);
+
   io.on('connection', socket => {
     const user = userOf(socket);
     const responding: Set<string> = (socket.data as any).responding;
@@ -104,6 +107,7 @@ export const initSocket = (server: http.Server) => {
     });
 
     registerWebRTC(socket, io, user);
+    if (OPERATOR_ROLES.includes(user.role)) registerOperatorDroneControls(socket, user);
 
     socket.on('disconnect', () => logger.info(`socket disconnect ${user.id}`));
   });

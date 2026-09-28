@@ -22,7 +22,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; connect-src 'self' https: wss: http://localhost:4000 ws://localhost:4000; img-src 'self' data: https://*.tile.openstreetmap.org; style-src 'self' 'unsafe-inline'; font-src 'self' data:"
+      "csp": "default-src 'self'; connect-src 'self' https: wss: http://localhost:4000 ws://localhost:4000; img-src 'self' data: https://*.tile.openstreetmap.org http://localhost:8090 http://127.0.0.1:8090; style-src 'self' 'unsafe-inline'; font-src 'self' data:"
     }
   },
   "bundle": {

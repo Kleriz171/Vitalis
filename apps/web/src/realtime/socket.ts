@@ -8,6 +8,9 @@ export const socket = io(url, {
   auth: cb => cb({ token: store.getState().auth.accessToken }),
 });
 
+// Reloading with a saved session changes nothing in the store, so connect up front too.
+if (store.getState().auth.accessToken) socket.connect();
+
 store.subscribe(() => {
   const t = store.getState().auth.accessToken;
   if (t && !socket.connected) socket.connect();
