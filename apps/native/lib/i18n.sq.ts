@@ -649,6 +649,8 @@ export const ui: Record<string, string> = {
 
   'Call {name}, {number}': 'Telefono {name}, {number}',
 
+  'Verified': 'I verifikuar',
+
   // Notifications (system)
   'SOS calls near you': 'Thirrje SOS pranë jush',
   'Updates on your SOS': 'Përditësime për SOS-in tuaj',

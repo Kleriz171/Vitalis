@@ -12,7 +12,7 @@ import { Empty } from '@/components/ui/Empty';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { api } from '@/lib/api';
 import { formatDistance, LngLat, openDirections } from '@/lib/geo';
-import { colors, radius } from '@/lib/theme';
+import { colors, radius, type } from '@/lib/theme';
 import { apiError, t } from '@/lib/i18n';
 
 interface AedItem {
@@ -68,52 +68,51 @@ export default function AedsScreen() {
       action={<HeaderButton icon={ChevronLeft} onPress={() => router.back()} label={t('Back')} />}
       scrollProps={{ refreshControl: <RefreshControl refreshing={false} onRefresh={load} tintColor={colors.primary} /> }}
     >
-      {reporting && here ? (
-        <ReportForm here={here} onDone={created => {
-          setReporting(false);
-          if (created) void load();
-        }} />
-      ) : (
-        <Button variant="outline" onPress={() => setReporting(true)} disabled={!here}>
-          <Plus size={16} color={colors.foreground} />
-          {t('Report a defibrillator here')}
-        </Button>
-      )}
-
       {loading ? (
-        <View style={{ gap: 10 }}>
-          {[0, 1, 2].map(i => <Skeleton key={i} style={{ height: 88, borderRadius: radius.lg }} />)}
-        </View>
+        <Skeleton style={{ height: 200, borderRadius: radius.lg }} />
       ) : error ? (
         <Empty icon={Zap} title={t('No location')} description={error} />
       ) : items.length === 0 ? (
         <Empty icon={Zap} title={t('None registered within 10 km')} description={t('If you know where one hangs, report it. A dispatcher verifies each entry.')} />
       ) : (
-        <View style={{ gap: 10 }}>
-          {items.map(a => (
-            <Card key={a.id} style={styles.row}>
-              <View style={{ flex: 1, gap: 4 }}>
+        <View style={styles.group}>
+          {items.map((a, i) => (
+            <Pressable
+              key={a.id}
+              onPress={() => openDirections(a.coordinates, a.name)}
+              style={({ pressed }) => [styles.row, i > 0 && styles.divider, pressed && styles.pressed]}
+              accessibilityRole="button"
+              accessibilityLabel={t('Directions to {place}', { place: a.name })}
+            >
+              <View style={{ flex: 1, gap: 2 }}>
                 <View style={styles.titleRow}>
                   <Text style={styles.name} numberOfLines={1}>{a.name}</Text>
-                  {a.verified ? <ShieldCheck size={16} color={colors.success} accessibilityLabel="Verified" /> : null}
+                  {a.verified ? <ShieldCheck size={15} color={colors.success} accessibilityLabel={t('Verified')} /> : null}
                 </View>
                 {a.placement ? <Text style={styles.placement} numberOfLines={2}>{a.placement}</Text> : null}
                 <Text style={styles.meta}>
-                  {a.distanceM != null ? `${formatDistance(a.distanceM)} · ` : ''}{ACCESS_LABEL[a.access]}{a.verified ? '' : ` · ${t('Unverified')}`}
+                  {ACCESS_LABEL[a.access]}{a.verified ? '' : ` · ${t('Unverified')}`}
                 </Text>
               </View>
-              <Pressable
-                onPress={() => openDirections(a.coordinates, a.name)}
-                style={styles.navButton}
-                accessibilityRole="button"
-                accessibilityLabel={t('Directions to {place}', { place: a.name })}
-              >
-                <Navigation size={18} color={colors.primaryStrong} />
-              </Pressable>
-            </Card>
+              {a.distanceM != null ? <Text style={styles.distance}>{formatDistance(a.distanceM)}</Text> : null}
+              <Navigation size={18} color={colors.primaryStrong} />
+            </Pressable>
           ))}
         </View>
       )}
+
+      {/* Finding one comes first; adding one is secondary, so it sits under the list. */}
+      {reporting && here ? (
+        <ReportForm here={here} onDone={created => {
+          setReporting(false);
+          if (created) void load();
+        }} />
+      ) : here ? (
+        <Button variant="ghost" onPress={() => setReporting(true)}>
+          <Plus size={16} color={colors.foreground} />
+          {t('Report a defibrillator here')}
+        </Button>
+      ) : null}
     </AppScreen>
   );
 }
@@ -168,13 +167,15 @@ function ReportForm({ here, onDone }: { here: LngLat; onDone: (created: boolean)
 }
 
 const styles = StyleSheet.create({
-  iconButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.14)' },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderRadius: radius.lg },
+  group: { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12, minHeight: 64 },
+  divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  pressed: { backgroundColor: colors.muted },
+  distance: { ...type.callout, fontWeight: '600', color: colors.foreground, fontVariant: ['tabular-nums'] },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  name: { color: colors.foreground, fontSize: 16, fontWeight: '700', flexShrink: 1 },
-  placement: { color: colors.foreground, fontSize: 14, lineHeight: 20 },
-  meta: { color: colors.mutedForeground, fontSize: 13 },
-  navButton: { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
+  name: { ...type.headline, color: colors.foreground, flexShrink: 1 },
+  placement: { ...type.footnote, color: colors.foreground },
+  meta: { ...type.footnote, color: colors.mutedForeground },
   form: { padding: 16, gap: 8, borderRadius: radius.lg },
   formTitle: { color: colors.foreground, fontSize: 16, fontWeight: '700', marginBottom: 4 },
   label: { color: colors.mutedForeground, fontSize: 13, fontWeight: '600', marginTop: 4 },
