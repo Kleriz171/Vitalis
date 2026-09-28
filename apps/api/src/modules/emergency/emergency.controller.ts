@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { AuthReq } from '../../middleware/auth';
 import { EMERGENCY_STATUS, EMERGENCY_TYPE } from '../../models/Emergency';
 import { emergencyService, fetchActiveCertifications, toResponderView } from './emergency.service';
-import { getIO, OPERATOR_ROLES } from '../../realtime/socket';
+import { getIO, OPERATOR_ROLES, emergencyAccess } from '../../realtime/socket';
 
 export const createEmergencySchema = z.object({
   type: z.enum(EMERGENCY_TYPE),
@@ -13,6 +13,7 @@ export const createEmergencySchema = z.object({
 });
 
 export const statusSchema = z.object({ status: z.enum(EMERGENCY_STATUS) });
+export const aedStatusSchema = z.object({ status: z.enum(['has_aed', 'delivered']) });
 
 // Everyone with a stake in the incident hears about changes: its room, the caller, operators.
 const broadcast = (event: string, e: any) => {
@@ -43,11 +44,31 @@ export const emergencyController = {
   },
   accept: async (req: AuthReq, res: Response, next: NextFunction) => {
     try {
-      const e = await emergencyService.assign(req.params.id, req.user!.id);
+      const { emergency: e, role, aedAvailable, aed } = await emergencyService.assign(req.params.id, req.user!.id);
       broadcast('emergency:assigned', e);
-      // Tell other responders the call is taken so it leaves their inbox.
-      getIO().to('responders').emit('emergency:taken', { _id: String(e._id) });
+      // Other responders drop the call from their inbox, unless it still needs an AED runner.
+      getIO().to('responders').emit('emergency:taken', {
+        _id: String(e._id),
+        needsAedRunner: role === 'primary' && aedAvailable,
+      });
+      res.json({
+        ...e.toObject(),
+        myRole: role,
+        aed: aed ? { id: String(aed._id), name: aed.name, placement: aed.placement, coordinates: (aed.location as any).coordinates } : undefined,
+      });
+    } catch (err) { next(err); }
+  },
+  aedStatus: async (req: AuthReq, res: Response, next: NextFunction) => {
+    try {
+      const e = await emergencyService.setAedStatus(req.params.id, req.body.status, req.user!.id);
+      broadcast('emergency:status', e);
       res.json(e);
+    } catch (err) { next(err); }
+  },
+  handover: async (req: AuthReq, res: Response, next: NextFunction) => {
+    try {
+      if (!(await emergencyAccess(req.user!, req.params.id))) return res.status(403).json({ error: 'Not your emergency' });
+      res.json(await emergencyService.handover(req.params.id));
     } catch (err) { next(err); }
   },
   updateStatus: async (req: AuthReq, res: Response, next: NextFunction) => {

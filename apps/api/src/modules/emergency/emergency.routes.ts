@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { authRequired } from '../../middleware/auth';
 import { allow } from '../../middleware/rbac';
 import { validate } from '../../middleware/validate';
-import { emergencyController, createEmergencySchema, statusSchema } from './emergency.controller';
+import { emergencyController, createEmergencySchema, statusSchema, aedStatusSchema } from './emergency.controller';
 import { Hospital } from '../../models/Hospital';
 
 const r = Router();
@@ -36,5 +36,7 @@ r.get('/mine', emergencyController.mine);
 r.post('/:id/accept', allow(...RESPONDERS), emergencyController.accept);
 // Fine-grained checks (caller may cancel, assigned responder may progress) live in the service.
 r.patch('/:id/status', validate(statusSchema), emergencyController.updateStatus);
+r.patch('/:id/aed', allow(...RESPONDERS), validate(aedStatusSchema), emergencyController.aedStatus);
+r.get('/:id/handover', emergencyController.handover);
 r.get('/', allow('dispatcher', 'admin', ...RESPONDERS), emergencyController.list);
 export default r;

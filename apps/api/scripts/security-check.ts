@@ -64,6 +64,10 @@ async function main() {
   assert.equal(adminProbe.status, 403);
   ok('biopassport PATCH rejects role, admin API still 403');
 
+  const duty = await call('PATCH', '/biopassport/me', attacker.accessToken, { available: true });
+  assert.equal(duty.status, 403);
+  ok('uncertified citizen cannot go on duty');
+
   // 3. NoSQL operator injection via query string is inert.
   const inj = await call('GET', '/blood/requests?status[$ne]=x', attacker.accessToken);
   assert.equal(inj.status, 200);
@@ -106,7 +110,7 @@ async function main() {
 
   const badSos = await call('POST', '/emergencies', citizen.accessToken, { type: 'medical', coordinates: [999, 0] });
   assert.equal(badSos.status, 400);
-  const sos = await call('POST', '/emergencies', citizen.accessToken, { type: 'cardiac', priority: 1, coordinates: TIRANA });
+  const sos = await call('POST', '/emergencies', citizen.accessToken, { type: 'medical', priority: 1, coordinates: TIRANA });
   assert.equal(sos.status, 201);
   const eId = sos.data.emergency._id as string;
 
@@ -118,7 +122,7 @@ async function main() {
   assert.ok(disp, 'dispatcher sees dashboard event');
   ok('SOS fan-out scoped to nearby responders; dispatcher room locked');
 
-  const dup = await call('POST', '/emergencies', citizen.accessToken, { type: 'cardiac', coordinates: TIRANA });
+  const dup = await call('POST', '/emergencies', citizen.accessToken, { type: 'medical', coordinates: TIRANA });
   assert.equal(dup.status, 200);
   assert.equal(dup.data.emergency._id, eId);
   ok('repeat SOS returns the open incident');
@@ -159,7 +163,35 @@ async function main() {
   assert.equal(reopen.status, 409);
   ok('status changes limited to assigned responder; resolved is final');
 
-  // 10. Ledger chain still verifies after concurrent appends.
+  // 10. Cardiac arrest: second responder becomes the AED runner; handover is participants-only.
+  const arrest = await call('POST', '/emergencies', citizen.accessToken, { type: 'cardiac', priority: 1, coordinates: TIRANA });
+  assert.equal(arrest.status, 201);
+  const aId = arrest.data.emergency._id as string;
+  const first = await call('POST', `/emergencies/${aId}/accept`, doctor.accessToken);
+  assert.equal(first.status, 200);
+  assert.equal(first.data.myRole, 'primary');
+  const second = await call('POST', `/emergencies/${aId}/accept`, nurse.accessToken);
+  assert.equal(second.status, 200);
+  assert.equal(second.data.myRole, 'aed');
+  assert.ok(second.data.aed?.name, 'AED runner is given a device');
+  const third = await call('POST', `/emergencies/${aId}/accept`, nurse.accessToken);
+  assert.equal(third.status, 409);
+  const wrongRunner = await call('PATCH', `/emergencies/${aId}/aed`, doctor.accessToken, { status: 'has_aed' });
+  assert.equal(wrongRunner.status, 403);
+  assert.equal((await call('PATCH', `/emergencies/${aId}/aed`, nurse.accessToken, { status: 'has_aed' })).status, 200);
+  assert.equal((await call('PATCH', `/emergencies/${aId}/aed`, nurse.accessToken, { status: 'delivered' })).status, 200);
+  ok('cardiac call: primary + AED runner, AED status by runner only');
+
+  const spyHandover = await call('GET', `/emergencies/${aId}/handover`, attacker.accessToken);
+  assert.equal(spyHandover.status, 403);
+  const handover = await call('GET', `/emergencies/${aId}/handover`, nurse.accessToken);
+  assert.equal(handover.status, 200);
+  assert.ok(handover.data.patient?.bloodType, 'handover carries patient essentials');
+  assert.ok(handover.data.metrics.secondsToAed !== null, 'AED time recorded');
+  await call('PATCH', `/emergencies/${aId}/status`, doctor.accessToken, { status: 'resolved' });
+  ok('handover restricted to participants');
+
+  // 11. Ledger chain still verifies after concurrent appends.
   const chain = await call('GET', '/blockchain/verify', dispatcher.accessToken);
   assert.equal(chain.data.valid, true);
   ok('ledger chain valid');

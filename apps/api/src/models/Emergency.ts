@@ -15,6 +15,10 @@ const EmergencySchema = new Schema({
     coordinates: { type: [Number], required: true },
   },
   etaSeconds: Number,
+  // Second runner for cardiac arrests: fetches the nearest defibrillator, then joins the patient.
+  aedRunner: { type: Types.ObjectId, ref: 'User', index: true },
+  aed: { type: Types.ObjectId, ref: 'Aed' },
+  aedStatus: { type: String, enum: ['to_aed', 'has_aed', 'delivered'] },
   metadata: { fromWearable: Boolean, deviceId: String },
   timeline: [{ status: String, at: { type: Date, default: Date.now }, by: { type: Types.ObjectId, ref: 'User' } }],
 }, { timestamps: true });

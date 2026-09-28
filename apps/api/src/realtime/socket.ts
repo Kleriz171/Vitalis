@@ -24,10 +24,11 @@ export const emergencyAccess = async (
 ): Promise<'operator' | 'citizen' | 'responder' | null> => {
   if (typeof emergencyId !== 'string' || !/^[a-f0-9]{24}$/i.test(emergencyId)) return null;
   if (OPERATOR_ROLES.includes(user.role)) return 'operator';
-  const e = await Emergency.findById(emergencyId).select('citizen responder').lean();
+  const e = await Emergency.findById(emergencyId).select('citizen responder aedRunner').lean();
   if (!e) return null;
   if (String(e.citizen) === user.id) return 'citizen';
   if (e.responder && String(e.responder) === user.id) return 'responder';
+  if (e.aedRunner && String(e.aedRunner) === user.id) return 'responder';
   return null;
 };
 

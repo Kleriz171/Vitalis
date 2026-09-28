@@ -4,7 +4,8 @@ import { randomBytes } from 'crypto';
 import mongoose from 'mongoose';
 import { authRequired, AuthReq } from '../../middleware/auth';
 import { validate } from '../../middleware/validate';
-import { Course, Enrollment, Certification } from '../../models/Training';
+import { Course, Enrollment, Certification, RESPONDER_COURSES } from '../../models/Training';
+import { User } from '../../models/User';
 import { generateQR } from '../../utils/qr';
 import { env } from '../../config/env';
 
@@ -198,6 +199,12 @@ r.post('/enrollments/:courseId/quiz', validate(quizSchema), async (req: AuthReq,
     ).lean();
 
     let certification: any = null;
+    let roleChanged = false;
+    if (passed && RESPONDER_COURSES.includes(course.slug)) {
+      // Training is the way into the responder network. Clients refresh their token to pick this up.
+      const r = await User.updateOne({ _id: req.user!.id, role: 'citizen' }, { $set: { role: 'student_responder' } });
+      roleChanged = r.modifiedCount > 0;
+    }
     if (passed) {
       const shareToken = randomBytes(12).toString('hex');
       certification = await Certification.findOneAndUpdate(
@@ -230,6 +237,7 @@ r.post('/enrollments/:courseId/quiz', validate(quizSchema), async (req: AuthReq,
         : review.map(({ questionId, correct }) => ({ questionId, correct })),
       enrollment: enrollmentToView(enrollment),
       certification: certification ? certToView(certification) : null,
+      roleChanged,
     });
   } catch (e) { next(e); }
 });

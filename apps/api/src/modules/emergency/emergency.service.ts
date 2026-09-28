@@ -1,6 +1,8 @@
 import { Emergency } from '../../models/Emergency';
 import { User } from '../../models/User';
 import { Certification } from '../../models/Training';
+import { Aed } from '../../models/Aed';
+import { Allergy, Medication, Condition } from '../../models/HealthRecord';
 import { nearQuery, haversineKm } from '../../utils/geo';
 import { blockchainService } from '../blockchain/blockchain.service';
 import { RESPONDER_ROLES, OPERATOR_ROLES } from '../../realtime/socket';
@@ -9,6 +11,12 @@ export const ACTIVE_STATUSES = ['pending', 'assigned', 'en_route', 'on_scene'] a
 
 // Search rings for responders: try close first, widen only if nobody is there.
 const RINGS_M = [5_000, 20_000];
+
+// Farthest an AED runner should detour for a device (metres from the patient).
+const AED_RADIUS_M = 1_500;
+
+const nearestAed = (coords: [number, number]) =>
+  Aed.findOne(nearQuery(coords[0], coords[1], AED_RADIUS_M)).lean();
 
 const httpError = (status: number, message: string) => Object.assign(new Error(message), { status });
 
@@ -46,6 +54,10 @@ export const toResponderView = (e: any) => ({
   createdAt: e.createdAt,
   etaSeconds: e.etaSeconds,
   responder: e.responder ? String(e.responder?._id ?? e.responder) : undefined,
+  aedRunner: e.aedRunner ? String(e.aedRunner?._id ?? e.aedRunner) : undefined,
+  aedStatus: e.aedStatus,
+  // Cardiac calls stay open for a second runner until someone is fetching a defibrillator.
+  needsAedRunner: e.type === 'cardiac' && !!e.responder && !e.aedRunner && ACTIVE_STATUSES.includes(e.status),
 });
 
 export const emergencyService = {
@@ -85,31 +97,119 @@ export const emergencyService = {
     return [];
   },
 
+  /**
+   * First accept claims the patient. On cardiac calls a second accept becomes the
+   * AED runner, sent to the nearest defibrillator first. Both claims are atomic.
+   */
   async assign(emergencyId: string, responderId: string) {
     const responder = await User.findById(responderId).select('location').lean();
     if (!responder) throw httpError(404, 'Responder missing');
-    const current = await Emergency.findById(emergencyId).select('location citizen').lean();
+    const current = await Emergency.findById(emergencyId).select('location citizen type').lean();
     if (!current) throw httpError(404, 'Not found');
     if (String(current.citizen) === responderId) throw httpError(400, 'Cannot respond to your own SOS');
+    const incident = (current.location as any)?.coordinates as [number, number];
 
-    // Atomic claim: only one responder can move it out of `pending`.
-    const e = await Emergency.findOneAndUpdate(
+    const primary = await Emergency.findOneAndUpdate(
       { _id: emergencyId, status: 'pending' },
       {
         $set: {
           responder: responderId,
           status: 'assigned',
-          etaSeconds: etaSeconds((responder.location as any)?.coordinates, (current.location as any)?.coordinates),
+          etaSeconds: etaSeconds((responder.location as any)?.coordinates, incident),
         },
         $push: { timeline: { status: 'assigned', by: responderId, at: new Date() } },
       },
       { new: true },
     );
-    if (!e) throw httpError(409, 'Already assigned');
-    await blockchainService.append({
-      entity: 'emergency', entityId: e._id.toString(), action: 'assigned', actor: responderId,
-    });
+    if (primary) {
+      await blockchainService.append({ entity: 'emergency', entityId: emergencyId, action: 'assigned', actor: responderId });
+      const aed = primary.type === 'cardiac' ? await nearestAed(incident) : null;
+      return { emergency: primary, role: 'primary' as const, aedAvailable: !!aed };
+    }
+
+    if (current.type === 'cardiac') {
+      const aed = await nearestAed(incident);
+      if (aed) {
+        const runner = await Emergency.findOneAndUpdate(
+          {
+            _id: emergencyId,
+            status: { $in: ['assigned', 'en_route', 'on_scene'] },
+            responder: { $ne: responderId },
+            aedRunner: null,
+          },
+          {
+            $set: { aedRunner: responderId, aed: aed._id, aedStatus: 'to_aed' },
+            $push: { timeline: { status: 'aed_runner_assigned', by: responderId, at: new Date() } },
+          },
+          { new: true },
+        );
+        if (runner) {
+          await blockchainService.append({ entity: 'emergency', entityId: emergencyId, action: 'aed_runner_assigned', actor: responderId });
+          return { emergency: runner, role: 'aed' as const, aedAvailable: true, aed };
+        }
+      }
+    }
+    throw httpError(409, 'Already assigned');
+  },
+
+  async setAedStatus(emergencyId: string, aedStatus: 'has_aed' | 'delivered', actorId: string) {
+    const e = await Emergency.findOneAndUpdate(
+      { _id: emergencyId, aedRunner: actorId, status: { $in: ACTIVE_STATUSES } },
+      { $set: { aedStatus }, $push: { timeline: { status: `aed_${aedStatus}`, by: actorId, at: new Date() } } },
+      { new: true },
+    );
+    if (!e) throw httpError(403, 'You are not the AED runner on an active call');
+    await blockchainService.append({ entity: 'emergency', entityId: emergencyId, action: `aed_${aedStatus}`, actor: actorId });
     return e;
+  },
+
+  /**
+   * Structured summary for whoever takes over care (ambulance crew, ER):
+   * who did what when, plus the patient's critical medical facts.
+   */
+  async handover(emergencyId: string) {
+    const e: any = await Emergency.findById(emergencyId)
+      .populate('responder aedRunner', 'name role phone')
+      .populate('timeline.by', 'name role')
+      .populate('aed')
+      .lean();
+    if (!e) throw httpError(404, 'Not found');
+    const [patient, allergies, medications, conditions] = await Promise.all([
+      User.findById(e.citizen).select('name age gender bloodType illnesses emergencyContact').lean(),
+      Allergy.find({ user: e.citizen }).lean(),
+      Medication.find({ user: e.citizen, isActive: true }).lean(),
+      Condition.find({ user: e.citizen }).lean(),
+    ]);
+    const at = (status: string) => e.timeline.find((t: any) => t.status === status)?.at as Date | undefined;
+    const secondsBetween = (a?: Date, b?: Date) => (a && b ? Math.round((+new Date(b) - +new Date(a)) / 1000) : null);
+    const created = e.createdAt as Date;
+    return {
+      id: String(e._id),
+      type: e.type,
+      priority: e.priority,
+      status: e.status,
+      location: e.location,
+      createdAt: created,
+      metrics: {
+        secondsToAssign: secondsBetween(created, at('assigned')),
+        secondsToScene: secondsBetween(created, at('on_scene')),
+        secondsToAed: secondsBetween(created, at('aed_delivered')),
+      },
+      patient: patient && {
+        name: patient.name,
+        age: patient.age,
+        gender: patient.gender,
+        bloodType: patient.bloodType,
+        allergies: allergies.map(a => ({ allergen: a.allergen, severity: a.severity })),
+        medications: medications.map(m => [m.name, m.dosage].filter(Boolean).join(' ')),
+        conditions: [...conditions.map(c => c.name), ...(patient.illnesses ?? [])],
+        emergencyContact: patient.emergencyContact,
+      },
+      responder: e.responder && { name: e.responder.name, role: e.responder.role },
+      aedRunner: e.aedRunner && { name: e.aedRunner.name, role: e.aedRunner.role },
+      aed: e.aed && { name: e.aed.name, placement: e.aed.placement, status: e.aedStatus },
+      timeline: e.timeline.map((t: any) => ({ status: t.status, at: t.at, by: t.by?.name ?? null })),
+    };
   },
 
   async updateStatus(emergencyId: string, status: string, actor: { id: string; role: string }) {
@@ -157,29 +257,44 @@ export const emergencyService = {
     }));
   },
 
-  // Responder inbox: open calls near them plus whatever they're already handling.
+  // Responder inbox: open calls near them (incl. cardiac calls still needing an AED runner)
+  // plus whatever they're already handling.
   async listForResponder(responderId: string) {
     const me = await User.findById(responderId).select('location').lean();
     const coords = (me?.location as any)?.coordinates as [number, number] | undefined;
     const hasFix = Array.isArray(coords) && (coords[0] !== 0 || coords[1] !== 0);
-    const [open, mine] = await Promise.all([
+    const [nearby, mine] = await Promise.all([
       hasFix
         ? Emergency.find({
-            status: 'pending',
+            status: { $in: ACTIVE_STATUSES },
             citizen: { $ne: responderId },
             ...nearQuery(coords![0], coords![1], RINGS_M[RINGS_M.length - 1]),
-          }).limit(30).lean()
+          }).limit(50).lean()
         : Promise.resolve([]),
-      Emergency.find({ responder: responderId, status: { $in: ACTIVE_STATUSES } }).sort('-createdAt').limit(5).lean(),
+      Emergency.find({
+        $or: [{ responder: responderId }, { aedRunner: responderId }],
+        status: { $in: ACTIVE_STATUSES },
+      }).sort('-createdAt').limit(5).lean(),
     ]);
-    return [...mine, ...open].map(toResponderView);
+    const mineIds = new Set(mine.map(e => String(e._id)));
+    const open: ReturnType<typeof toResponderView>[] = [];
+    for (const e of nearby) {
+      const v = toResponderView(e);
+      if (mineIds.has(v._id)) continue;
+      if (v.status === 'pending') open.push(v);
+      // Only offer the AED role when there is actually a device to fetch.
+      else if (v.needsAedRunner && v.responder !== responderId && (await nearestAed((e.location as any).coordinates))) open.push(v);
+      if (open.length >= 30) break;
+    }
+    return [...mine.map(toResponderView), ...open];
   },
 
   // Caller's own live incident, so the app can restore state after a restart.
   async activeForCitizen(citizenId: string) {
     return Emergency.findOne({ citizen: citizenId, status: { $in: ACTIVE_STATUSES } })
       .sort('-createdAt')
-      .populate('responder', 'name role')
+      .populate('responder aedRunner', 'name role')
+      .populate('aed', 'name placement')
       .lean();
   },
 };

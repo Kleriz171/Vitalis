@@ -14,6 +14,7 @@ import { SupplyRequest } from '../models/SupplyRequest';
 import { Course, Enrollment, Certification } from '../models/Training';
 import { Medication, Allergy, Vaccination, Appointment, Condition, Disability } from '../models/HealthRecord';
 import { Emergency } from '../models/Emergency';
+import { Aed } from '../models/Aed';
 import { DoctorApplication } from '../models/DoctorApplication';
 import { trainingCourses } from './trainingCourses';
 import { randomBytes } from 'crypto';
@@ -89,6 +90,7 @@ async function seed() {
   logger.info('Clearing collections…');
   await Promise.all([
     Hospital.deleteMany({}),
+    Aed.deleteMany({}),
     BloodRequest.deleteMany({}),
     BloodInventory.deleteMany({}),
     Doctor.deleteMany({}),
@@ -404,6 +406,27 @@ async function seed() {
       shareToken: randomBytes(12).toString('hex'),
     });
   }
+
+  // DEMO DATA: plausible public spots in central Tirana, not a real AED registry.
+  logger.info('Seeding demo AED registry…');
+  const aedVerified = new Date();
+  await Aed.insertMany([
+    { name: 'Skanderbeg Square info point', placement: 'Inside the tourist info kiosk, right of the door', access: '24h', coords: [19.8186, 41.3279] },
+    { name: 'Tirana Central Bus Terminal', placement: 'Main hall, next to ticket window 3', access: '24h', coords: [19.7940, 41.3339] },
+    { name: 'Toptani Shopping Center', placement: 'Ground floor, by the security desk', access: 'business_hours', coords: [19.8207, 41.3265] },
+    { name: 'Air Albania Stadium', placement: 'Gate B first-aid room', access: 'restricted', coords: [19.8248, 41.3187] },
+    { name: 'Blloku pharmacy', placement: 'Behind the counter; ask staff', access: 'business_hours', coords: [19.8137, 41.3222] },
+    { name: 'University of Tirana rectorate', placement: 'Lobby, wall cabinet opposite the lifts', access: 'business_hours', coords: [19.8212, 41.3163] },
+    { name: 'Grand Park lake entrance', placement: 'Park ranger post', access: '24h', coords: [19.8173, 41.3129] },
+    { name: 'Tirana East Gate (TEG)', placement: 'Level 0, next to customer service', access: 'business_hours', coords: [19.8586, 41.2957] },
+  ].map(a => ({
+    name: a.name,
+    placement: a.placement,
+    access: a.access,
+    location: { type: 'Point', coordinates: a.coords },
+    padsExpireAt: new Date(Date.now() + 400 * 86400000),
+    verifiedAt: aedVerified,
+  })));
 
   logger.info('Seeding demo SOS history…');
   await Emergency.create({

@@ -23,6 +23,7 @@ import trainingRoutes from './modules/training/training.routes';
 import aiRoutes from './modules/ai/ai.routes';
 import adminRoutes from './modules/admin/admin.routes';
 import doctorApplicationsRoutes from './modules/doctorApplications/doctorApplications.routes';
+import aedRoutes from './modules/aed/aed.routes';
 
 export function buildApp() {
   const app = express();
@@ -71,6 +72,7 @@ export function buildApp() {
   app.use('/api/ai', strict(15), aiRoutes);
   app.use('/api/admin', adminRoutes);
   app.use('/api/doctor-applications', doctorApplicationsRoutes);
+  app.use('/api/aeds', aedRoutes);
 
   app.use(errorHandler);
   return app;

@@ -5,6 +5,7 @@ import { validate } from '../../middleware/validate';
 import { User } from '../../models/User';
 import { generateQR } from '../../utils/qr';
 import { Allergy, Medication, Vaccination, Condition, Disability } from '../../models/HealthRecord';
+import { hasResponderCertification } from '../../models/Training';
 
 const r = Router();
 r.use(authRequired);
@@ -69,6 +70,12 @@ const dutySchema = z.object({
 
 r.patch('/me', validate(dutySchema), async (req: AuthReq, res, next) => {
   try {
+    // Only clinicians or people with a valid CPR/AED certificate may receive SOS alerts.
+    if (req.body.available === true
+      && !['doctor', 'nurse'].includes(req.user!.role)
+      && !(await hasResponderCertification(req.user!.id))) {
+      return res.status(403).json({ error: 'Complete the CPR or AED course to go on duty' });
+    }
     const u = await User.findByIdAndUpdate(req.user!.id, { $set: req.body }, { new: true, runValidators: true })
       .select('available location role').lean();
     if (!u) return res.status(404).json({ error: 'Not found' });
