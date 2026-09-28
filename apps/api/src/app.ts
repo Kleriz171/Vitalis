@@ -26,6 +26,9 @@ import doctorApplicationsRoutes from './modules/doctorApplications/doctorApplica
 
 export function buildApp() {
   const app = express();
+  // Flat string query params only: blocks `?field[$ne]=x` NoSQL operator injection.
+  app.set('query parser', 'simple');
+  if (env.nodeEnv === 'production') app.set('trust proxy', 1); // behind Render/Railway proxy
   app.use(helmet());
   // In development, reflect any origin so iOS Simulator / device LAN IPs work.
   // Production reads from CORS_ORIGIN env (comma-separated allowlist).
@@ -38,6 +41,8 @@ export function buildApp() {
   app.use(compression());
   app.use(express.json({ limit: '1mb' }));
   app.use(rateLimit({ windowMs: 60_000, max: 200 }));
+  // Tighter limits where abuse costs something: credential stuffing, AI spend.
+  const strict = (max: number) => rateLimit({ windowMs: 60_000, max, standardHeaders: true, legacyHeaders: false });
 
   if (env.nodeEnv !== 'test') {
     app.use((req, res, next) => {
@@ -50,7 +55,7 @@ export function buildApp() {
   }
 
   app.get('/health', (_req, res) => res.json({ status: 'ok', ts: Date.now() }));
-  app.use('/api/auth', authRoutes);
+  app.use('/api/auth', strict(20), authRoutes);
   app.use('/api/emergencies', emergencyRoutes);
   app.use('/api/medicine', medicineRoutes);
   app.use('/api/biopassport', bioRoutes);
@@ -63,7 +68,7 @@ export function buildApp() {
   app.use('/api/health', healthRoutes);
   app.use('/api/supply', supplyRoutes);
   app.use('/api/training', trainingRoutes);
-  app.use('/api/ai', aiRoutes);
+  app.use('/api/ai', strict(15), aiRoutes);
   app.use('/api/admin', adminRoutes);
   app.use('/api/doctor-applications', doctorApplicationsRoutes);
 

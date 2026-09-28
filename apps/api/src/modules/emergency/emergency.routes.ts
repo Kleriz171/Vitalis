@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { authRequired } from '../../middleware/auth';
 import { allow } from '../../middleware/rbac';
-import { emergencyController } from './emergency.controller';
+import { validate } from '../../middleware/validate';
+import { emergencyController, createEmergencySchema, statusSchema } from './emergency.controller';
 import { Hospital } from '../../models/Hospital';
 
 const r = Router();
@@ -28,8 +29,12 @@ r.get('/hospitals', async (_req, res, next) => {
   } catch (e) { next(e); }
 });
 
-r.post('/', allow('citizen','blood_donor'), emergencyController.create);
-r.post('/:id/accept', allow('doctor','nurse','student_responder','blood_donor'), emergencyController.accept);
-r.patch('/:id/status', allow('doctor','nurse','student_responder','dispatcher','admin'), emergencyController.updateStatus);
-r.get('/', allow('dispatcher','admin','doctor','nurse'), emergencyController.list);
+const RESPONDERS = ['doctor', 'nurse', 'student_responder', 'blood_donor'] as const;
+
+r.post('/', allow('citizen', 'blood_donor', 'student_responder', 'doctor', 'nurse'), validate(createEmergencySchema), emergencyController.create);
+r.get('/mine', emergencyController.mine);
+r.post('/:id/accept', allow(...RESPONDERS), emergencyController.accept);
+// Fine-grained checks (caller may cancel, assigned responder may progress) live in the service.
+r.patch('/:id/status', validate(statusSchema), emergencyController.updateStatus);
+r.get('/', allow('dispatcher', 'admin', ...RESPONDERS), emergencyController.list);
 export default r;

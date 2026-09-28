@@ -82,6 +82,8 @@ const jitter = (c: [number, number], r = 0.03): [number, number] =>
   [c[0] + (Math.random() - 0.5) * r, c[1] + (Math.random() - 0.5) * r];
 
 async function seed() {
+  // The seed wipes every collection and creates accounts with known passwords.
+  if (process.env.NODE_ENV === 'production') throw new Error('Refusing to seed a production database');
   await connectDB();
 
   logger.info('Clearing collections…');

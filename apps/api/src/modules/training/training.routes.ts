@@ -182,12 +182,7 @@ r.post('/enrollments/:courseId/quiz', validate(quizSchema), async (req: AuthReq,
       const submitted = answers.find((a) => a.questionId === String(q._id));
       const right = submitted?.choiceIndex === q.answerIndex;
       if (right) correct++;
-      return {
-        questionId: String(q._id),
-        correct: right,
-        correctIndex: q.answerIndex,
-        explanation: q.explanation,
-      };
+      return { questionId: String(q._id), correct: right, explanation: q.explanation };
     });
     const score = Math.round((correct / quiz.length) * 100);
     const passed = score >= (course.passingScore ?? 70);
@@ -225,11 +220,14 @@ r.post('/enrollments/:courseId/quiz', validate(quizSchema), async (req: AuthReq,
       ).lean();
     }
 
+    // Certifications gate who can respond to SOS, so answers are only revealed once passed.
     res.json({
       score,
       passed,
       passingScore: course.passingScore ?? 70,
-      review,
+      review: passed
+        ? review.map((item, i) => ({ ...item, correctIndex: quiz[i].answerIndex }))
+        : review.map(({ questionId, correct }) => ({ questionId, correct })),
       enrollment: enrollmentToView(enrollment),
       certification: certification ? certToView(certification) : null,
     });

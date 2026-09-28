@@ -12,3 +12,10 @@ export const env = {
   publicWebUrl: process.env.PUBLIC_WEB_URL ?? 'http://localhost:5173',
   geminiApiKey: process.env.GEMINI_API_KEY ?? '',
 };
+
+if (env.nodeEnv === 'production') {
+  const weak = (s: string) => s.length < 32 || s.startsWith('dev-') || s.startsWith('replace-me');
+  if (weak(env.jwtAccess) || weak(env.jwtRefresh)) {
+    throw new Error('JWT_ACCESS and JWT_REFRESH must be set to strong secrets (32+ chars) in production');
+  }
+}

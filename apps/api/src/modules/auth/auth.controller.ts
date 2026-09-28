@@ -31,7 +31,9 @@ export const registerSchema = z.object({
   password: passwordSchema,
   firstName: z.string().min(1),
   lastName: z.string().min(1),
-  role: z.enum(['citizen','blood_donor','doctor','nurse','student_responder','dispatcher','admin']).optional(),
+  // Self-registration is limited to public roles. Doctors come via approved applications,
+  // dispatchers are created by admins.
+  role: z.enum(['citizen','blood_donor']).optional(),
   bloodType: z.enum(BLOOD_TYPES).nullish(),
   age: z.number().int().min(0).max(130).nullish(),
   gender: z.enum(GENDERS).nullish(),
