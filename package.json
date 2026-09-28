@@ -9,11 +9,11 @@
   "scripts": {
     "dev:api": "npm run dev -w @vitalis/api",
     "dev:web": "npm run dev -w @vitalis/web",
-    "dev:mobile": "npm run dev -w @vitalis/mobile",
+    "dev:landing": "npm run dev -w @vitalis/landing",
     "dev:native": "npm run start -w @vitalis/native",
     "dev:ios": "npm run ios -w @vitalis/native",
     "seed": "npm run seed -w @vitalis/api",
-    "build": "npm run build -w @vitalis/api && npm run build -w @vitalis/web && npm run build -w @vitalis/mobile"
+    "build": "npm run build -w @vitalis/api && npm run build -w @vitalis/web && npm run build -w @vitalis/landing"
   },
   "overrides": {
     "react": "19.1.0",
