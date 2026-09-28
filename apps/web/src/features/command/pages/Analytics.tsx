@@ -125,11 +125,11 @@ export const Analytics = () => {
             </CardHeader>
             <CardContent className="p-5 space-y-4">
               <div>
-                <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Avg responder ETA</div>
+                <div className="text-[11px] text-muted-foreground">Avg responder ETA</div>
                 <div className="text-3xl font-bold mt-1">{fmtEta(perf?.avgEtaSeconds ?? 0)}</div>
               </div>
               <div>
-                <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Resolved / Total</div>
+                <div className="text-[11px] text-muted-foreground">Resolved / Total</div>
                 <div className="text-3xl font-bold mt-1">
                   <span className="text-emerald-600">{perf?.resolved ?? 0}</span>
                   <span className="text-muted-foreground"> / {perf?.total ?? 0}</span>
@@ -171,7 +171,7 @@ export const Analytics = () => {
 const Kpi = ({ label, value, accent }: { label: string; value: number | string; accent?: string }) => (
   <Card className="gap-0 py-0">
     <CardContent className="p-4">
-      <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="text-[11px] text-muted-foreground">{label}</div>
       <div className={`text-2xl font-bold mt-1 ${accent ?? 'text-foreground'}`}>{value}</div>
     </CardContent>
   </Card>

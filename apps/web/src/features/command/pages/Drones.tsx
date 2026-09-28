@@ -81,7 +81,7 @@ export const Drones = () => {
           <Card key={m._id} className="p-5 space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Drone</div>
+                <div className="text-xs text-muted-foreground">Drone</div>
                 <div className="font-mono font-semibold">{m.droneId}</div>
               </div>
               <Badge variant={STATUS_VARIANT[m.status] ?? 'outline'} className="capitalize">
@@ -89,7 +89,7 @@ export const Drones = () => {
               </Badge>
             </div>
             <div className="text-xs text-muted-foreground">Payload: {m.payload ?? '—'}</div>
-            <div className="text-[10px] text-muted-foreground font-mono">#{shortId(m._id)}</div>
+            <div className="text-xs text-muted-foreground font-mono">#{shortId(m._id)}</div>
           </Card>
         ))}
       </div>

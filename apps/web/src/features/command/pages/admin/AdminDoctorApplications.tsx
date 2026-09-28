@@ -87,7 +87,7 @@ export const AdminDoctorApplications = () => {
             <CardContent className="p-6 space-y-3">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <h3 className="text-lg font-bold">{a.fullName} <span className="text-xs uppercase tracking-wide text-muted-foreground ml-2">{a.status}</span></h3>
+                  <h3 className="text-lg font-bold">{a.fullName} <span className="text-xs text-muted-foreground ml-2">{a.status}</span></h3>
                   <p className="text-sm text-muted-foreground">{a.specialty} · {a.yearsExperience} years</p>
                   <p className="text-xs text-muted-foreground mt-1">{a.email} · {a.phone}</p>
                 </div>
