@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authRequired, AuthReq } from '../../middleware/auth';
 import { validate } from '../../middleware/validate';
-import { User, BLOOD_TYPES, GENDERS } from '../../models/User';
+import { User, BLOOD_TYPES, GENDERS, ageOf } from '../../models/User';
 import {
   Medication,
   Allergy,
@@ -26,7 +26,7 @@ const serializeUser = (user: any) => ({
   lastName: user.lastName,
   role: user.role,
   bloodType: user.bloodType,
-  age: user.age,
+  age: ageOf(user),
   gender: user.gender,
   heightCm: user.heightCm,
   weightKg: user.weightKg,

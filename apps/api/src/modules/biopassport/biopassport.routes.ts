@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authRequired, AuthReq } from '../../middleware/auth';
 import { validate } from '../../middleware/validate';
-import { User } from '../../models/User';
+import { User, ageOf } from '../../models/User';
 import { generateQR } from '../../utils/qr';
 import { Allergy, Medication, Vaccination, Condition, Disability } from '../../models/HealthRecord';
 import { hasResponderCertification } from '../../models/Training';
@@ -27,7 +27,7 @@ r.get('/me', async (req: AuthReq, res, next) => {
       v: 1,
       name: u.name,
       bloodType: u.bloodType,
-      age: u.age,
+      age: ageOf(u),
       allergies: allergies.map(a => `${a.allergen} (${a.severity})`),
       conditions: [...new Set([...conditions.map(c => c.name), ...(u.illnesses ?? [])])],
       medications: medications.filter(m => m.isActive).map(m => [m.name, m.dosage].filter(Boolean).join(' ')),
@@ -41,7 +41,7 @@ r.get('/me', async (req: AuthReq, res, next) => {
         lastName: u.lastName,
         email: u.email,
         bloodType: u.bloodType,
-        age: u.age,
+        age: ageOf(u),
         gender: u.gender,
         heightCm: u.heightCm,
         weightKg: u.weightKg,

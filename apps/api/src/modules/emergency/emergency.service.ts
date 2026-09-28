@@ -1,5 +1,5 @@
 import { Emergency } from '../../models/Emergency';
-import { User } from '../../models/User';
+import { User, ageOf } from '../../models/User';
 import { Certification } from '../../models/Training';
 import { Aed } from '../../models/Aed';
 import { Allergy, Medication, Condition } from '../../models/HealthRecord';
@@ -178,7 +178,7 @@ export const emergencyService = {
       .lean();
     if (!e) throw httpError(404, 'Not found');
     const [patient, allergies, medications, conditions] = await Promise.all([
-      User.findById(e.citizen).select('name age gender bloodType illnesses emergencyContact').lean(),
+      User.findById(e.citizen).select('name age dateOfBirth gender bloodType illnesses emergencyContact').lean(),
       Allergy.find({ user: e.citizen }).lean(),
       Medication.find({ user: e.citizen, isActive: true }).lean(),
       Condition.find({ user: e.citizen }).lean(),
@@ -200,7 +200,7 @@ export const emergencyService = {
       },
       patient: patient && {
         name: patient.name,
-        age: patient.age,
+        age: ageOf(patient),
         gender: patient.gender,
         bloodType: patient.bloodType,
         allergies: allergies.map(a => ({ allergen: a.allergen, severity: a.severity })),

@@ -196,6 +196,38 @@ async function main() {
   assert.equal(chain.data.valid, true);
   ok('ledger chain valid');
 
+  // 12. Phone sign-up: codes are single-use and capped at 5 guesses; the signup token is
+  //     not an access token; registration cannot set a role. Needs the dev SMS echo (no provider).
+  const phone = `+35569${String(stamp).slice(-7)}`;
+  const sent = await call('POST', '/auth/phone/start', undefined, { phone });
+  assert.equal(sent.status, 200);
+  assert.ok(sent.data.devCode, 'dev SMS echo (run without TWILIO_* and NODE_ENV=production)');
+  assert.equal((await call('POST', '/auth/phone/start', undefined, { phone })).status, 429);
+  const verified = await call('POST', '/auth/phone/verify', undefined, { phone, code: sent.data.devCode });
+  assert.equal(verified.status, 200);
+  assert.equal((await call('POST', '/auth/phone/verify', undefined, { phone, code: sent.data.devCode })).status, 400);
+  assert.equal((await call('GET', '/biopassport/me', verified.data.signupToken)).status, 401);
+  const profile = {
+    signupToken: verified.data.signupToken, firstName: 'P', lastName: 'Q', dateOfBirth: '1990-01-01',
+    emergencyContact: { name: 'R', phone: '+355691111111' }, bloodType: 'unknown', allergies: [], medications: [], conditions: [],
+  };
+  assert.equal((await call('POST', '/auth/phone/register', undefined, { ...profile, role: 'admin' })).status, 400);
+  const phoneUser = await call('POST', '/auth/phone/register', undefined, profile);
+  assert.equal(phoneUser.status, 200);
+  assert.equal(phoneUser.data.user.role, 'citizen');
+  ok('phone sign-up: single-use code, resend limit, token scoping, no role injection');
+
+  const other = `+35568${String(stamp).slice(-7)}`;
+  const fresh = await call('POST', '/auth/phone/start', undefined, { phone: other });
+  const wrong = fresh.data.devCode === '000000' ? '111111' : '000000';
+  const guesses = await Promise.all(Array.from({ length: 6 }, () =>
+    call('POST', '/auth/phone/verify', undefined, { phone: other, code: wrong })));
+  assert.deepEqual(guesses.map(g => g.data.error).sort(), [
+    ...Array(5).fill('That code is not right.'),
+    'This code has expired or was tried too many times. Ask for a new one.',
+  ].sort());
+  ok('phone code: 6 parallel wrong guesses → exactly 5 counted, then locked');
+
   // Leave the demo doctor/nurse off duty.
   await call('PATCH', '/biopassport/me', doctor.accessToken, { available: false });
   await call('PATCH', '/biopassport/me', nurse.accessToken, { available: false });
