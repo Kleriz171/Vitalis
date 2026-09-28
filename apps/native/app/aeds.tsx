@@ -5,7 +5,7 @@ import * as Location from 'expo-location';
 import { toast } from 'sonner-native';
 import { ChevronLeft, Navigation, Plus, ShieldCheck, Zap } from 'lucide-react-native';
 
-import { AppScreen } from '@/components/AppScreen';
+import { AppScreen, HeaderButton } from '@/components/AppScreen';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Empty } from '@/components/ui/Empty';
@@ -62,15 +62,9 @@ export default function AedsScreen() {
 
   return (
     <AppScreen
-      tone="dark"
       title="Defibrillators"
       subtitle="Nearest public AEDs. In a cardiac arrest, every minute without one cuts survival."
-      icon={<Zap size={22} color="#fff" />}
-      action={
-        <Pressable onPress={() => router.back()} style={styles.iconButton} accessibilityRole="button" accessibilityLabel="Back">
-          <ChevronLeft size={20} color="#fff" />
-        </Pressable>
-      }
+      action={<HeaderButton icon={ChevronLeft} onPress={() => router.back()} label="Back" />}
       scrollProps={{ refreshControl: <RefreshControl refreshing={false} onRefresh={load} tintColor={colors.primary} /> }}
     >
       {reporting && here ? (

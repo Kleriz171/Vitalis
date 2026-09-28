@@ -20,7 +20,7 @@ import {
 import { api } from '@/lib/api';
 import { signOut } from '@/lib/session';
 import { RootState } from '@/lib/store';
-import { AppScreen } from '@/components/AppScreen';
+import { AppScreen, HeaderButton } from '@/components/AppScreen';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { colors, radius } from '@/lib/theme';
@@ -73,15 +73,9 @@ export default function Home() {
 
   return (
     <AppScreen
-      tone="dark"
       title={`Hello, ${firstName}`}
       subtitle="Your emergency tools and medical identity, ready when you need them."
-      icon={<Heart size={24} color="#fff" fill="#fff" />}
-      action={
-        <Pressable onPress={handleSignOut} style={styles.iconButton} accessibilityRole="button" accessibilityLabel="Sign out">
-          <LogOut size={16} color="#fff" />
-        </Pressable>
-      }
+      action={<HeaderButton icon={LogOut} onPress={handleSignOut} label="Sign out" />}
     >
       <Animated.View style={sosStyle}>
         <Pressable

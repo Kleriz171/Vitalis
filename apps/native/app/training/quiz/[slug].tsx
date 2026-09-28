@@ -5,7 +5,7 @@ import { ArrowLeft, Award, Check, CircleHelp, ClipboardCheck, X } from 'lucide-r
 import { useDispatch } from 'react-redux';
 import { toast } from 'sonner-native';
 
-import { AppScreen } from '@/components/AppScreen';
+import { AppScreen, HeaderButton } from '@/components/AppScreen';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -62,7 +62,7 @@ export default function Quiz() {
 
   if (!course) {
     return (
-      <AppScreen tone="primary" title="Loading quiz" action={<BackBtn />}>
+      <AppScreen title="Loading quiz" action={<BackBtn />}>
         <Skeleton style={{ height: 150, borderRadius: radius.xl }} />
         <Skeleton style={{ height: 240, borderRadius: radius.xl }} />
       </AppScreen>
@@ -108,11 +108,9 @@ export default function Quiz() {
   if (result) {
     return (
       <AppScreen
-        tone={result.passed ? 'success' : 'critical'}
         eyebrow={result.passed ? 'Passed' : 'Try again'}
         title={`${result.score}%`}
         subtitle={result.passed ? `You earned ${course.badgeLabel}.` : `You need ${result.passingScore}% to pass.`}
-        icon={<Award size={22} color="#fff" />}
         action={<BackBtn />}
         footer={
           <View style={styles.footerColumn}>
@@ -155,11 +153,9 @@ export default function Quiz() {
 
   return (
     <AppScreen
-      tone="primary"
       eyebrow={course.badgeLabel}
       title="Final quiz"
       subtitle={`Pass with ${course.passingScore}% or higher.`}
-      icon={<Award size={22} color="#fff" />}
       action={<BackBtn />}
       headerContent={
         <View style={styles.heroContent}>
@@ -213,9 +209,7 @@ export default function Quiz() {
 function BackBtn() {
   const router = useRouter();
   return (
-    <Pressable onPress={() => router.back()} style={styles.backBtn}>
-      <ArrowLeft size={16} color="#fff" />
-    </Pressable>
+    <HeaderButton icon={ArrowLeft} onPress={() => router.back()} label="Back" />
   );
 }
 

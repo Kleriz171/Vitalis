@@ -92,11 +92,9 @@ export default function Training() {
 
   return (
     <AppScreen
-      tone="primary"
       eyebrow="First aid training"
       title="Become a life-saver."
       subtitle="Quick lessons based on Red Cross guidelines — certify yourself in minutes."
-      icon={<GraduationCap size={24} color="#fff" />}
       headerContent={
         <View style={styles.heroChips}>
           <View style={styles.heroChip}>

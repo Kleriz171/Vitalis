@@ -15,7 +15,7 @@ import { AlertTriangle, Award, Calendar, Heart, LogOut, Pill, QrCode, ShieldChec
 import { toast } from 'sonner-native';
 import { api } from '@/lib/api';
 import { signOut } from '@/lib/session';
-import { AppScreen } from '@/components/AppScreen';
+import { AppScreen, HeaderButton } from '@/components/AppScreen';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -332,21 +332,11 @@ export default function Profile() {
 
   return (
     <AppScreen
-      tone="dark"
       eyebrow="Bio Passport"
       title={profile?.user.name ?? auth.user?.name ?? 'Your profile'}
       subtitle={profile?.user.email ?? auth.user?.email ?? 'Citizen account'}
-      icon={<UserCircle size={28} color="#fff" />}
       action={
-        <Pressable
-          onPress={async () => {
-            await signOut();
-            router.replace('/');
-          }}
-          style={styles.iconButton}
-        >
-          <LogOut size={16} color="#fff" />
-        </Pressable>
+        <HeaderButton icon={LogOut} label="Sign out" onPress={async () => { await signOut(); router.replace('/'); }} />
       }
       headerContent={
         <View style={styles.headerContent}>

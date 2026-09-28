@@ -1,51 +1,33 @@
 import { ReactNode } from 'react';
-import {
-  ScrollView,
-  ScrollViewProps,
-  StyleProp,
-  StyleSheet,
-  Text,
-  View,
-  ViewStyle,
-} from 'react-native';
+import { Pressable, ScrollView, ScrollViewProps, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
-import { colors, radius, shadows } from '@/lib/theme';
-
-type Tone = 'primary' | 'critical' | 'info' | 'purple' | 'success' | 'dark';
+import { LucideIcon } from 'lucide-react-native';
+import { colors, radius, type } from '@/lib/theme';
 
 interface AppScreenProps {
-  tone?: Tone;
   eyebrow?: string;
   title: string;
   subtitle?: string;
-  icon?: ReactNode;
   action?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
   scroll?: boolean;
   contentContainerStyle?: StyleProp<ViewStyle>;
   bodyStyle?: StyleProp<ViewStyle>;
+  /** Summary under the title (stats, chips). Sits on a dark ink panel: pass light text. */
   headerContent?: ReactNode;
   scrollProps?: Omit<ScrollViewProps, 'contentContainerStyle'>;
 }
 
-const toneMap: Record<Tone, { background: string; soft: string; text: string; chip: string }> = {
-  primary: { background: colors.primary, soft: colors.accent, text: colors.primaryForeground, chip: 'rgba(255,255,255,0.16)' },
-  critical: { background: colors.destructive, soft: colors.destructiveSoft, text: colors.destructiveForeground, chip: 'rgba(255,255,255,0.16)' },
-  info: { background: colors.info, soft: colors.infoSoft, text: '#FFFFFF', chip: 'rgba(255,255,255,0.16)' },
-  purple: { background: colors.purple, soft: colors.purpleSoft, text: '#FFFFFF', chip: 'rgba(255,255,255,0.16)' },
-  success: { background: colors.success, soft: colors.successSoft, text: '#FFFFFF', chip: 'rgba(255,255,255,0.16)' },
-  dark: { background: colors.dark, soft: colors.darkSoft, text: '#FFFFFF', chip: 'rgba(255,255,255,0.12)' },
-};
-
+/**
+ * Platform-style screen: large title on the plain background, content below.
+ * Colour is left to the content (red for danger, teal for actions), not the header.
+ */
 export function AppScreen({
-  tone = 'primary',
   eyebrow,
   title,
   subtitle,
-  icon,
   action,
   children,
   footer,
@@ -55,39 +37,26 @@ export function AppScreen({
   headerContent,
   scrollProps,
 }: AppScreenProps) {
-  const palette = toneMap[tone];
-
   const body = (
     <View style={[styles.body, bodyStyle]}>
-      <Animated.View entering={FadeInDown.duration(320)} style={[styles.hero, { backgroundColor: palette.background }]}>
-        <View style={styles.heroTop}>
-          <View style={styles.heroTitleWrap}>
-            {eyebrow ? <Text style={[styles.eyebrow, { color: 'rgba(255,255,255,0.74)' }]}>{eyebrow}</Text> : null}
-            <View style={styles.heroHeadingRow}>
-              {icon ? <View style={[styles.iconBadge, { backgroundColor: palette.chip }]}>{icon}</View> : null}
-              <View style={styles.heroTextWrap}>
-                <Text style={[styles.title, { color: palette.text }]}>{title}</Text>
-                {subtitle ? <Text style={[styles.subtitle, { color: 'rgba(255,255,255,0.82)' }]}>{subtitle}</Text> : null}
-              </View>
-            </View>
-          </View>
-          {action ? <View style={styles.actionWrap}>{action}</View> : null}
+      <View style={styles.header}>
+        <View style={{ flex: 1 }}>
+          {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
+          <Text style={styles.title} accessibilityRole="header">{title}</Text>
+          {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
         </View>
-        {headerContent ? <View style={[styles.heroContent, { backgroundColor: palette.chip }]}>{headerContent}</View> : null}
-      </Animated.View>
-      <Animated.View entering={FadeIn.delay(80).duration(260)} style={styles.content}>{children}</Animated.View>
+        {action ? <View style={styles.action}>{action}</View> : null}
+      </View>
+      {headerContent ? <View style={styles.summary}>{headerContent}</View> : null}
+      <View style={styles.content}>{children}</View>
     </View>
   );
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       {scroll ? (
-        <ScrollView
-          contentContainerStyle={[styles.scroll, contentContainerStyle]}
-          showsVerticalScrollIndicator={false}
-          {...scrollProps}
-        >
+        <ScrollView contentContainerStyle={[styles.scroll, contentContainerStyle]} showsVerticalScrollIndicator={false} {...scrollProps}>
           {body}
         </ScrollView>
       ) : (
@@ -95,87 +64,48 @@ export function AppScreen({
       )}
       {footer ? (
         <SafeAreaView edges={['bottom', 'left', 'right']} style={styles.footerSafe}>
-          <Animated.View entering={FadeInDown.duration(240)} style={styles.footer}>{footer}</Animated.View>
+          <View style={styles.footer}>{footer}</View>
         </SafeAreaView>
       ) : null}
     </SafeAreaView>
   );
 }
 
+/** Round icon button for the header's action slot. */
+export function HeaderButton({ icon: Icon, onPress, label }: { icon: LucideIcon; onPress: () => void; label: string }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => [styles.headerButton, pressed && { backgroundColor: colors.border }]}
+    >
+      <Icon size={18} color={colors.foreground} />
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  scroll: {
-    paddingTop: 10,
-    paddingBottom: 136,
-  },
-  body: {
-    gap: 18,
-    paddingHorizontal: 16,
-  },
-  hero: {
-    borderRadius: radius.lg,
-    padding: 20,
-    gap: 16,
-    ...shadows.card,
-  },
-  heroTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  heroTitleWrap: {
-    flex: 1,
-    gap: 10,
-  },
-  eyebrow: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  heroHeadingRow: {
-    flexDirection: 'row',
-    gap: 12,
-    alignItems: 'center',
-  },
-  iconBadge: {
-    width: 52,
-    height: 52,
-    borderRadius: radius.lg,
+  safe: { flex: 1, backgroundColor: colors.background },
+  scroll: { paddingTop: 8, paddingBottom: 120 },
+  body: { gap: 16, paddingHorizontal: 16 },
+  header: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingTop: 8 },
+  eyebrow: { ...type.footnote, fontWeight: '600', color: colors.primaryStrong, marginBottom: 2 },
+  title: { ...type.largeTitle, color: colors.foreground },
+  subtitle: { ...type.callout, color: colors.mutedForeground, marginTop: 4 },
+  action: { paddingTop: 4 },
+  headerButton: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.full,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: colors.muted,
   },
-  heroTextWrap: {
-    flex: 1,
-    gap: 4,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: '800',
-  },
-  subtitle: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  actionWrap: {
-    alignSelf: 'flex-start',
-  },
-  heroContent: {
-    borderRadius: radius.lg,
-    padding: 14,
-  },
-  content: {
-    gap: 14,
-  },
-  footer: {
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: 'rgba(243,247,247,0.97)',
-  },
-  footerSafe: {
-    backgroundColor: 'rgba(243,247,247,0.97)',
-  },
+  // ponytail: one dark panel keeps every screen's existing light chips legible; restyle per screen later.
+  summary: { backgroundColor: colors.dark, borderRadius: radius.lg, padding: 14 },
+  content: { gap: 14 },
+  footer: { paddingHorizontal: 16, paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, backgroundColor: colors.background },
+  footerSafe: { backgroundColor: colors.background },
 });

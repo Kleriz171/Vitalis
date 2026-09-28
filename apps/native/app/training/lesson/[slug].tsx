@@ -12,7 +12,7 @@ import {
 import { useDispatch } from 'react-redux';
 import { toast } from 'sonner-native';
 
-import { AppScreen } from '@/components/AppScreen';
+import { AppScreen, HeaderButton } from '@/components/AppScreen';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -86,7 +86,7 @@ export default function LessonViewer() {
 
   if (loading) {
     return (
-      <AppScreen tone="primary" title="Loading lesson" action={<BackBtn />}>
+      <AppScreen title="Loading lesson" action={<BackBtn />}>
         <Skeleton style={{ height: 260, borderRadius: radius.xl }} />
         <Skeleton style={{ height: 220, borderRadius: radius.xl }} />
         <Skeleton style={{ height: 160, borderRadius: radius.xl }} />
@@ -96,7 +96,7 @@ export default function LessonViewer() {
 
   if (!course || !lesson) {
     return (
-      <AppScreen tone="primary" title="Lesson unavailable" action={<BackBtn />}>
+      <AppScreen title="Lesson unavailable" action={<BackBtn />}>
         <Card style={{ padding: 18 }}>
           <Text style={{ color: colors.mutedForeground, fontSize: 14 }}>This lesson could not be loaded.</Text>
         </Card>
@@ -118,11 +118,9 @@ export default function LessonViewer() {
 
   return (
     <AppScreen
-      tone="primary"
       eyebrow={course.badgeLabel}
       title={lesson.title}
       subtitle={lesson.summary}
-      icon={<BookOpen size={22} color="#fff" />}
       action={<BackBtn />}
       contentContainerStyle={{ paddingBottom: 96 }}
       headerContent={
@@ -271,9 +269,7 @@ export default function LessonViewer() {
 function BackBtn() {
   const router = useRouter();
   return (
-    <Pressable onPress={() => router.back()} style={styles.backBtn}>
-      <ArrowLeft size={16} color="#fff" />
-    </Pressable>
+    <HeaderButton icon={ArrowLeft} onPress={() => router.back()} label="Back" />
   );
 }
 

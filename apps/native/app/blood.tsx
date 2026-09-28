@@ -283,11 +283,9 @@ export default function SupplyScreen() {
 
   return (
     <AppScreen
-      tone="info"
       eyebrow="Supply center"
       title="Find care fast and track every request in one place."
       subtitle="Request blood, organs, tissue, or medicine, stay in queue, and answer urgent exchange needs."
-      icon={<HeartHandshake size={24} color="#fff" />}
       contentContainerStyle={{ paddingBottom: 148 }}
       scrollProps={{
         refreshControl: <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />,

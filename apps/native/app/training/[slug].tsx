@@ -6,7 +6,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'sonner-native';
 
-import { AppScreen } from '@/components/AppScreen';
+import { AppScreen, HeaderButton } from '@/components/AppScreen';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -90,10 +90,8 @@ export default function CourseDetail() {
   if (loading || !course) {
     return (
       <AppScreen
-        tone="primary"
         eyebrow="First aid training"
         title="Loading course"
-        icon={<GraduationCap size={22} color="#fff" />}
         action={<BackBtn />}
       >
         {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} style={{ height: 80, borderRadius: radius.lg }} />)}
@@ -108,12 +106,9 @@ export default function CourseDetail() {
 
   return (
     <AppScreen
-      tone="primary"
       eyebrow={course.badgeLabel}
       title={course.title}
       subtitle={course.shortDescription}
-      icon={<Text style={styles.heroEmoji}>{course.heroEmoji}</Text>}
-      action={<BackBtn />}
       contentContainerStyle={{ paddingBottom: 96 }}
       headerContent={
         <View style={styles.progressWrap}>
@@ -204,9 +199,7 @@ export default function CourseDetail() {
 function BackBtn() {
   const router = useRouter();
   return (
-    <Pressable onPress={() => router.back()} style={styles.backBtn}>
-      <ArrowLeft size={16} color="#fff" />
-    </Pressable>
+    <HeaderButton icon={ArrowLeft} onPress={() => router.back()} label="Back" />
   );
 }
 

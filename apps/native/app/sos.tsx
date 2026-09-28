@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { Heart, MapPin, Phone, Shield, TriangleAlert, X } from 'lucide-react-native';
 import { toast } from 'sonner-native';
 import { api } from '@/lib/api';
-import { AppScreen } from '@/components/AppScreen';
+import { AppScreen, HeaderButton } from '@/components/AppScreen';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Empty } from '@/components/ui/Empty';
@@ -78,16 +78,10 @@ export default function SOSModal() {
 
   return (
     <AppScreen
-      tone="critical"
       eyebrow="Emergency resources"
       title="SOS directory"
       subtitle="Call fast, find care, and navigate to open hospitals without leaving the app."
-      icon={<Heart size={24} color="#fff" fill="#fff" />}
-      action={
-        <Pressable onPress={() => router.back()} style={styles.closeBtn}>
-          <X size={16} color="#fff" />
-        </Pressable>
-      }
+      action={<HeaderButton icon={X} onPress={() => router.back()} label="Close" />}
       headerContent={
         <View style={styles.headerBadge}>
           <TriangleAlert size={16} color="#fff" />

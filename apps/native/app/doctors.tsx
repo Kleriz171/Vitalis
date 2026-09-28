@@ -74,11 +74,9 @@ export default function Doctors() {
 
   return (
     <AppScreen
-      tone="info"
       eyebrow="Care discovery"
       title="Doctors and specialist access."
       subtitle="Search by specialty, online availability, or symptoms."
-      icon={<Stethoscope size={24} color="#fff" />}
       headerContent={
         <View style={styles.headerContent}>
           <Text style={styles.headerMetric}>{doctors.length}</Text>

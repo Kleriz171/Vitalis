@@ -8,7 +8,7 @@ import { toast } from 'sonner-native';
 import { ChevronLeft, ClipboardList, Inbox as InboxIcon, Navigation, Radio, ShieldCheck, Zap } from 'lucide-react-native';
 import Animated, { FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
 
-import { AppScreen } from '@/components/AppScreen';
+import { AppScreen, HeaderButton } from '@/components/AppScreen';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Empty } from '@/components/ui/Empty';
@@ -174,7 +174,7 @@ export default function ResponderInbox() {
 
   if (!canAccess) {
     return (
-      <AppScreen tone="dark" title="Responder inbox" subtitle="For doctors, nurses and certified first-aiders.">
+      <AppScreen title="Responder inbox" subtitle="For doctors, nurses and certified first-aiders.">
         <Empty
           icon={ShieldCheck}
           title="Become a responder"
@@ -289,15 +289,9 @@ export default function ResponderInbox() {
 
   return (
     <AppScreen
-      tone="dark"
       title="Responder inbox"
       subtitle={available ? 'On duty. Nearby SOS calls appear here instantly.' : 'Off duty. You will not receive SOS calls.'}
-      icon={<Radio size={22} color="#fff" />}
-      action={
-        <Pressable onPress={() => router.back()} style={styles.iconButton} accessibilityRole="button" accessibilityLabel="Back">
-          <ChevronLeft size={20} color="#fff" />
-        </Pressable>
-      }
+      action={<HeaderButton icon={ChevronLeft} onPress={() => router.back()} label="Back" />}
       scrollProps={{ refreshControl: <RefreshControl refreshing={false} onRefresh={load} tintColor={colors.primary} /> }}
     >
       <Card style={styles.dutyCard}>

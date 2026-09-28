@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ArrowLeft, Eye, MessageCircle, Shield, Users } from 'lucide-react-native';
 import { toast } from 'sonner-native';
 import { api } from '@/lib/api';
-import { AppScreen } from '@/components/AppScreen';
+import { AppScreen, HeaderButton } from '@/components/AppScreen';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Empty } from '@/components/ui/Empty';
@@ -113,16 +113,11 @@ export default function Community() {
   if (selected) {
     return (
       <AppScreen
-        tone="purple"
         eyebrow="Support group"
         title={selected.name}
         subtitle={`${selected.memberCount?.toLocaleString() ?? 0} members`}
-        icon={<Text style={styles.heroEmoji}>{categoryIcons[selected.category] ?? '💬'}</Text>}
-        action={
-          <Pressable onPress={() => setSelected(null)} style={styles.backBtn}>
-            <ArrowLeft size={16} color="#fff" />
-          </Pressable>
-        }
+
+        action={<HeaderButton icon={ArrowLeft} onPress={() => setSelected(null)} label="Back" />}
       >
         <Card style={styles.composerCard}>
           <Text style={styles.sectionTitle}>Share safely</Text>
@@ -197,11 +192,9 @@ export default function Community() {
 
   return (
     <AppScreen
-      tone="purple"
       eyebrow="Community"
       title="Find support that feels human."
       subtitle="Protected groups for experiences, questions, and peer help."
-      icon={<Users size={24} color="#fff" />}
       headerContent={
         <View style={styles.safeBanner}>
           <Shield size={16} color="#fff" />

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, Bot, Send, Sparkles, User } from 'lucide-react-native';
-import { AppScreen } from '@/components/AppScreen';
+import { AppScreen, HeaderButton } from '@/components/AppScreen';
 import { Card } from '@/components/ui/Card';
 import { api } from '@/lib/api';
 import { colors, radius } from '@/lib/theme';
@@ -59,18 +59,12 @@ export default function Assistant() {
   return (
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <AppScreen
-        tone="success"
         eyebrow="Wellness guidance"
         title="Health assistant"
         subtitle="A calmer space for quick health questions and everyday guidance."
-        icon={<Sparkles size={24} color="#fff" />}
         scroll={false}
         bodyStyle={styles.screenBody}
-        action={
-          <Pressable onPress={() => router.back()} style={styles.backBtn}>
-            <ArrowLeft size={16} color="#fff" />
-          </Pressable>
-        }
+        action={<HeaderButton icon={ArrowLeft} onPress={() => router.back()} label="Back" />}
         footer={
           <>
             <View style={styles.composerRow}>
