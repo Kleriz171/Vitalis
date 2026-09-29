@@ -125,9 +125,10 @@ export default function Profile() {
   const router = useRouter();
   const auth = useSelector((state: RootState) => state.auth);
   const certifications = useSelector((state: RootState) => state.training.certifications);
+  const [now] = useState(Date.now); // screen-open time is precise enough for expiry
   const activeCertifications = useMemo(
-    () => certifications.filter((c) => new Date(c.expiresAt).getTime() > Date.now()),
-    [certifications]
+    () => certifications.filter((c) => new Date(c.expiresAt).getTime() > now),
+    [certifications, now]
   );
 
   const [profile, setProfile] = useState<HealthProfile | null>(null);

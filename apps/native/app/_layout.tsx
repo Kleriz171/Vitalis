@@ -59,7 +59,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   // Fall detection (Profile switch): never on top of an SOS that is already running.
   const fallOn = useFallDetectionEnabled();
   const where = useRef(segments[0]);
-  where.current = segments[0]; // a ref, so navigating does not restart the sensor
+  useEffect(() => { where.current = segments[0]; }); // a ref, so navigating does not restart the sensor
   const onFall = useCallback(() => {
     if (!['emergency', 'fall'].includes(where.current as string)) router.push('/fall');
   }, [router]);
