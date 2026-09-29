@@ -14,6 +14,10 @@ export const env = {
   geminiApiKey: process.env.GEMINI_API_KEY ?? '',
   // Shared secret the drone bridge presents on connect. Empty = drone bridges disabled.
   droneBridgeKey: process.env.DRONE_BRIDGE_KEY ?? '',
+  // OSRM server for road ETAs. Patient locations must not go to a third party, so the public
+  // demo is used only outside production; for launch, self-host OSRM with the Albania extract
+  // (free) and set OSRM_URL. Empty = straight-line estimate.
+  osrmUrl: process.env.OSRM_URL ?? (process.env.NODE_ENV === 'production' ? '' : 'https://router.project-osrm.org'),
 };
 
 if (env.nodeEnv === 'production') {

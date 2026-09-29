@@ -27,8 +27,15 @@ interface LiveEmergency {
   aedRunner?: Person;
   aed?: { name: string; placement?: string } | string;
   aedStatus?: 'to_aed' | 'has_aed' | 'delivered';
-  etaSeconds?: number;
+  etaSeconds?: number; // road time when the responder accepted (OSRM)
+  responderStartM?: number; // straight-line distance at that moment
 }
+
+// Road ETA from accept time, scaled by how much of the distance is left; heuristic if unknown.
+const liveEtaMinutes = (leftM: number, e: LiveEmergency | null) =>
+  e?.etaSeconds && e.responderStartM
+    ? Math.max(1, Math.round((e.etaSeconds * Math.min(1, leftM / e.responderStartM)) / 60))
+    : etaMinutes(leftM);
 
 const COUNTDOWN_S = 3;
 // Vitalis SMS number (Twilio). Unset → the text-message fallback is not offered.
@@ -300,7 +307,7 @@ export default function EmergencyScreen() {
             subtitle={roleOf(emergency?.responder)}
             meta={
               emergency?.status === 'on_scene' ? t('On scene')
-              : rDist != null ? `${formatDistance(rDist)} · ${t('~{n} min', { n: etaMinutes(rDist) })}`
+              : rDist != null ? `${formatDistance(rDist)} · ${t('~{n} min', { n: liveEtaMinutes(rDist, emergency) })}`
               : emergency?.etaSeconds ? t('~{n} min', { n: Math.max(1, Math.round(emergency.etaSeconds / 60)) })
               : t('On the way')
             }

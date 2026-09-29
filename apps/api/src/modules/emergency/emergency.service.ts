@@ -3,7 +3,7 @@ import { User, ageOf } from '../../models/User';
 import { Certification } from '../../models/Training';
 import { Aed } from '../../models/Aed';
 import { Allergy, Medication, Condition } from '../../models/HealthRecord';
-import { nearQuery, haversineKm } from '../../utils/geo';
+import { nearQuery, haversineKm, roadEtaSeconds } from '../../utils/geo';
 import { blockchainService } from '../blockchain/blockchain.service';
 import { RESPONDER_ROLES, OPERATOR_ROLES } from '../../realtime/socket';
 
@@ -20,12 +20,8 @@ const nearestAed = (coords: [number, number]) =>
 
 const httpError = (status: number, message: string) => Object.assign(new Error(message), { status });
 
-// ponytail: straight-line distance × 1.4 road factor at 35 km/h urban average.
-// Swap for a routing API (Mapbox Directions) when ETA accuracy matters.
-const etaSeconds = (a?: number[], b?: number[]) =>
-  Array.isArray(a) && Array.isArray(b) && a.length === 2 && b.length === 2
-    ? Math.round(((haversineKm(a as [number, number], b as [number, number]) * 1.4) / 35) * 3600)
-    : undefined;
+const isLngLat = (p?: number[]): p is [number, number] => Array.isArray(p) && p.length === 2;
+const etaSeconds = async (a?: number[], b?: number[]) => (isLngLat(a) && isLngLat(b) ? roadEtaSeconds(a, b) : undefined);
 
 export const fetchActiveCertifications = async (userIds: string[]) => {
   if (!userIds.length) return new Map<string, { badgeLabel: string; courseSlug: string; expiresAt: Date }[]>();
@@ -115,6 +111,7 @@ export const emergencyService = {
     const incident = (current.location as any)?.coordinates as [number, number];
 
     const from = (responder.location as any)?.coordinates as [number, number] | undefined;
+    const eta = await etaSeconds(from, incident); // before the atomic claim, so the claim stays one write
     const primary = await Emergency.findOneAndUpdate(
       // A responder taken off this call for not moving cannot take it back.
       { _id: emergencyId, status: 'pending', releasedResponders: { $ne: responderId } },
@@ -122,7 +119,7 @@ export const emergencyService = {
         $set: {
           responder: responderId,
           status: 'assigned',
-          etaSeconds: etaSeconds(from, incident),
+          etaSeconds: eta,
           responderStartM: from ? Math.round(haversineKm(from, incident) * 1000) : undefined,
         },
         $push: { timeline: { status: 'assigned', by: responderId, at: new Date() } },
