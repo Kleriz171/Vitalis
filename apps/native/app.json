@@ -14,7 +14,9 @@
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true,
           "NSAllowsLocalNetworking": true
-        }
+        },
+        "NSSpeechRecognitionUsageDescription": "Vitalis turns what you say into text to answer you or start an SOS.",
+        "NSMicrophoneUsageDescription": "Vitalis uses the microphone when you talk to it and, if you turn on “Hey Vitalis”, to listen for it on your phone while the app is open."
       }
     },
     "android": {
@@ -25,7 +27,14 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "permissions": []
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "output": "static",
@@ -78,6 +87,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "eca71c90-e81c-4b9f-928a-e0bcaa82b51a"
+      }
+    },
+    "owner": "alekssosa"
   }
 }
