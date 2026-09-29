@@ -9,6 +9,7 @@ import { errorHandler } from './middleware/error';
 
 import authRoutes from './modules/auth/auth.routes';
 import checkInRoutes from './modules/checkin/checkin.routes';
+import smsRoutes from './modules/sms/sms.routes';
 import emergencyRoutes from './modules/emergency/emergency.routes';
 import medicineRoutes from './modules/medicine/medicine.routes';
 import bioRoutes from './modules/biopassport/biopassport.routes';
@@ -62,6 +63,7 @@ export function buildApp() {
   app.use('/api/emergencies', emergencyRoutes);
   // PIN guessing is also capped per check-in (5 wrong → silent alarm).
   app.use('/api/checkin', strict(30), checkInRoutes);
+  app.use('/api/sms', strict(60), smsRoutes); // Twilio webhook; signature-checked
   app.use('/api/medicine', medicineRoutes);
   app.use('/api/biopassport', bioRoutes);
   app.use('/api/drones', droneRoutes);

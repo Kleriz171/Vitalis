@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -31,6 +31,8 @@ interface LiveEmergency {
 }
 
 const COUNTDOWN_S = 3;
+// Vitalis SMS number (Twilio). Unset → the text-message fallback is not offered.
+const SOS_SMS = process.env.EXPO_PUBLIC_SOS_SMS_NUMBER;
 const CPR_BPM = 110;
 const ROLE_LABEL: Record<string, string> = {
   doctor: t('Doctor'),
@@ -55,6 +57,9 @@ export default function EmergencyScreen() {
   const [ambulance, setAmbulance] = useState('127');
   const [cprOn, setCprOn] = useState(false);
   const sentRef = useRef(false);
+  // No data connection: offer the same SOS as a text message (apps/api sms.routes.ts).
+  const [offline, setOffline] = useState(false);
+  const coordsRef = useRef<LngLat | null>(null);
   const autoTriedRef = useRef(false);
 
   // Numbers come from the API so they can be localised per country without an app release.
@@ -91,6 +96,7 @@ export default function EmergencyScreen() {
       const perm = await Location.requestForegroundPermissionsAsync();
       if (perm.status !== 'granted') throw new Error('location');
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      coordsRef.current = [pos.coords.longitude, pos.coords.latitude];
       const { data } = await api.post('/emergencies', {
         type: notBreathing ? 'cardiac' : 'medical',
         priority: notBreathing ? 1 : 2,
@@ -107,6 +113,7 @@ export default function EmergencyScreen() {
       await refresh();
     } catch (err: any) {
       sentRef.current = false;
+      setOffline(!err?.response && err?.message !== 'location');
       setPhase('countdown');
       setSecondsLeft(0);
       toast.error(err?.message === 'location' ? t('Location is off') : t('SOS could not be sent'), {
@@ -221,6 +228,19 @@ export default function EmergencyScreen() {
               <Text style={styles.sendNowText}>{t('Send immediately')}</Text>
             </Pressable>
           )}
+          {secondsLeft === 0 && offline && SOS_SMS && coordsRef.current ? (
+            <Pressable
+              style={styles.ghostLight}
+              accessibilityRole="button"
+              onPress={() => {
+                const [lng, lat] = coordsRef.current!;
+                const body = `VITALIS SOS ${lat.toFixed(5)},${lng.toFixed(5)}${notBreathing ? ' C' : ''}`;
+                void Linking.openURL(`sms:${SOS_SMS}${Platform.OS === 'ios' ? '&' : '?'}body=${encodeURIComponent(body)}`);
+              }}
+            >
+              <Text style={styles.ghostLightText}>{t('No internet? Send the SOS by text message')}</Text>
+            </Pressable>
+          ) : null}
           <Pressable style={styles.ghostLight} onPress={() => router.back()} accessibilityRole="button">
             <X size={18} color="#fff" />
             <Text style={styles.ghostLightText}>{t('Cancel')}</Text>

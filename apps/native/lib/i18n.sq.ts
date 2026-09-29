@@ -730,6 +730,8 @@ export const ui: Record<string, string> = {
   'Fall detection': 'Zbulimi i rënies',
   'While Vitalis is open, a hard fall followed by no movement asks if you are OK. No answer in 30 seconds sends an SOS.': 'Kur Vitalis është i hapur, një rënie e fortë e ndjekur nga palëvizshmëri ju pyet nëse jeni mirë. Pa përgjigje për 30 sekonda dërgohet një SOS.',
 
+  'No internet? Send the SOS by text message': 'Pa internet? Dërgojeni SOS-in me SMS',
+
   // Notifications (system)
   'SOS calls near you': 'Thirrje SOS pranë jush',
   'Updates on your SOS': 'Përditësime për SOS-in tuaj',
@@ -771,6 +773,8 @@ export const api: Record<string, string> = {
   // SOS descriptions the app generates (emergency.tsx), shown to responders
   'Person collapsed, not breathing normally': 'Person i rrëzuar pa ndjenja, nuk merr frymë normalisht',
   'Citizen SOS': 'SOS nga një qytetar',
+  'SOS by SMS': 'SOS me SMS',
+  'SOS by SMS: person collapsed, not breathing normally': 'SOS me SMS: person i rrëzuar pa ndjenja, nuk merr frymë normalisht',
   'Fall detected, person did not respond': 'U zbulua një rënie, personi nuk u përgjigj',
   // Doctor specialties (from the directory data)
   'Cardiology': 'Kardiologji',
