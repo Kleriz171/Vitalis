@@ -3,7 +3,7 @@ name: Checks
 on:
   pull_request:
   push:
-    branches: [main, vitalis-v2]
+    branches: [main]
 
 concurrency:
   group: checks-${{ github.ref }}

@@ -11,7 +11,11 @@ PORT="${PORT:-4000}"
 export API_URL="http://localhost:$PORT" MONGO_URI
 LOG_DIR="${LOG_DIR:-$(mktemp -d)}"; mkdir -p "$LOG_DIR"
 pids=()
-cleanup() { for p in "${pids[@]:-}"; do [ -n "$p" ] && kill "$p" 2>/dev/null || true; done; pids=(); }
+# Processes run as plain node (no npx wrapper), so kill reaches them and wait lets the port go.
+cleanup() {
+  for p in "${pids[@]:-}"; do [ -n "$p" ] && { kill "$p" 2>/dev/null; wait "$p" 2>/dev/null; } || true; done
+  pids=()
+}
 trap cleanup EXIT
 
 # run <name> "<API env>" "<check env>" <check script> [bridge]
@@ -19,10 +23,10 @@ run() {
   local name=$1 apienv=$2 checkenv=$3 script=$4 bridge=${5:-}
   echo "── $name"
   npm run seed -w @vitalis/api >"$LOG_DIR/$name-seed.log" 2>&1
-  env $apienv PORT="$PORT" npx tsx apps/api/src/index.ts >"$LOG_DIR/$name-api.log" 2>&1 & pids+=($!)
+  env $apienv PORT="$PORT" node --import tsx apps/api/src/index.ts >"$LOG_DIR/$name-api.log" 2>&1 & pids+=($!)
   for _ in $(seq 1 60); do curl -s -o /dev/null "$API_URL/api/health" && break; sleep 1; done
   if [ -n "$bridge" ]; then
-    (cd apps/drone && env $apienv SIM=1 TELLO_HOST=127.0.0.1 npx tsx src/bridge.ts >"$LOG_DIR/$name-bridge.log" 2>&1) & pids+=($!)
+    (cd apps/drone && exec env $apienv SIM=1 TELLO_HOST=127.0.0.1 node --import tsx src/bridge.ts >"$LOG_DIR/$name-bridge.log" 2>&1) & pids+=($!)
     sleep 3
   fi
   if ! env $checkenv npx tsx "$script"; then
