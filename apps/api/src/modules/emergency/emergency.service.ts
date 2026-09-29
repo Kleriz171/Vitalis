@@ -68,6 +68,7 @@ export const emergencyService = {
     // One live SOS per person: repeated taps return the open incident instead of spamming responders.
     const existing = await Emergency.findOne({
       citizen: citizenId,
+      silent: { $ne: true },
       status: { $in: ACTIVE_STATUSES },
       createdAt: { $gt: new Date(Date.now() - 2 * 3600_000) },
     });
@@ -274,6 +275,7 @@ export const emergencyService = {
       hasFix
         ? Emergency.find({
             status: { $in: ACTIVE_STATUSES },
+            dispatchOnly: { $ne: true },
             citizen: { $ne: responderId },
             ...nearQuery(coords![0], coords![1], RINGS_M[RINGS_M.length - 1]),
           }).limit(50).lean()
@@ -299,7 +301,7 @@ export const emergencyService = {
 
   // Caller's own live incident, so the app can restore state after a restart.
   async activeForCitizen(citizenId: string) {
-    return Emergency.findOne({ citizen: citizenId, status: { $in: ACTIVE_STATUSES } })
+    return Emergency.findOne({ citizen: citizenId, status: { $in: ACTIVE_STATUSES }, silent: { $ne: true } })
       .sort('-createdAt')
       .populate('responder aedRunner', 'name role')
       .populate('aed', 'name placement')

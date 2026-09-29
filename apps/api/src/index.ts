@@ -6,6 +6,7 @@ import { logger } from './config/logger';
 import { initSocket } from './realtime/socket';
 import { User } from './models/User';
 import { startRedispatch } from './modules/emergency/redispatch';
+import { startCheckInSweep } from './modules/checkin/checkin.service';
 
 async function main() {
   await connectDB();
@@ -17,6 +18,7 @@ async function main() {
   initSocket(server);
   server.listen(env.port, () => logger.info(`API on :${env.port}`));
   startRedispatch();
+  startCheckInSweep();
 }
 
 main().catch(err => {

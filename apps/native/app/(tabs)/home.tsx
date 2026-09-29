@@ -15,6 +15,7 @@ import {
   Siren,
   Stethoscope,
   Users,
+  Timer,
   Zap,
 } from 'lucide-react-native';
 import { api } from '@/lib/api';
@@ -69,6 +70,7 @@ export default function Home() {
     { label: t('Doctors'), hint: t('Find a specialist'), icon: <Stethoscope size={18} color={colors.info} />, path: '/(tabs)/doctors' as const },
     { label: t('Supply'), hint: t('Blood, organs, medicine'), icon: <Heart size={18} color={colors.destructive} />, path: '/(tabs)/blood' as const },
     { label: t('Community'), hint: t('Support groups'), icon: <Users size={18} color={colors.purple} />, path: '/(tabs)/community' as const },
+    { label: t('Safety check-in'), hint: t('Alerts your contact if you go quiet'), icon: <Timer size={18} color={colors.info} />, path: '/checkin' as const },
     { label: t('Assistant'), hint: t('Health questions'), icon: <Bot size={18} color={colors.success} />, path: '/assistant' as const },
   ];
 

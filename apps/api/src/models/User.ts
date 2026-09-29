@@ -32,6 +32,9 @@ const UserSchema = new Schema({
   },
   available: { type: Boolean, default: false },
   locationAt: Date,
+  // Safety check-in PINs (bcrypt). The duress PIN checks in normally but raises a silent alarm.
+  checkInPinHash: { type: String, select: false },
+  duressPinHash: { type: String, select: false },
   // Expo push tokens, one per installed device. Pruned when Expo reports them dead.
   pushTokens: { type: [String], default: [], select: false },
   // App language, reported with the push token; server-written text (push) follows it.

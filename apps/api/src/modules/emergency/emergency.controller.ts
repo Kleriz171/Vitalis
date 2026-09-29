@@ -38,7 +38,8 @@ export const aedStatusSchema = z.object({ status: z.enum(['has_aed', 'delivered'
 // Everyone with a stake in the incident hears about changes: its room, the caller, operators.
 export const broadcast = (event: string, e: any) => {
   const io = getIO();
-  io.to(`emergency:${e._id}`).to(`user:${e.citizen}`).emit(event, e);
+  // A silent alarm (duress PIN) must never reach the person's own device.
+  if (!e.silent) io.to(`emergency:${e._id}`).to(`user:${e.citizen}`).emit(event, e);
   io.to('dispatchers').emit('dashboard:emergency', e);
 };
 
@@ -145,7 +146,7 @@ export const emergencyController = {
           { en: 'Help is with you now.', sq: 'Ndihma është me ju tani.' },
         ],
       };
-      if (toCaller[status]) {
+      if (toCaller[status] && !e.silent) {
         push({ userIds: [String(e.citizen)], kind: 'update', title: toCaller[status][0], body: toCaller[status][1], data: { type: 'update', emergencyId: String(e._id) } });
       }
       if (status === 'cancelled' || (status === 'resolved' && OPERATOR_ROLES.includes(req.user!.role))) {

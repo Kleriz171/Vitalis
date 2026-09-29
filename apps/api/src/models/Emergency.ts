@@ -23,6 +23,11 @@ const EmergencySchema = new Schema({
   aed: { type: Types.ObjectId, ref: 'Aed' },
   aedStatus: { type: String, enum: ['to_aed', 'has_aed', 'delivered'] },
   metadata: { fromWearable: Boolean, deviceId: String },
+  // Raised by a missed check-in or a duress PIN (checkin.service.ts). Dispatch-only incidents
+  // never reach responders' inboxes; silent ones are also hidden from the person's own app,
+  // so whoever is forcing them cannot see that an alarm went out.
+  dispatchOnly: { type: Boolean, default: false },
+  silent: { type: Boolean, default: false },
   timeline: [{ status: String, at: { type: Date, default: Date.now }, by: { type: Types.ObjectId, ref: 'User' } }],
 }, { timestamps: true });
 

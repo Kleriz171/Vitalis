@@ -69,4 +69,7 @@ export async function unregisterPush() {
 
 /** Where a tapped notification should take the user. */
 export const routeForNotification = (data: Record<string, unknown> | undefined) =>
-  data?.type === 'sos' ? '/responder-inbox' : data?.type === 'update' ? '/emergency' : null;
+  data?.type === 'sos' ? '/responder-inbox'
+    : data?.type === 'update' ? '/emergency'
+    : data?.type === 'checkin' ? '/checkin'
+    : null;
