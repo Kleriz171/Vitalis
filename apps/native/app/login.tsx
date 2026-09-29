@@ -1,18 +1,21 @@
 import { ReactNode, useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInputProps, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInputProps, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useDispatch } from 'react-redux';
-import { ArrowLeft, X } from 'lucide-react-native';
+import { ArrowLeft, Check, Heart, X } from 'lucide-react-native';
 import { toast } from 'sonner-native';
 
-import { AppScreen, HeaderButton } from '@/components/AppScreen';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { Label } from '@/components/ui/Label';
 import { api } from '@/lib/api';
 import { setSession } from '@/lib/store';
+import { colors, radius, shadows } from '@/lib/theme';
 import { apiError, t } from '@/lib/i18n';
 import { isE164, toE164 } from '@/lib/geo';
-import { colors, radius, type } from '@/lib/theme';
 
 type Step = 'phone' | 'code' | 'about' | 'passport' | 'email';
 type Severity = 'mild' | 'moderate' | 'severe';
@@ -156,7 +159,7 @@ export default function SignIn() {
           <Button variant="ghost" onPress={() => setStep('email')}>{t("Sign in with email instead")}</Button>
         </>
       ),
-      cta: <Button size="lg" onPress={sendCode} loading={busy} disabled={!isE164(phone)}>{t("Send code")}</Button>,
+      cta: <Button size="lg" style={styles.primaryButton} onPress={sendCode} loading={busy} disabled={!isE164(phone)}>{t("Send code")}</Button>,
     },
     code: {
       title: t('Enter the code'),
@@ -183,19 +186,19 @@ export default function SignIn() {
           </Button>
         </>
       ),
-      cta: <Button size="lg" onPress={() => verify()} loading={busy} disabled={code.length !== 6}>{t("Continue")}</Button>,
+      cta: <Button size="lg" style={styles.primaryButton} onPress={() => verify()} loading={busy} disabled={code.length !== 6}>{t("Continue")}</Button>,
     },
     about: {
       title: t('About you'),
       subtitle: t('Paramedics see this when you call for help. Step 1 of 2.'),
       body: (
         <>
-          <View style={styles.pair}>
+          <View style={styles.doubleRow}>
             <Field grow={1} label={t("First name")} value={firstName} onChangeText={setFirstName} autoComplete="given-name" textContentType="givenName" />
             <Field grow={1} label={t("Last name")} value={lastName} onChangeText={setLastName} autoComplete="family-name" textContentType="familyName" />
           </View>
           <Text style={styles.label}>{t("Date of birth")}</Text>
-          <View style={styles.pair}>
+          <View style={styles.doubleRow}>
             <Field grow={1} label={t("Day")} hideLabel value={day} onChangeText={(v) => setDay(v.replace(/\D/g, '').slice(0, 2))} placeholder={t("DD")} keyboardType="number-pad" />
             <Field grow={1} label={t("Month")} hideLabel value={month} onChangeText={(v) => setMonth(v.replace(/\D/g, '').slice(0, 2))} placeholder={t("MM")} keyboardType="number-pad" />
             <Field label={t("Year")} hideLabel value={year} onChangeText={(v) => setYear(v.replace(/\D/g, '').slice(0, 4))} placeholder={t("YYYY")} keyboardType="number-pad" grow={1.6} />
@@ -212,7 +215,7 @@ export default function SignIn() {
           ) : null}
         </>
       ),
-      cta: <Button size="lg" onPress={() => setStep('passport')} disabled={!aboutDone}>{t("Continue")}</Button>,
+      cta: <Button size="lg" style={styles.primaryButton} onPress={() => setStep('passport')} disabled={!aboutDone}>{t("Continue")}</Button>,
     },
     passport: {
       title: t('Your Bio Passport'),
@@ -220,7 +223,7 @@ export default function SignIn() {
       body: (
         <>
           <Question title={t("Blood type")}>
-            <View style={styles.chips}>
+            <View style={styles.chipWrap}>
               {BLOOD_TYPES.map((b) => <Chip key={b} label={b} active={bloodType === b} onPress={() => setBloodType(b)} />)}
               <Chip label={t("I don't know")} active={bloodType === 'unknown'} onPress={() => setBloodType('unknown')} />
             </View>
@@ -255,7 +258,7 @@ export default function SignIn() {
           </YesNo>
         </>
       ),
-      cta: <Button size="lg" onPress={register} loading={busy} disabled={!passportDone}>{t("Create account")}</Button>,
+      cta: <Button size="lg" style={styles.primaryButton} onPress={register} loading={busy} disabled={!passportDone}>{t("Create account")}</Button>,
     },
     email: {
       title: t('Sign in with email'),
@@ -266,22 +269,88 @@ export default function SignIn() {
           <Field label={t("Password")} value={password} onChangeText={setPassword} secureTextEntry autoComplete="current-password" textContentType="password" />
         </>
       ),
-      cta: <Button size="lg" onPress={emailSignIn} loading={busy} disabled={!email.trim() || !password}>{t("Sign in")}</Button>,
+      cta: <Button size="lg" style={styles.primaryButton} onPress={emailSignIn} loading={busy} disabled={!email.trim() || !password}>{t("Sign in")}</Button>,
     },
   };
   const s = screens[step];
+  const signingUp = step === 'about' || step === 'passport';
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <AppScreen
-        title={s.title}
-        subtitle={s.subtitle}
-        action={<HeaderButton icon={ArrowLeft} label={t("Back")} onPress={back} />}
-        footer={s.cta}
-        scrollProps={{ keyboardShouldPersistTaps: 'handled' }}
-      >
-        {s.body}
-      </AppScreen>
+    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <StatusBar style="light" />
+      <View style={styles.heroBackdrop}>
+        <View style={styles.glowOne} />
+        <View style={styles.glowTwo} />
+      </View>
+
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+        <ScrollView
+          style={styles.scrollFlex}
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Animated.View entering={FadeInDown.duration(320)} style={styles.heroHeader}>
+            <Pressable onPress={back} style={styles.backBtn} accessibilityRole="button" accessibilityLabel={t('Back')}>
+              <ArrowLeft size={18} color="#fff" />
+            </Pressable>
+            <View style={styles.brandPill}>
+              <Heart size={12} color="#fff" fill="#fff" />
+              <Text style={styles.brandPillText}>VITALIS</Text>
+            </View>
+            <View style={styles.headerSpacer} />
+          </Animated.View>
+
+          <Animated.View entering={FadeIn.delay(60).duration(360)} style={styles.heroCopy}>
+            <Text style={styles.eyebrow}>{signingUp ? t('Guided registration') : t('Secure sign in')}</Text>
+            <Text style={styles.title}>{s.title}</Text>
+            <Text style={styles.subtitle}>{s.subtitle}</Text>
+          </Animated.View>
+
+          <Animated.View entering={FadeInDown.delay(100).duration(380)} style={styles.card}>
+            {step === 'phone' || step === 'email' ? (
+              <View style={styles.modeSwitch}>
+                {(['phone', 'email'] as const).map((entry) => {
+                  const active = step === entry;
+                  return (
+                    <Pressable key={entry} onPress={() => setStep(entry)} style={[styles.modeChip, active && styles.modeChipActive]}>
+                      <Text style={[styles.modeChipText, active && styles.modeChipTextActive]}>
+                        {entry === 'phone' ? t('Phone') : t('Email')}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : null}
+
+            {signingUp ? (
+              <View style={styles.stepper}>
+                {(['about', 'passport'] as const).map((entry, i) => {
+                  const active = step === entry;
+                  const done = step === 'passport' && entry === 'about';
+                  return (
+                    <View key={entry} style={styles.stepperItem}>
+                      <View style={[styles.stepDot, active && styles.stepDotActive, done && styles.stepDotDone]}>
+                        {done ? <Check size={12} color="#fff" /> : <Text style={[styles.stepDotText, active && styles.stepDotTextActive]}>{i + 1}</Text>}
+                      </View>
+                      <Text style={[styles.stepLabel, active && styles.stepLabelActive]}>
+                        {entry === 'about' ? t('About you') : t('Bio Passport')}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+            ) : null}
+
+            <View style={styles.form}>
+              {s.body}
+              <View style={styles.actions}>
+                <View style={styles.ctaBubble}>{s.cta}</View>
+              </View>
+            </View>
+          </Animated.View>
+        </ScrollView>
+      </SafeAreaView>
     </KeyboardAvoidingView>
   );
 }
@@ -289,8 +358,8 @@ export default function SignIn() {
 /** `grow` only for fields laid out side by side in a row. */
 function Field({ label, hideLabel, grow, ...props }: { label: string; hideLabel?: boolean; grow?: number } & TextInputProps) {
   return (
-    <View style={[{ gap: 6 }, grow ? { flex: grow } : null]}>
-      {hideLabel ? null : <Text style={styles.label}>{label}</Text>}
+    <View style={[styles.field, grow ? { flex: grow } : null]}>
+      {hideLabel ? null : <Label>{label}</Label>}
       <Input accessibilityLabel={label} {...props} />
     </View>
   );
@@ -300,19 +369,19 @@ function Chip({ label, active, onPress }: { label: string; active: boolean; onPr
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.chip, active && styles.chipActive]}
+      style={[styles.choiceChip, active && styles.choiceChipActive]}
       accessibilityRole="radio"
       accessibilityState={{ selected: active }}
     >
-      <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
+      <Text style={[styles.choiceChipText, active && styles.choiceChipTextActive]}>{label}</Text>
     </Pressable>
   );
 }
 
 function Question({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <View style={styles.question}>
-      <Text style={styles.questionTitle}>{title}</Text>
+    <View style={styles.fieldGroup}>
+      <Text style={styles.groupTitle}>{title}</Text>
       {children}
     </View>
   );
@@ -321,9 +390,9 @@ function Question({ title, children }: { title: string; children: ReactNode }) {
 function YesNo({ title, has, setHas, children }: { title: string; has: boolean | null; setHas: (v: boolean) => void; children: ReactNode }) {
   return (
     <Question title={title}>
-      <View style={styles.chips}>
-        <Chip label={t("None")} active={has === false} onPress={() => setHas(false)} />
-        <Chip label={t("Yes")} active={has === true} onPress={() => setHas(true)} />
+      <View style={styles.chipWrap}>
+        <Chip label={t('None')} active={has === false} onPress={() => setHas(false)} />
+        <Chip label={t('Yes')} active={has === true} onPress={() => setHas(true)} />
       </View>
       {has ? children : null}
     </Question>
@@ -348,17 +417,19 @@ function ItemEditor({ items, onRemove, onAdd, placeholder, withSeverity }: {
   };
   return (
     <View style={{ gap: 10 }}>
-      {items.map((item, i) => (
-        <View key={`${item}-${i}`} style={styles.item}>
-          <Text style={styles.itemText}>{item}</Text>
-          <Pressable onPress={() => onRemove(i)} hitSlop={10} accessibilityRole="button" accessibilityLabel={t('Remove {item}', { item })}>
-            <X size={18} color={colors.mutedForeground} />
-          </Pressable>
+      {items.length ? (
+        <View style={styles.chipWrap}>
+          {items.map((item, i) => (
+            <Pressable key={`${item}-${i}`} onPress={() => onRemove(i)} style={styles.tokenChip} accessibilityRole="button" accessibilityLabel={t('Remove {item}', { item })}>
+              <Text style={styles.tokenChipText}>{item}</Text>
+              <X size={12} color={colors.primaryStrong} />
+            </Pressable>
+          ))}
         </View>
-      ))}
+      ) : null}
       <Input value={text} onChangeText={setText} placeholder={placeholder} onSubmitEditing={add} returnKeyType="done" accessibilityLabel={placeholder} />
       {withSeverity && text.trim() ? (
-        <View style={styles.chips}>
+        <View style={styles.chipWrap}>
           {SEVERITIES.map((sv) => (
             <Chip key={sv} label={severityLabels[sv]} active={severity === sv} onPress={() => setSeverity(sv)} />
           ))}
@@ -370,18 +441,281 @@ function ItemEditor({ items, onRemove, onAdd, placeholder, withSeverity }: {
 }
 
 const styles = StyleSheet.create({
-  label: { ...type.footnote, fontWeight: '600', color: colors.mutedForeground },
-  hint: { ...type.footnote, color: colors.mutedForeground, marginTop: -8 },
-  error: { ...type.footnote, color: colors.destructive },
-  pair: { flexDirection: 'row', gap: 10 },
+  // New sign-in steps (phone code, validation lines) in the same look.
+  label: { fontSize: 14, fontWeight: '500', color: colors.foreground },
+  hint: { color: colors.mutedForeground, fontSize: 13, marginTop: -8 },
+  error: { color: colors.destructive, fontSize: 13 },
   codeInput: { height: 64, fontSize: 30, letterSpacing: 12, textAlign: 'center', fontVariant: ['tabular-nums'] },
-  question: { gap: 12, padding: 16, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card },
-  questionTitle: { ...type.headline, color: colors.foreground },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { borderRadius: radius.full, paddingHorizontal: 16, paddingVertical: 10, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card },
-  chipActive: { backgroundColor: colors.primarySurface, borderColor: colors.primarySurface },
-  chipText: { ...type.callout, fontWeight: '600', color: colors.foreground },
-  chipTextActive: { color: '#fff' },
-  item: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
-  itemText: { ...type.callout, flex: 1, color: colors.foreground },
+  root: { flex: 1, backgroundColor: colors.background },
+  heroBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 360,
+    backgroundColor: colors.primaryStrong,
+    borderBottomLeftRadius: 48,
+    borderBottomRightRadius: 48,
+    overflow: 'hidden',
+  },
+  glowOne: {
+    position: 'absolute',
+    top: -120,
+    right: -80,
+    width: 280,
+    height: 280,
+    borderRadius: 9999,
+    backgroundColor: colors.primary,
+    opacity: 0.55,
+  },
+  glowTwo: {
+    position: 'absolute',
+    bottom: -100,
+    left: -60,
+    width: 240,
+    height: 240,
+    borderRadius: 9999,
+    backgroundColor: colors.accent,
+    opacity: 0.18,
+  },
+  safe: { flex: 1 },
+  scrollFlex: { flex: 1 },
+  scroll: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 32,
+    flexGrow: 1,
+  },
+  heroHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 18,
+  },
+  backBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  brandPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: radius.full,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  brandPillText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1.6,
+  },
+  headerSpacer: {
+    width: 44,
+  },
+  heroCopy: {
+    gap: 8,
+    marginBottom: 22,
+    paddingHorizontal: 4,
+  },
+  eyebrow: {
+    color: 'rgba(255,255,255,0.74)',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  title: {
+    color: '#fff',
+    fontSize: 28,
+    fontWeight: '800',
+    lineHeight: 34,
+  },
+  subtitle: {
+    color: 'rgba(255,255,255,0.82)',
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  card: {
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    padding: 18,
+    gap: 16,
+    ...shadows.floating,
+  },
+  modeSwitch: {
+    flexDirection: 'row',
+    gap: 8,
+    padding: 4,
+    backgroundColor: colors.background,
+    borderRadius: radius.lg,
+  },
+  modeChip: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: radius.md,
+  },
+  modeChipActive: { backgroundColor: colors.card },
+  modeChipText: { color: colors.primary, fontSize: 14, fontWeight: '700' },
+  modeChipTextActive: { color: colors.primaryStrong },
+  stepper: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  stepperItem: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 6,
+  },
+  stepDot: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.muted,
+  },
+  stepDotActive: { backgroundColor: colors.primary },
+  stepDotDone: { backgroundColor: colors.success },
+  stepDotText: {
+    color: colors.primaryStrong,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  stepDotTextActive: { color: '#fff' },
+  stepLabel: {
+    color: colors.primary,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  stepLabelActive: { color: colors.primaryStrong },
+  form: { gap: 14 },
+  field: { gap: 8 },
+  fieldGroup: { gap: 10 },
+  groupTitle: {
+    color: colors.foreground,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  doubleRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  half: { flex: 1 },
+  flexInput: { flex: 1 },
+  helperCard: {
+    padding: 14,
+    gap: 6,
+    backgroundColor: colors.infoSoft,
+    borderColor: '#D7E5FF',
+  },
+  helperRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  helperTitle: {
+    color: colors.foreground,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  helperBody: {
+    color: colors.primaryStrong,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  chipWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  choiceChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: radius.full,
+    backgroundColor: colors.background,
+  },
+  choiceChipActive: { backgroundColor: colors.primary },
+  choiceChipText: {
+    color: colors.foreground,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  choiceChipTextActive: { color: '#fff' },
+  smallChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: radius.full,
+    backgroundColor: colors.background,
+  },
+  smallChipActive: { backgroundColor: colors.primary },
+  smallChipText: {
+    color: colors.foreground,
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'capitalize',
+  },
+  smallChipTextActive: { color: '#fff' },
+  tokenChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: radius.full,
+    backgroundColor: colors.accent,
+  },
+  tokenChipText: {
+    color: colors.accentForeground,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  inlineButton: {
+    alignSelf: 'flex-start',
+  },
+  dateButton: {
+    minWidth: 76,
+  },
+  actions: {
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 6,
+  },
+  ctaBubble: {
+    alignSelf: 'center',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderRadius: radius.full,
+    backgroundColor: colors.primary,
+  },
+  primaryButton: {
+    width: 236,
+    backgroundColor: colors.primaryStrong,
+    borderRadius: radius.full,
+  },
+  secondaryLink: {
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  secondaryLinkText: {
+    color: colors.primaryStrong,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  demoLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 4,
+  },
+  demoLinkText: {
+    color: colors.primaryStrong,
+    fontSize: 13,
+    fontWeight: '700',
+  },
 });

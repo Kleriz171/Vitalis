@@ -5,7 +5,7 @@ import { ArrowLeft, Award, Check, CircleHelp, ClipboardCheck, X } from 'lucide-r
 import { useDispatch } from 'react-redux';
 import { toast } from 'sonner-native';
 
-import { AppScreen, HeaderButton } from '@/components/AppScreen';
+import { AppScreen } from '@/components/AppScreen';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -63,7 +63,7 @@ export default function Quiz() {
 
   if (!course) {
     return (
-      <AppScreen title={t('Loading quiz')} action={<BackBtn />}>
+      <AppScreen tone="primary" title={t('Loading quiz')} action={<BackBtn />}>
         <Skeleton style={{ height: 150, borderRadius: radius.xl }} />
         <Skeleton style={{ height: 240, borderRadius: radius.xl }} />
       </AppScreen>
@@ -109,9 +109,11 @@ export default function Quiz() {
   if (result) {
     return (
       <AppScreen
+        tone={result.passed ? 'success' : 'critical'}
         eyebrow={result.passed ? t('Passed') : t('Try again')}
         title={`${result.score}%`}
         subtitle={result.passed ? t('You earned {badge}.', { badge: course.badgeLabel }) : t('You need {n}% to pass.', { n: result.passingScore })}
+        icon={<Award size={22} color="#fff" />}
         action={<BackBtn />}
         footer={
           <View style={styles.footerColumn}>
@@ -154,10 +156,24 @@ export default function Quiz() {
 
   return (
     <AppScreen
+      tone="primary"
       eyebrow={course.badgeLabel}
       title={t('Final quiz')}
-      subtitle={`${tn(course.quiz.length, '1 question', '{n} questions')} · ${t('Pass with {n}% or higher.', { n: course.passingScore })}`}
+      subtitle={t('Pass with {n}% or higher.', { n: course.passingScore })}
+      icon={<Award size={22} color="#fff" />}
       action={<BackBtn />}
+      headerContent={
+        <View style={styles.heroContent}>
+          <View style={styles.heroChip}>
+            <ClipboardCheck size={14} color="#fff" />
+            <Text style={styles.heroChipText}>{tn(course.quiz.length, '1 question', '{n} questions')}</Text>
+          </View>
+          <View style={styles.heroChip}>
+            <CircleHelp size={14} color="#fff" />
+            <Text style={styles.heroChipText}>{t('One answer per question')}</Text>
+          </View>
+        </View>
+      }
       footer={
         <Button onPress={submit} loading={submitting} disabled={!allAnswered}>
           {allAnswered ? t('Submit answers') : t('Answer every question')}
@@ -198,11 +214,29 @@ export default function Quiz() {
 function BackBtn() {
   const router = useRouter();
   return (
-    <HeaderButton icon={ArrowLeft} onPress={() => router.back()} label={t('Back')} />
+    <Pressable onPress={() => router.back()} style={styles.backBtn}>
+      <ArrowLeft size={16} color="#fff" />
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
+  backBtn: {
+    width: 40, height: 40, borderRadius: radius.full,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.16)',
+  },
+  heroContent: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  heroChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: radius.full,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+  },
+  heroChipText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   qCard: { padding: 18, gap: 14, marginBottom: 12 },
   questionHeader: { flexDirection: 'row', justifyContent: 'flex-start' },
   indexBadge: { backgroundColor: colors.soft, borderColor: colors.border, paddingHorizontal: 10, paddingVertical: 6 },

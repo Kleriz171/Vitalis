@@ -1,25 +1,35 @@
-import { ReactNode, useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSelector } from 'react-redux';
 import * as Haptics from 'expo-haptics';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
-import { ChevronRight, GraduationCap, MessageCircle, Phone, QrCode, Siren, Zap } from 'lucide-react-native';
+import {
+  Bot,
+  ChevronRight,
+  GraduationCap,
+  Heart,
+  LogOut,
+  Phone,
+  QrCode,
+  Siren,
+  Stethoscope,
+  Users,
+  Zap,
+} from 'lucide-react-native';
 import { api } from '@/lib/api';
-import { useNearestAed } from '@/lib/geo';
+import { signOut } from '@/lib/session';
 import { RootState } from '@/lib/store';
 import { AppScreen } from '@/components/AppScreen';
-import { colors, fonts, radius, type } from '@/lib/theme';
-import { t, tn } from '@/lib/i18n';
-
-type Passport = { bloodType?: string; allergies: unknown[]; available: boolean };
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { colors, radius } from '@/lib/theme';
+import { t } from '@/lib/i18n';
 
 export default function Home() {
   const user = useSelector((s: RootState) => s.auth.user);
   const router = useRouter();
   const [liveSos, setLiveSos] = useState<{ _id: string; status: string } | null>(null);
-  const [passport, setPassport] = useState<Passport | null>(null);
-  const nearestAed = useNearestAed();
   const pulse = useSharedValue(1);
 
   // A live SOS survives app restarts: always offer the way back to it.
@@ -28,9 +38,6 @@ export default function Home() {
       let alive = true;
       api.get('/emergencies/mine')
         .then(({ data }) => { if (alive) setLiveSos(data.emergency ?? null); })
-        .catch(() => {});
-      api.get('/biopassport/me')
-        .then(({ data }) => { if (alive) setPassport(data.profile); })
         .catch(() => {});
       return () => { alive = false; };
     }, []),
@@ -49,78 +56,146 @@ export default function Home() {
     router.push(liveSos ? '/emergency' : ({ pathname: '/emergency', params: { start: '1' } } as never));
   };
 
-  const passportDetail = passport
-    ? [passport.bloodType ? t('Blood {type}', { type: passport.bloodType }) : t('Blood type unknown'),
-       passport.allergies.length ? tn(passport.allergies.length, '1 allergy', '{n} allergies') : t('No allergies')].join(' · ')
-    : t('Your medical ID for paramedics');
+  const handleSignOut = async () => {
+    await signOut();
+    router.replace('/');
+  };
 
-  const rows: { icon: ReactNode; title: string; detail: string; path: string; status?: boolean }[] = [
-    isResponder
-      ? { icon: <Siren size={20} color={colors.primaryStrong} />, title: t('Responder duty'), detail: passport?.available ? t('On duty · calls near you reach you') : t('Off duty · tap to go on duty'), path: '/responder-inbox', status: !!passport?.available }
-      : { icon: <GraduationCap size={20} color={colors.primaryStrong} />, title: t('Become a responder'), detail: t('20-minute CPR course'), path: '/(tabs)/learn' },
-    { icon: <QrCode size={20} color={colors.foreground} />, title: t('Bio Passport'), detail: passportDetail, path: '/(tabs)/me' },
-    { icon: <Zap size={20} color={colors.warning} />, title: t('Nearest defibrillator'), detail: nearestAed ?? t('Public AEDs near you'), path: '/aeds' },
-    { icon: <MessageCircle size={20} color={colors.foreground} />, title: t('Talk to Vitalis'), detail: t('First aid and health questions'), path: '/assistant' },
-    { icon: <Phone size={20} color={colors.foreground} />, title: t('Emergency numbers'), detail: t('Ambulance 127 · Police 129 · Fire 128'), path: '/sos' },
+  const quickActions = [
+    ...(isResponder
+      ? [{ label: t('Responder inbox'), hint: t('Go on duty, accept calls'), icon: <Siren size={18} color={colors.primaryStrong} />, path: '/responder-inbox' as const }]
+      : []),
+    { label: t('Defibrillators'), hint: t('Nearest public AEDs'), icon: <Zap size={18} color={colors.warning} />, path: '/aeds' as const },
+    { label: t('Doctors'), hint: t('Find a specialist'), icon: <Stethoscope size={18} color={colors.info} />, path: '/(tabs)/doctors' as const },
+    { label: t('Supply'), hint: t('Blood, organs, medicine'), icon: <Heart size={18} color={colors.destructive} />, path: '/(tabs)/blood' as const },
+    { label: t('Community'), hint: t('Support groups'), icon: <Users size={18} color={colors.purple} />, path: '/(tabs)/community' as const },
+    { label: t('Assistant'), hint: t('Health questions'), icon: <Bot size={18} color={colors.success} />, path: '/assistant' as const },
   ];
 
   return (
-    <AppScreen title={firstName ? t('Hello, {name}', { name: firstName }) : 'Vitalis'}>
+    <AppScreen
+      tone="dark"
+      title={firstName ? t('Hello, {name}', { name: firstName }) : t('Hello')}
+      subtitle={t('Your emergency tools and medical identity, ready when you need them.')}
+      icon={<Heart size={24} color="#fff" fill="#fff" />}
+      action={
+        <Pressable onPress={handleSignOut} style={styles.iconButton} accessibilityRole="button" accessibilityLabel={t('Sign out')}>
+          <LogOut size={16} color="#fff" />
+        </Pressable>
+      }
+    >
       <Animated.View style={sosStyle}>
         <Pressable
           onPress={openSos}
-          style={({ pressed }) => [styles.sos, pressed && { opacity: 0.9 }]}
+          style={({ pressed }) => [styles.sosButton, pressed && { opacity: 0.9 }]}
           accessibilityRole="button"
           accessibilityLabel={liveSos ? t('Open your live SOS') : t('Start SOS')}
           accessibilityHint={liveSos ? undefined : t('Starts a 3 second countdown you can cancel')}
         >
-          <Text style={styles.sosLabel}>{liveSos ? t('SOS live') : 'SOS'}</Text>
-          <Text style={styles.sosHint}>
-            {liveSos
-              ? liveSos.status === 'pending' ? t('Alerting responders near you. Tap to follow.') : t('A responder is on the way. Tap to follow.')
-              : t('Tap to alert certified responders near you.\nYou have 3 seconds to cancel.')}
-          </Text>
+          <View style={styles.sosIcon}><Siren size={30} color={colors.destructive} /></View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.sosLabel}>{liveSos ? t('Your SOS is live') : 'SOS'}</Text>
+            <Text style={styles.sosHint}>
+              {liveSos
+                ? liveSos.status === 'pending' ? t('Alerting responders. Tap to follow.') : t('A responder is on the way. Tap to follow.')
+                : t('Alerts certified responders near you. 3 s to cancel.')}
+            </Text>
+          </View>
+          <ChevronRight size={22} color="#fff" />
         </Pressable>
       </Animated.View>
 
-      <View style={styles.group}>
-        {rows.map((r, i) => (
-          <Pressable
-            key={r.title}
-            onPress={() => router.push(r.path as never)}
-            style={({ pressed }) => [styles.row, i > 0 && styles.divider, pressed && { backgroundColor: colors.muted }]}
-            accessibilityRole="button"
-          >
-            <View style={styles.icon}>{r.icon}</View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.rowTitle}>{r.title}</Text>
-              <Text style={styles.rowDetail} numberOfLines={1}>{r.detail}</Text>
-            </View>
-            {r.status !== undefined ? <View style={[styles.dot, r.status && styles.dotOn]} /> : null}
-            <ChevronRight size={18} color={colors.mutedForeground} />
+      <Button variant="outline" onPress={() => router.push('/sos')}>
+        <Phone size={16} color={colors.foreground} />
+        {t('Emergency numbers & hospitals')}
+      </Button>
+
+      {!isResponder ? (
+        <Card style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>{t('Be the first on scene')}</Text>
+          <Text style={styles.sectionBody}>
+            {t('Ambulances in a city take 10+ minutes. Pass the 20-minute CPR course and Vitalis can call you to an arrest next door.')}
+          </Text>
+          <Button onPress={() => router.push('/(tabs)/training')} style={styles.secondaryAction}>
+            <GraduationCap size={16} color="#fff" />
+            {t('Start CPR training')}
+          </Button>
+        </Card>
+      ) : null}
+
+      <View style={styles.grid}>
+        {quickActions.map((action) => (
+          <Pressable key={action.label} onPress={() => router.push(action.path)} style={styles.gridItem} accessibilityRole="button">
+            <Card style={styles.gridCard}>
+              <View style={styles.gridIcon}>{action.icon}</View>
+              <Text style={styles.gridLabel}>{action.label}</Text>
+              <Text style={styles.gridHint}>{action.hint}</Text>
+            </Card>
           </Pressable>
         ))}
       </View>
+
+      <Card style={styles.sectionCard}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>{t('Bio Passport')}</Text>
+          <QrCode size={18} color={colors.primaryStrong} />
+        </View>
+        <Text style={styles.sectionBody}>
+          {t('Blood type, allergies and medication in one QR code a paramedic can scan. Keep it up to date.')}
+        </Text>
+        <Button variant="outline" onPress={() => router.push('/(tabs)/profile')}>
+          {t('Open Bio Passport')}
+        </Button>
+      </Card>
     </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  sos: {
-    minHeight: 168,
-    justifyContent: 'flex-end',
-    padding: 20,
+  iconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.14)',
+  },
+  sosButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    minHeight: 96,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
     borderRadius: radius.xl,
     backgroundColor: colors.destructive,
   },
-  sosLabel: { fontFamily: fonts.display, color: '#fff', fontSize: 56, lineHeight: 60, letterSpacing: -1 },
-  sosHint: { ...type.callout, color: 'rgba(255,255,255,0.92)', marginTop: 4 },
-  group: { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 16, paddingVertical: 12, minHeight: 68 },
-  divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
-  icon: { width: 36, height: 36, borderRadius: radius.md, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' },
-  rowTitle: { ...type.headline, color: colors.foreground },
-  rowDetail: { ...type.footnote, color: colors.mutedForeground, marginTop: 2 },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.border },
-  dotOn: { backgroundColor: colors.success },
+  sosIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sosLabel: { color: '#fff', fontSize: 26, fontWeight: '800', letterSpacing: -0.3 },
+  sosHint: { color: 'rgba(255,255,255,0.92)', fontSize: 14, lineHeight: 19, marginTop: 2 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  gridItem: { width: '48%' },
+  gridCard: { padding: 16, gap: 10, minHeight: 124, borderRadius: radius.lg },
+  gridIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.background,
+  },
+  gridLabel: { color: colors.foreground, fontSize: 15, fontWeight: '700' },
+  gridHint: { color: colors.mutedForeground, fontSize: 13, lineHeight: 18 },
+  sectionCard: { padding: 18, gap: 10, borderRadius: radius.lg },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  sectionTitle: { color: colors.foreground, fontSize: 18, fontWeight: '800' },
+  sectionBody: { color: colors.mutedForeground, fontSize: 14, lineHeight: 20 },
+  secondaryAction: { backgroundColor: colors.primaryStrong },
 });

@@ -1,8 +1,4 @@
-import { useCallback, useState } from 'react';
 import { Linking, Platform } from 'react-native';
-import { useFocusEffect } from 'expo-router';
-import * as Location from 'expo-location';
-import { api } from '@/lib/api';
 import { t } from './i18n';
 
 export type LngLat = [number, number];
@@ -48,23 +44,3 @@ export const formatPhone = (p?: string | null) =>
   p?.replace(/^\+355(6\d)(\d{3})(\d{3,4})$/, '+355 $1 $2 $3') ?? '';
 
 export const callNumber = (n: string) => Linking.openURL(`tel:${n}`);
-
-/** "120 m · Name" for the closest public AED, refreshed on focus. Null until known or without location permission. */
-export function useNearestAed() {
-  const [label, setLabel] = useState<string | null>(null);
-  useFocusEffect(
-    useCallback(() => {
-      let alive = true;
-      (async () => {
-        const perm = await Location.getForegroundPermissionsAsync();
-        if (perm.status !== 'granted') return;
-        const pos = await Location.getLastKnownPositionAsync() ?? await Location.getCurrentPositionAsync({});
-        if (!pos) return;
-        const { data } = await api.get('/aeds', { params: { lng: pos.coords.longitude, lat: pos.coords.latitude } });
-        if (alive && data[0]) setLabel(`${formatDistance(data[0].distanceM)} · ${data[0].name}`);
-      })().catch(() => {});
-      return () => { alive = false; };
-    }, []),
-  );
-  return label;
-}

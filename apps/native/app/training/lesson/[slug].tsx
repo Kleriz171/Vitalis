@@ -12,13 +12,13 @@ import {
 import { useDispatch } from 'react-redux';
 import { toast } from 'sonner-native';
 
-import { AppScreen, HeaderButton } from '@/components/AppScreen';
+import { AppScreen } from '@/components/AppScreen';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { api } from '@/lib/api';
 import { upsertEnrollment } from '@/lib/store';
-import { colors, radius, type } from '@/lib/theme';
+import { colors, radius } from '@/lib/theme';
 import {
   resolveLessonVideoMeta,
   type TrainingCourseDetailView,
@@ -87,7 +87,7 @@ export default function LessonViewer() {
 
   if (loading) {
     return (
-      <AppScreen title={t('Loading lesson')} action={<BackBtn />}>
+      <AppScreen tone="primary" title={t('Loading lesson')} action={<BackBtn />}>
         <Skeleton style={{ height: 260, borderRadius: radius.xl }} />
         <Skeleton style={{ height: 220, borderRadius: radius.xl }} />
         <Skeleton style={{ height: 160, borderRadius: radius.xl }} />
@@ -97,7 +97,7 @@ export default function LessonViewer() {
 
   if (!course || !lesson) {
     return (
-      <AppScreen title={t('Lesson unavailable')} action={<BackBtn />}>
+      <AppScreen tone="primary" title={t('Lesson unavailable')} action={<BackBtn />}>
         <Card style={{ padding: 18 }}>
           <Text style={{ color: colors.mutedForeground, fontSize: 14 }}>{t('This lesson could not be loaded.')}</Text>
         </Card>
@@ -119,20 +119,38 @@ export default function LessonViewer() {
 
   return (
     <AppScreen
+      tone="primary"
       eyebrow={course.badgeLabel}
       title={lesson.title}
       subtitle={lesson.summary}
+      icon={<BookOpen size={22} color="#fff" />}
       action={<BackBtn />}
       contentContainerStyle={{ paddingBottom: 96 }}
-    >
-      <View style={{ gap: 6 }}>
-        <Text style={styles.metaLine}>
-          {[t('Lesson {n} of {total}', { n: lessonIndex + 1, total: lessonCount }), t('{n} min', { n: lesson.durationMin })].join(' · ')}
-        </Text>
-        <View style={styles.progressTrack} accessibilityLabel={t('Course progress {n}%', { n: progressPct })}>
-          <View style={[styles.progressFill, { width: `${progressPct}%` }]} />
+      headerContent={
+        <View style={styles.heroContent}>
+          <View style={styles.heroBadgeRow}>
+            <View style={styles.heroBadge}>
+              <BookOpen size={13} color="#fff" />
+              <Text style={styles.heroBadgeText}>{t('Lesson {n} of {total}', { n: lessonIndex + 1, total: lessonCount })}</Text>
+            </View>
+            <View style={styles.heroBadge}>
+              <Clock3 size={13} color="#fff" />
+              <Text style={styles.heroBadgeText}>{t('{n} min', { n: lesson.durationMin })}</Text>
+            </View>
+            <View style={styles.heroBadge}>
+              <PlayCircle size={13} color="#fff" />
+              <Text style={styles.heroBadgeText}>{t('Topic video')}</Text>
+            </View>
+          </View>
+          <View style={styles.progressWrap}>
+            <Text style={styles.progressText}>{t('Course progress {n}%', { n: progressPct })}</Text>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: `${progressPct}%` }]} />
+            </View>
+          </View>
         </View>
-      </View>
+      }
+    >
       <Card style={styles.videoCard}>
         <View style={styles.sectionHeader}>
           <PlayCircle size={18} color={colors.primary} />
@@ -256,14 +274,34 @@ export default function LessonViewer() {
 function BackBtn() {
   const router = useRouter();
   return (
-    <HeaderButton icon={ArrowLeft} onPress={() => router.back()} label={t('Back')} />
+    <Pressable onPress={() => router.back()} style={styles.backBtn}>
+      <ArrowLeft size={16} color="#fff" />
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  metaLine: { ...type.footnote, color: colors.mutedForeground },
-  progressTrack: { height: 4, borderRadius: radius.full, backgroundColor: colors.muted, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: colors.primary },
+  backBtn: {
+    width: 40, height: 40, borderRadius: radius.full,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.16)',
+  },
+  heroContent: { gap: 10 },
+  heroBadgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  heroBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: radius.full,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+  },
+  heroBadgeText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  progressWrap: { gap: 8 },
+  progressText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  progressTrack: { height: 6, borderRadius: radius.full, backgroundColor: 'rgba(255,255,255,0.2)' },
+  progressFill: { height: '100%', backgroundColor: '#fff', borderRadius: radius.full },
   videoCard: { padding: 18, gap: 12 },
   actionCard: { padding: 18, gap: 14, backgroundColor: colors.accent, alignItems: 'center' },
   actionCopy: { gap: 6, alignItems: 'center', maxWidth: 320 },

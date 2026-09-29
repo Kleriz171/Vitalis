@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ArrowLeft, Eye, MessageCircle, Shield, Users } from 'lucide-react-native';
 import { toast } from 'sonner-native';
 import { api } from '@/lib/api';
-import { AppScreen, HeaderButton } from '@/components/AppScreen';
+import { AppScreen } from '@/components/AppScreen';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Empty } from '@/components/ui/Empty';
@@ -114,10 +114,16 @@ export default function Community() {
   if (selected) {
     return (
       <AppScreen
+        tone="purple"
+        eyebrow={t('Support group')}
         title={selected.name}
         subtitle={tn(selected.memberCount ?? 0, '1 member', '{n} members')}
-
-        action={<HeaderButton icon={ArrowLeft} onPress={() => setSelected(null)} label={t('Back')} />}
+        icon={<Text style={styles.heroEmoji}>{categoryIcons[selected.category] ?? '💬'}</Text>}
+        action={
+          <Pressable onPress={() => setSelected(null)} style={styles.backBtn}>
+            <ArrowLeft size={16} color="#fff" />
+          </Pressable>
+        }
       >
         <Card style={styles.composerCard}>
           <Text style={styles.sectionTitle}>{t('Share safely')}</Text>
@@ -192,8 +198,17 @@ export default function Community() {
 
   return (
     <AppScreen
-      title={t('Community')}
-      subtitle={t('Tap a group to read posts and share your own message — anonymous posting is available.')}
+      tone="purple"
+      eyebrow={t('Community')}
+      title={t('Find support that feels human.')}
+      subtitle={t('Protected groups for experiences, questions, and peer help.')}
+      icon={<Users size={24} color="#fff" />}
+      headerContent={
+        <View style={styles.safeBanner}>
+          <Shield size={16} color="#fff" />
+          <Text style={styles.safeBannerText}>{t('Tap a group to read posts and share your own message — anonymous posting is available.')}</Text>
+        </View>
+      }
     >
       {groupsLoading ? (
         Array.from({ length: 4 }).map((_, index) => (
@@ -219,7 +234,7 @@ export default function Community() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.groupName}>{group.name}</Text>
                 <Text style={styles.groupDescription} numberOfLines={2}>
-                  {group.description || 'A secure support space for shared experience.'}
+                  {group.description || t('A secure support space for shared experience.')}
                 </Text>
                 <Text style={styles.groupMembers}>{tn(group.memberCount ?? 0, '1 member', '{n} members')}</Text>
               </View>
@@ -232,6 +247,25 @@ export default function Community() {
 }
 
 const styles = StyleSheet.create({
+  heroEmoji: { fontSize: 24 },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.14)',
+  },
+  safeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  safeBannerText: {
+    color: '#fff',
+    fontSize: 13,
+    flex: 1,
+  },
   groupCard: {
     padding: 16,
     flexDirection: 'row',

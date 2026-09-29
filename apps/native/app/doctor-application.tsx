@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import { ArrowLeft, FileText, Stethoscope, Upload } from 'lucide-react-native';
 import { toast } from 'sonner-native';
-import { AppScreen, HeaderButton } from '@/components/AppScreen';
+import { AppScreen } from '@/components/AppScreen';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -69,9 +69,16 @@ export default function DoctorApplication() {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <AppScreen
+        tone="info"
+        eyebrow={t('Care providers')}
         title={t('Apply to join as a doctor')}
         subtitle={t('Submit your credentials. An administrator reviews every application.')}
-        action={<HeaderButton icon={ArrowLeft} onPress={() => router.back()} label={t('Back')} />}
+        icon={<Stethoscope size={22} color="#fff" />}
+        action={
+          <Pressable onPress={() => router.back()} style={styles.backBtn}>
+            <ArrowLeft size={16} color="#fff" />
+          </Pressable>
+        }
       >
         <ScrollView contentContainerStyle={{ gap: 14, paddingBottom: 32 }}>
           <Card style={styles.card}>

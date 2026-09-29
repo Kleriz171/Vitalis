@@ -8,7 +8,7 @@ import { toast } from 'sonner-native';
 import { ChevronLeft, ClipboardList, Inbox as InboxIcon, Navigation, Radio, ShieldCheck, Zap } from 'lucide-react-native';
 import Animated, { FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
 
-import { AppScreen, HeaderButton } from '@/components/AppScreen';
+import { AppScreen } from '@/components/AppScreen';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Empty } from '@/components/ui/Empty';
@@ -183,13 +183,13 @@ export default function ResponderInbox() {
 
   if (!canAccess) {
     return (
-      <AppScreen title={t('Responder inbox')} subtitle={t('For doctors, nurses and certified first-aiders.')}>
+      <AppScreen tone="dark" title={t('Responder inbox')} subtitle={t('For doctors, nurses and certified first-aiders.')}>
         <Empty
           icon={ShieldCheck}
           title={t('Become a responder')}
           description={t("Pass the CPR or AED course in Training. You'll then be able to go on duty and receive SOS calls near you.")}
         />
-        <Button onPress={() => router.replace('/(tabs)/learn')}>{t('Open training')}</Button>
+        <Button onPress={() => router.replace('/(tabs)/training')}>{t('Open training')}</Button>
       </AppScreen>
     );
   }
@@ -227,7 +227,7 @@ export default function ResponderInbox() {
       toast.error(next ? t('Could not go on duty') : t('Could not go off duty'), {
         description: apiError(err, 'Try again.'),
         ...(err?.response?.status === 403
-          ? { action: { label: t('Training'), onClick: () => router.push('/(tabs)/learn') } }
+          ? { action: { label: t('Training'), onClick: () => router.push('/(tabs)/training') } }
           : {}),
       });
     } finally {
@@ -297,9 +297,15 @@ export default function ResponderInbox() {
 
   return (
     <AppScreen
+      tone="dark"
       title={t('Responder inbox')}
       subtitle={available ? t('On duty. Nearby SOS calls appear here instantly.') : t('Off duty. You will not receive SOS calls.')}
-      action={<HeaderButton icon={ChevronLeft} onPress={() => router.back()} label={t('Back')} />}
+      icon={<Radio size={22} color="#fff" />}
+      action={
+        <Pressable onPress={() => router.back()} style={styles.iconButton} accessibilityRole="button" accessibilityLabel={t('Back')}>
+          <ChevronLeft size={20} color="#fff" />
+        </Pressable>
+      }
       scrollProps={{ refreshControl: <RefreshControl refreshing={false} onRefresh={load} tintColor={colors.primary} /> }}
     >
       <Card style={styles.dutyCard}>

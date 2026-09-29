@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Award, ArrowLeft, Share2 } from 'lucide-react-native';
 import { toast } from 'sonner-native';
 
-import { AppScreen, HeaderButton } from '@/components/AppScreen';
+import { AppScreen } from '@/components/AppScreen';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -52,10 +52,16 @@ export default function CertificateScreen() {
 
   return (
     <AppScreen
+      tone="success"
       eyebrow={t('First aid certified')}
       title={cert?.badgeLabel ?? t('Certificate')}
       subtitle={cert ? t('Scored {n}%', { n: cert.score }) : t('Loading certificate')}
-      action={<HeaderButton icon={ArrowLeft} onPress={() => router.back()} label={t('Back')} />}
+      icon={<Award size={22} color="#fff" />}
+      action={
+        <Pressable onPress={() => router.back()} style={styles.backBtn}>
+          <ArrowLeft size={16} color="#fff" />
+        </Pressable>
+      }
       footer={
         <Button onPress={share} disabled={!cert}>
           <Share2 size={16} color="#fff" />
