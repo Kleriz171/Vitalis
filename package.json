@@ -22,7 +22,8 @@
     "check:redispatch": "npx tsx apps/api/scripts/redispatch-check.ts",
     "check:checkin": "npx tsx apps/api/scripts/checkin-check.ts",
     "check:fall": "npx tsx apps/native/scripts/fall-check.ts",
-    "check:sms": "npx tsx apps/api/scripts/sms-check.ts"
+    "check:sms": "npx tsx apps/api/scripts/sms-check.ts",
+    "check:voice": "npx tsx apps/native/scripts/voice-check.ts"
   },
   "overrides": {
     "react": "19.2.3",

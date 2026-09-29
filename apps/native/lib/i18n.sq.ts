@@ -730,7 +730,14 @@ export const ui: Record<string, string> = {
   'Fall detection': 'Zbulimi i rënies',
   'While Vitalis is open, a hard fall followed by no movement asks if you are OK. No answer in 30 seconds sends an SOS.': 'Kur Vitalis është i hapur, një rënie e fortë e ndjekur nga palëvizshmëri ju pyet nëse jeni mirë. Pa përgjigje për 30 sekonda dërgohet një SOS.',
 
-  'No internet? Send the SOS by text message': 'Pa internet? Dërgojeni SOS-in me SMS',
+  // Voice assistant
+  'Voice input is not available right now.': 'Hyrja me zë nuk është e disponueshme tani.',
+  'Allow the microphone to talk to Vitalis.': 'Lejoni mikrofonin për të folur me Vitalis.',
+  'Listening…': 'Po dëgjoj…',
+  'Stop listening': 'Ndalo dëgjimin',
+  'Speak your question': 'Thoni pyetjen tuaj',
+
+  'No internet? Send the SOS by text message':'Pa internet? Dërgojeni SOS-in me SMS',
 
   // Notifications (system)
   'SOS calls near you': 'Thirrje SOS pranë jush',

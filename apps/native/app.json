@@ -57,6 +57,13 @@
         {
           "color": "#14A897"
         }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Vitalis listens only while you talk to it, so you can ask for help without typing.",
+          "speechRecognitionPermission": "Vitalis turns what you say into text to answer you or start an SOS."
+        }
       ]
     ],
     "experiments": {

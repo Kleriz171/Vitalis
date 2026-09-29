@@ -102,7 +102,8 @@ export default function EmergencyScreen() {
         priority: notBreathing ? 1 : 2,
         description: notBreathing
           ? 'Person collapsed, not breathing normally'
-          : params.reason === 'fall' ? 'Fall detected, person did not respond' : 'Citizen SOS',
+          : params.reason === 'fall' ? 'Fall detected, person did not respond'
+            : params.reason === 'voice' ? 'Voice SOS: emergency phrase spoken' : 'Citizen SOS',
         coordinates: [pos.coords.longitude, pos.coords.latitude],
       });
       setNearbyCount(data.nearbyCount);

@@ -1,12 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Bot, Send, Sparkles, User } from 'lucide-react-native';
+import * as Speech from 'expo-speech';
+import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
+import { ArrowLeft, Bot, Mic, Send, Sparkles, User } from 'lucide-react-native';
 import { AppScreen } from '@/components/AppScreen';
+import { toast } from 'sonner-native';
 import { Card } from '@/components/ui/Card';
 import { api } from '@/lib/api';
 import { colors, radius } from '@/lib/theme';
-import { apiError, t } from '@/lib/i18n';
+import { apiError, lang, locale, t } from '@/lib/i18n';
+import { isEmergencyPhrase } from '@/lib/voicePhrases';
 
 interface Message {
   id: string;
@@ -33,12 +37,51 @@ export default function Assistant() {
     },
   ]);
 
+  // Voice: speak a question; an emergency phrase goes straight to the SOS countdown, never to the AI.
+  const [listening, setListening] = useState(false);
+  const [heard, setHeard] = useState('');
+  const canSpeak = useRef(false);
+  const canListen = ExpoSpeechRecognitionModule.isRecognitionAvailable();
+
+  useEffect(() => {
+    // Speak replies only with a voice for the app language (no Albanian voice on most phones: text only).
+    Speech.getAvailableVoicesAsync()
+      .then(v => { canSpeak.current = v.some(x => x.language.toLowerCase().startsWith(lang)); })
+      .catch(() => {});
+    return () => { Speech.stop(); ExpoSpeechRecognitionModule.abort(); };
+  }, []);
+
+  useSpeechRecognitionEvent('start', () => setListening(true));
+  useSpeechRecognitionEvent('end', () => { setListening(false); setHeard(''); });
+  useSpeechRecognitionEvent('error', (e) => {
+    // iPhone has no Albanian recogniser: fall back to English once.
+    if (e.error === 'language-not-supported' && lang === 'sq') void listen('en-US');
+    else if (e.error !== 'no-speech' && e.error !== 'aborted') toast.error(t('Voice input is not available right now.'));
+  });
+  useSpeechRecognitionEvent('result', (e) => {
+    const text = e.results[0]?.transcript ?? '';
+    setHeard(text);
+    if (isEmergencyPhrase(text)) {
+      ExpoSpeechRecognitionModule.abort();
+      router.push({ pathname: '/emergency', params: { start: '1', reason: 'voice' } } as never);
+    } else if (e.isFinal && text.trim()) {
+      void send(text, true);
+    }
+  });
+
+  const listen = async (language = locale) => {
+    Speech.stop();
+    const perm = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+    if (!perm.granted) { toast.error(t('Allow the microphone to talk to Vitalis.')); return; }
+    ExpoSpeechRecognitionModule.start({ lang: language, interimResults: true });
+  };
+
   useEffect(() => {
     const timer = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
     return () => clearTimeout(timer);
   }, [messages.length]);
 
-  const send = async (raw?: string) => {
+  const send = async (raw?: string, spoken = false) => { // a spoken question gets a spoken reply
     const content = (raw ?? input).trim();
     if (!content) return;
 
@@ -48,6 +91,7 @@ export default function Assistant() {
     try {
       const { data } = await api.post<{ reply: string }>('/ai/chat', { message: content });
       setMessages((current) => [...current, { id: `b-${Date.now()}`, role: 'bot', content: data.reply }]);
+      if (spoken && canSpeak.current) Speech.speak(data.reply, { language: locale });
     } catch (e: any) {
       setMessages((current) => [...current, {
         id: `b-${Date.now()}`,
@@ -74,7 +118,20 @@ export default function Assistant() {
         }
         footer={
           <>
+            {listening ? (
+              <Text style={styles.heard} accessibilityLiveRegion="polite">{heard || t('Listening…')}</Text>
+            ) : null}
             <View style={styles.composerRow}>
+              {canListen ? (
+                <Pressable
+                  onPress={() => (listening ? ExpoSpeechRecognitionModule.stop() : void listen())}
+                  style={[styles.sendButton, styles.micButton, listening && styles.micButtonOn]}
+                  accessibilityRole="button"
+                  accessibilityLabel={listening ? t('Stop listening') : t('Speak your question')}
+                >
+                  <Mic size={20} color={listening ? '#fff' : colors.success} />
+                </Pressable>
+              ) : null}
               <View style={styles.inputWrap}>
                 <TextInput
                   value={input}
@@ -263,6 +320,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
+  },
+  micButton: {
+    backgroundColor: colors.successSoft,
+  },
+  micButtonOn: {
+    backgroundColor: colors.destructive,
+  },
+  heard: {
+    color: colors.mutedForeground,
+    fontSize: 13,
+    fontStyle: 'italic',
+    marginBottom: 8,
   },
   sendButtonDisabled: {
     opacity: 0.65,
