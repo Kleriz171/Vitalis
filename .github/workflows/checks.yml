@@ -1,0 +1,66 @@
+name: Checks
+
+on:
+  pull_request:
+  push:
+    branches: [main, vitalis-v2]
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static:
+    name: Types, builds, unit checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26 # same as local and EAS (apps/native/eas.json)
+          cache: npm
+      - run: npm ci
+      - name: Typecheck API
+        run: npx tsc --noEmit -p apps/api
+      - name: Typecheck app
+        run: npx tsc --noEmit -p apps/native
+      - name: Build web console and landing
+        run: npm run build -w @vitalis/web && npm run build -w @vitalis/landing
+      - name: Unit checks
+        run: |
+          npm run check:i18n
+          npm run check:fall
+          npm run check:voice
+          npm run check:eta
+
+  e2e:
+    name: End-to-end API checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      mongo:
+        image: mongo:7
+        ports: ['27017:27017']
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.runCommand({ping:1})'"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: npm
+      - run: npm ci
+      - name: Security, re-dispatch, check-in, SMS, drones
+        run: scripts/e2e.sh
+        env:
+          MONGO_URI: mongodb://localhost:27017/vitalis_test
+          PORT: 4000
+          LOG_DIR: ${{ runner.temp }}/e2e-logs
+      - name: Keep logs of a failed run
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-logs
+          path: ${{ runner.temp }}/e2e-logs
