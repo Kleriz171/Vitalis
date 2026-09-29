@@ -27,6 +27,8 @@ import { colors, radius } from '@/lib/theme';
 import { apiError, lang, locale, setLanguage, t } from '@/lib/i18n';
 import { formatPhone, isE164, toE164 } from '@/lib/geo';
 import { setFallDetection, useFallDetectionEnabled } from '@/lib/fallDetection';
+import { setWakeWord, useWakeWordEnabled, wakeWordSupported } from '@/lib/wakeWord';
+import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
 
 type Severity = 'mild' | 'moderate' | 'severe';
 
@@ -157,6 +159,14 @@ export default function Profile() {
   const [disabilityName, setDisabilityName] = useState('');
   const [disabilityNotes, setDisabilityNotes] = useState('');
   const fallOn = useFallDetectionEnabled();
+  const wakeOn = useWakeWordEnabled();
+  const toggleWakeWord = async (on: boolean) => {
+    if (on && !(await ExpoSpeechRecognitionModule.requestPermissionsAsync()).granted) {
+      toast.error(t('Allow the microphone to talk to Vitalis.'));
+      return;
+    }
+    setWakeWord(on);
+  };
   const [contactName, setContactName] = useState('');
   const [contactPhoneRaw, setContactPhoneRaw] = useState('');
 
@@ -692,6 +702,25 @@ export default function Profile() {
             />
           </View>
         </Card>
+
+        {wakeWordSupported ? (
+          <Card style={styles.editorCard}>
+            <View style={styles.switchRow}>
+              <View style={{ flex: 1, gap: 4 }}>
+                <Text style={styles.sectionTitle}>{t('“Hey Vitalis”')}</Text>
+                <Text style={styles.sectionBody}>
+                  {t('While Vitalis is open, say “Hey Vitalis” to ask a question or to call for help. Listening happens on your phone; no sound is sent anywhere until you speak after “Hey Vitalis”.')}
+                </Text>
+              </View>
+              <Switch
+                value={wakeOn}
+                onValueChange={(on) => void toggleWakeWord(on)}
+                trackColor={{ true: colors.primary, false: colors.border }}
+                accessibilityLabel={t('“Hey Vitalis”')}
+              />
+            </View>
+          </Card>
+        ) : null}
 
         {/* Always bilingual, so someone who cannot read the current language can still find it. */}
         <Card style={styles.editorCard}>

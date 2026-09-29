@@ -3,6 +3,8 @@ import * as Notifications from 'expo-notifications';
 import '@/lib/dutyLocation'; // registers the background task at startup
 import { registerForPush, routeForNotification } from '@/lib/push';
 import { useFallDetection, useFallDetectionEnabled } from '@/lib/fallDetection';
+import { useWakeWord, useWakeWordEnabled, wakeWordSupported } from '@/lib/wakeWord';
+import { MicIndicator } from '@/components/MicIndicator';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Provider, useSelector } from 'react-redux';
@@ -62,6 +64,13 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   }, [router]);
   useFallDetection(hydrated && !!token && fallOn, onFall);
 
+  // "Hey Vitalis" (Profile switch). Paused where the screen itself uses the mic or an SOS runs.
+  const wakeOn = useWakeWordEnabled();
+  const listening = wakeWordSupported && hydrated && !!token && wakeOn && !['assistant', 'emergency', 'fall'].includes(segments[0] as string);
+  const onWake = useCallback(() => router.push({ pathname: '/assistant', params: { listen: '1' } } as never), [router]);
+  const onVoiceSos = useCallback(() => router.push({ pathname: '/emergency', params: { start: '1', reason: 'voice' } } as never), [router]);
+  useWakeWord(listening, onWake, onVoiceSos);
+
   // Register for push once signed in; follow taps on notifications (also from a cold start).
   useEffect(() => {
     if (!hydrated || !token) return;
@@ -84,5 +93,5 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   // Rendering routes before the stored session loads fires unauthenticated requests,
   // and the 401 handler would then wipe the saved session.
   if (!hydrated) return null;
-  return <>{children}</>;
+  return <>{children}{listening ? <MicIndicator /> : null}</>;
 }

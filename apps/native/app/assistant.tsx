@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Speech from 'expo-speech';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { ArrowLeft, Bot, Mic, Send, Sparkles, User } from 'lucide-react-native';
@@ -42,14 +42,17 @@ export default function Assistant() {
   const [heard, setHeard] = useState('');
   const canSpeak = useRef(false);
   const canListen = ExpoSpeechRecognitionModule.isRecognitionAvailable();
+  const { listen: fromWakeWord } = useLocalSearchParams<{ listen?: string }>();
 
   useEffect(() => {
     // Speak replies only with a voice for the app language (no Albanian voice on most phones: text only).
     Speech.getAvailableVoicesAsync()
       .then(v => { canSpeak.current = v.some(x => x.language.toLowerCase().startsWith(lang)); })
       .catch(() => {});
-    return () => { Speech.stop(); ExpoSpeechRecognitionModule.abort(); };
-  }, []);
+    // Opened by "Hey Vitalis": listen straight away, once the wake-word listener has let go of the mic.
+    const timer = fromWakeWord === '1' && canListen ? setTimeout(() => void listen(), 500) : undefined;
+    return () => { clearTimeout(timer); Speech.stop(); ExpoSpeechRecognitionModule.abort(); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useSpeechRecognitionEvent('start', () => setListening(true));
   useSpeechRecognitionEvent('end', () => { setListening(false); setHeard(''); });
