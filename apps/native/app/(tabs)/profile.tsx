@@ -3,6 +3,7 @@ import {
   Image,
   Pressable,
   RefreshControl,
+  Switch,
   ScrollView,
   StyleSheet,
   Text,
@@ -25,6 +26,7 @@ import type { TrainingCertification, TrainingEnrollment } from '@/lib/store';
 import { colors, radius } from '@/lib/theme';
 import { apiError, lang, locale, setLanguage, t } from '@/lib/i18n';
 import { formatPhone, isE164, toE164 } from '@/lib/geo';
+import { setFallDetection, useFallDetectionEnabled } from '@/lib/fallDetection';
 
 type Severity = 'mild' | 'moderate' | 'severe';
 
@@ -154,6 +156,7 @@ export default function Profile() {
   const [conditionNotes, setConditionNotes] = useState('');
   const [disabilityName, setDisabilityName] = useState('');
   const [disabilityNotes, setDisabilityNotes] = useState('');
+  const fallOn = useFallDetectionEnabled();
   const [contactName, setContactName] = useState('');
   const [contactPhoneRaw, setContactPhoneRaw] = useState('');
 
@@ -673,6 +676,23 @@ export default function Profile() {
           ))}
         />
 
+        <Card style={styles.editorCard}>
+          <View style={styles.switchRow}>
+            <View style={{ flex: 1, gap: 4 }}>
+              <Text style={styles.sectionTitle}>{t('Fall detection')}</Text>
+              <Text style={styles.sectionBody}>
+                {t('While Vitalis is open, a hard fall followed by no movement asks if you are OK. No answer in 30 seconds sends an SOS.')}
+              </Text>
+            </View>
+            <Switch
+              value={fallOn}
+              onValueChange={setFallDetection}
+              trackColor={{ true: colors.primary, false: colors.border }}
+              accessibilityLabel={t('Fall detection')}
+            />
+          </View>
+        </Card>
+
         {/* Always bilingual, so someone who cannot read the current language can still find it. */}
         <Card style={styles.editorCard}>
           <Text style={styles.sectionTitle}>Gjuha · Language</Text>
@@ -954,6 +974,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.destructiveSoft,
   },
   errorText: { color: colors.destructive, fontSize: 13 },
+  switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   emptyText: {
     color: colors.mutedForeground,
     fontSize: 13,

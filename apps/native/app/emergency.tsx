@@ -45,7 +45,7 @@ const roleOf = (p: Person) => (p && typeof p === 'object' ? ROLE_LABEL[p.role] ?
 
 export default function EmergencyScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ start?: string }>();
+  const params = useLocalSearchParams<{ start?: string; reason?: string }>();
   const [phase, setPhase] = useState<Phase>(params.start === '1' ? 'countdown' : 'live');
   const [secondsLeft, setSecondsLeft] = useState(COUNTDOWN_S);
   const [notBreathing, setNotBreathing] = useState(false);
@@ -94,7 +94,9 @@ export default function EmergencyScreen() {
       const { data } = await api.post('/emergencies', {
         type: notBreathing ? 'cardiac' : 'medical',
         priority: notBreathing ? 1 : 2,
-        description: notBreathing ? 'Person collapsed, not breathing normally' : 'Citizen SOS',
+        description: notBreathing
+          ? 'Person collapsed, not breathing normally'
+          : params.reason === 'fall' ? 'Fall detected, person did not respond' : 'Citizen SOS',
         coordinates: [pos.coords.longitude, pos.coords.latitude],
       });
       setNearbyCount(data.nearbyCount);
@@ -113,7 +115,7 @@ export default function EmergencyScreen() {
           : err?.response ? apiError(err, 'Try again.') : t('Call {number} now.', { number: ambulance }),
       });
     }
-  }, [notBreathing, refresh, ambulance]);
+  }, [notBreathing, refresh, ambulance, params.reason]);
 
   // Countdown gives a chance to cancel an accidental tap without slowing a real emergency much.
   useEffect(() => {

@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import * as Notifications from 'expo-notifications';
 import '@/lib/dutyLocation'; // registers the background task at startup
 import { registerForPush, routeForNotification } from '@/lib/push';
+import { useFallDetection, useFallDetectionEnabled } from '@/lib/fallDetection';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Provider, useSelector } from 'react-redux';
@@ -33,6 +34,7 @@ export default function RootLayout() {
               <Stack.Screen name="handover/[id]" options={{ presentation: 'modal' }} />
               <Stack.Screen name="assistant" options={{ animation: 'slide_from_right' }} />
               <Stack.Screen name="checkin" options={{ animation: 'slide_from_right' }} />
+              <Stack.Screen name="fall" options={{ presentation: 'fullScreenModal', animation: 'fade', gestureEnabled: false }} />
               <Stack.Screen name="training" options={{ animation: 'slide_from_right' }} />
               <Stack.Screen name="doctor-application" options={{ animation: 'slide_from_right' }} />
             </Stack>
@@ -51,6 +53,15 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const segments = useSegments();
   const router = useRouter();
 
+  // Fall detection (Profile switch): never on top of an SOS that is already running.
+  const fallOn = useFallDetectionEnabled();
+  const where = useRef(segments[0]);
+  where.current = segments[0]; // a ref, so navigating does not restart the sensor
+  const onFall = useCallback(() => {
+    if (!['emergency', 'fall'].includes(where.current as string)) router.push('/fall');
+  }, [router]);
+  useFallDetection(hydrated && !!token && fallOn, onFall);
+
   // Register for push once signed in; follow taps on notifications (also from a cold start).
   useEffect(() => {
     if (!hydrated || !token) return;
@@ -66,7 +77,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!hydrated) return;
-    const inProtected = ['(tabs)', 'emergency', 'responder-inbox', 'aeds', 'handover', 'assistant', 'training', 'doctor-application', 'checkin'].includes(segments[0] as string);
+    const inProtected = ['(tabs)', 'emergency', 'responder-inbox', 'aeds', 'handover', 'assistant', 'training', 'doctor-application', 'checkin', 'fall'].includes(segments[0] as string);
     if (!token && inProtected) router.replace('/');
   }, [hydrated, token, segments, router]);
 
