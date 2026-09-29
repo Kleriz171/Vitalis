@@ -41,6 +41,8 @@ export default function Assistant() {
   const [listening, setListening] = useState(false);
   const [heard, setHeard] = useState('');
   const canSpeak = useRef(false);
+  const triedEnglish = useRef(false);
+  const sosSent = useRef(false);
   const canListen = ExpoSpeechRecognitionModule.isRecognitionAvailable();
   const { listen: fromWakeWord } = useLocalSearchParams<{ listen?: string }>();
 
@@ -58,16 +60,20 @@ export default function Assistant() {
   useSpeechRecognitionEvent('end', () => { setListening(false); setHeard(''); });
   useSpeechRecognitionEvent('error', (e) => {
     // iPhone has no Albanian recogniser: fall back to English once.
-    if (e.error === 'language-not-supported' && lang === 'sq') void listen('en-US');
+    if (e.error === 'language-not-supported' && !triedEnglish.current) { triedEnglish.current = true; void listen('en-US'); }
     else if (e.error !== 'no-speech' && e.error !== 'aborted') toast.error(t('Voice input is not available right now.'));
   });
   useSpeechRecognitionEvent('result', (e) => {
     const text = e.results[0]?.transcript ?? '';
     setHeard(text);
+    // Only final text: an interim "help" may still become "help me with CPR".
+    if (!e.isFinal || !text.trim()) return;
     if (isEmergencyPhrase(text)) {
+      if (sosSent.current) return;
+      sosSent.current = true;
       ExpoSpeechRecognitionModule.abort();
       router.push({ pathname: '/emergency', params: { start: '1', reason: 'voice' } } as never);
-    } else if (e.isFinal && text.trim()) {
+    } else {
       void send(text, true);
     }
   });

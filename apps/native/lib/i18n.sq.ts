@@ -738,7 +738,8 @@ export const ui: Record<string, string> = {
   'Speak your question': 'Thoni pyetjen tuaj',
   'Hey Vitalis': 'Hey Vitalis',
   '“Hey Vitalis”': '“Hey Vitalis”',
-  'Listening for “Hey Vitalis”': 'Po dëgjon për “Hey Vitalis”',
+  '“Hey Vitalis” was switched off: the microphone is not available.': '“Hey Vitalis” u çaktivizua: mikrofoni nuk është i disponueshëm.',
+  'Listening for “Hey Vitalis”':'Po dëgjon për “Hey Vitalis”',
   'While Vitalis is open, say “Hey Vitalis” to ask a question or to call for help. Listening happens on your phone; no sound is sent anywhere until you speak after “Hey Vitalis”.': 'Kur Vitalis është i hapur, thoni “Hey Vitalis” për të bërë një pyetje ose për të kërkuar ndihmë. Dëgjimi bëhet në telefonin tuaj; asnjë zë nuk dërgohet askund derisa të flisni pas “Hey Vitalis”.',
 
   'No internet? Send the SOS by text message':'Pa internet? Dërgojeni SOS-in me SMS',

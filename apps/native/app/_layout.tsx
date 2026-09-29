@@ -10,7 +10,8 @@ import { StatusBar } from 'expo-status-bar';
 import { Provider, useSelector } from 'react-redux';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { Toaster } from 'sonner-native';
+import { Toaster, toast } from 'sonner-native';
+import { t } from '@/lib/i18n';
 import 'react-native-reanimated';
 
 import { colors } from '@/lib/theme';
@@ -69,7 +70,8 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const listening = wakeWordSupported && hydrated && !!token && wakeOn && !['assistant', 'emergency', 'fall'].includes(segments[0] as string);
   const onWake = useCallback(() => router.push({ pathname: '/assistant', params: { listen: '1' } } as never), [router]);
   const onVoiceSos = useCallback(() => router.push({ pathname: '/emergency', params: { start: '1', reason: 'voice' } } as never), [router]);
-  useWakeWord(listening, onWake, onVoiceSos);
+  const onWakeError = useCallback(() => toast.error(t('“Hey Vitalis” was switched off: the microphone is not available.')), []);
+  useWakeWord(listening, onWake, onVoiceSos, onWakeError);
 
   // Register for push once signed in; follow taps on notifications (also from a cold start).
   useEffect(() => {
