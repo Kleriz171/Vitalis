@@ -1,8 +1,8 @@
-import { forwardRef, type ComponentRef } from 'react';
+import { forwardRef } from 'react';
 import { TextInput, TextInputProps, StyleSheet } from 'react-native';
 import { colors, radius } from '@/lib/theme';
 
-export const Input = forwardRef<ComponentRef<typeof TextInput>, TextInputProps>(
+export const Input = forwardRef<TextInput, TextInputProps>(
   ({ style, placeholderTextColor = colors.mutedForeground, ...props }, ref) => (
     <TextInput
       ref={ref}

@@ -1,19 +1,16 @@
-import { View, Text, TextStyle, StyleSheet, type ViewProps } from 'react-native';
-
-// The View's own style type: the shared ViewStyle is widened by web typings (position: fixed).
-type BoxStyle = ViewProps['style'];
+import { View, Text, ViewStyle, TextStyle, StyleSheet } from 'react-native';
 import { colors, radius } from '@/lib/theme';
 
 export type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline';
 
 interface BadgeProps {
   variant?: BadgeVariant;
-  style?: BoxStyle;
+  style?: ViewStyle;
   textStyle?: TextStyle;
   children?: React.ReactNode;
 }
 
-const variantBox: Record<BadgeVariant, BoxStyle> = {
+const variantBox: Record<BadgeVariant, ViewStyle> = {
   default:     { backgroundColor: colors.primary },
   secondary:   { backgroundColor: colors.muted },
   destructive: { backgroundColor: colors.destructive },

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ComponentRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Dimensions,
   NativeScrollEvent,
@@ -83,7 +83,7 @@ export default function Onboarding() {
   const token = useSelector((s: RootState) => s.auth.accessToken);
   const hydrated = useSelector((s: RootState) => s.auth.hydrated);
   const router = useRouter();
-  const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
+  const scrollRef = useRef<ScrollView>(null);
   const [slideIndex, setSlideIndex] = useState(0);
   const insets = useSafeAreaInsets();
   // The teal backdrop ends at the passport card's midline, whatever the text wraps to.
