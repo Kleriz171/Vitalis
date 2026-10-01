@@ -6,6 +6,7 @@
  */
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
+import { Buffer } from 'node:buffer';
 const [route = '/', name = 'shot', height = '844'] = process.argv.slice(2);
 const CH = `${process.env.HOME}/Library/Caches/ms-playwright/chromium_headless_shell-1243/chrome-headless-shell-mac-arm64/chrome-headless-shell`;
 const APP = process.env.APP ?? 'http://localhost:8081';

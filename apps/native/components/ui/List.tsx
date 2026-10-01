@@ -14,12 +14,12 @@ const SPRING = { damping: 18, stiffness: 260, mass: 0.6 };
 /** A Pressable that dips slightly while held and springs back: the app's one touch feel. */
 export function Press({ style, children, scaleTo = 0.97, ...props }: PressableProps & { scaleTo?: number; style?: ViewProps['style']; children: ReactNode }) {
   const scale = useSharedValue(1);
-  const anim = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const anim = useAnimatedStyle(() => ({ transform: [{ scale: scale.get() }] }));
   return (
     <AnimatedPressable
       {...props}
-      onPressIn={(e) => { scale.value = withSpring(scaleTo, SPRING); props.onPressIn?.(e); }}
-      onPressOut={(e) => { scale.value = withSpring(1, SPRING); props.onPressOut?.(e); }}
+      onPressIn={(e) => { scale.set(withSpring(scaleTo, SPRING)); props.onPressIn?.(e); }}
+      onPressOut={(e) => { scale.set(withSpring(1, SPRING)); props.onPressOut?.(e); }}
       style={[style, anim]}
     >
       {children}
@@ -82,8 +82,8 @@ export function Row({ icon, tint, title, summary, right, onPress, first, childre
 
 function Chevron({ open }: { open: boolean }) {
   const turn = useSharedValue(open ? 1 : 0);
-  useEffect(() => { turn.value = withSpring(open ? 1 : 0, SPRING); }, [open, turn]);
-  const anim = useAnimatedStyle(() => ({ transform: [{ rotate: `${turn.value * 180}deg` }] }));
+  useEffect(() => { turn.set(withSpring(open ? 1 : 0, SPRING)); }, [open, turn]);
+  const anim = useAnimatedStyle(() => ({ transform: [{ rotate: `${turn.get() * 180}deg` }] }));
   return (
     <Animated.View style={anim}>
       <ChevronDown size={18} color={colors.mutedForeground} />
@@ -141,8 +141,8 @@ export function Segmented<T extends string>({
   const index = Math.max(0, options.findIndex((o) => o.key === value));
   const slot = width ? (width - 6) / options.length : 0;
   const x = useSharedValue(0);
-  useEffect(() => { x.value = withSpring(index * slot, SPRING); }, [index, slot, x]);
-  const pill = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
+  useEffect(() => { x.set(withSpring(index * slot, SPRING)); }, [index, slot, x]);
+  const pill = useAnimatedStyle(() => ({ transform: [{ translateX: x.get() }] }));
   return (
     <View style={styles.segTrack} accessibilityRole="tablist" onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
       {slot ? <Animated.View pointerEvents="none" style={[styles.segPill, { width: slot }, pill]} /> : null}
