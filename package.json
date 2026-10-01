@@ -11,6 +11,7 @@
     "dev:web": "npm run dev -w @vitalis/web",
     "dev:landing": "npm run dev -w @vitalis/landing",
     "dev:native": "npm run start -w @vitalis/native",
+    "dev:iphone": "cd apps/native && IP=$(ipconfig getifaddr en0 || ipconfig getifaddr en1) && echo \"Expo Go → Enter URL manually: exp://$IP:8081\" && EXPO_PUBLIC_API_URL=http://$IP:4000/api REACT_NATIVE_PACKAGER_HOSTNAME=$IP npx expo start --go --clear",
     "dev:ios": "npm run ios -w @vitalis/native",
     "seed": "npm run seed -w @vitalis/api",
     "build": "npm run build -w @vitalis/api && npm run build -w @vitalis/web && npm run build -w @vitalis/landing",
