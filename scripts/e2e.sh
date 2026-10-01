@@ -39,5 +39,6 @@ run security   "" "" apps/api/scripts/security-check.ts
 run redispatch "REDISPATCH_TICK_MS=1000 REDISPATCH_PROGRESS_MS=3000" "" apps/api/scripts/redispatch-check.ts
 run checkin    "CHECKIN_TICK_MS=500 CHECKIN_GRACE_MS=2000" "" apps/api/scripts/checkin-check.ts
 run sms        "TWILIO_AUTH_TOKEN=test-token TWILIO_WEBHOOK_URL=$API_URL/api/sms/inbound" "TWILIO_AUTH_TOKEN=test-token" apps/api/scripts/sms-check.ts
+run track      "" "" apps/api/scripts/track-check.ts
 run drones     "DRONE_BRIDGE_KEY=ci-bridge-key" "" apps/api/scripts/drone-check.ts bridge
 echo "All end-to-end checks passed."

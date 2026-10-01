@@ -1,4 +1,9 @@
+import crypto from 'crypto';
 import { Emergency } from '../../models/Emergency';
+import { env } from '../../config/env';
+import { logger } from '../../config/logger';
+import { sha256 } from '../../utils/hash';
+import { sendSms } from '../../utils/sms';
 import { User, ageOf } from '../../models/User';
 import { Certification } from '../../models/Training';
 import { Aed } from '../../models/Aed';
@@ -17,6 +22,22 @@ const AED_RADIUS_M = 1_500;
 
 const nearestAed = (coords: [number, number]) =>
   Aed.findOne(nearQuery(coords[0], coords[1], AED_RADIUS_M)).lean();
+
+/** Texts the emergency contact a live link (landing /track/:token). Silent alarms never call this. */
+async function textTrackingLink(citizenId: string, token: string) {
+  try {
+    const u = await User.findById(citizenId).select('name emergencyContact language').lean();
+    const to = u?.emergencyContact?.phone;
+    if (!u || !to) return;
+    const link = `${env.publicWebUrl}/track/${token}`;
+    const first = u.name?.split(' ')[0] ?? '';
+    await sendSms(to, u.language === 'en'
+      ? `Vitalis: ${first} sent an SOS. Responders nearby are alerted. Follow live: ${link}?l=en`
+      : `Vitalis: ${first} dërgoi një SOS. Ndihmësit pranë janë njoftuar. Ndiqeni live: ${link}`);
+  } catch (err: any) {
+    logger.error(`tracking link SMS failed: ${err?.message ?? err}`);
+  }
+}
 
 const httpError = (status: number, message: string) => Object.assign(new Error(message), { status });
 
@@ -70,8 +91,10 @@ export const emergencyService = {
     });
     if (existing) return { emergency: existing, duplicate: true };
 
+    const trackToken = crypto.randomBytes(16).toString('hex');
     const e = await Emergency.create({
       citizen: citizenId,
+      trackTokenHash: sha256(trackToken),
       type: body.type,
       priority: body.priority ?? 3,
       description: body.description,
@@ -81,6 +104,7 @@ export const emergencyService = {
     await blockchainService.append({
       entity: 'emergency', entityId: e._id.toString(), action: 'created', actor: citizenId,
     });
+    void textTrackingLink(citizenId, trackToken); // never delays the SOS
     return { emergency: e, duplicate: false };
   },
 

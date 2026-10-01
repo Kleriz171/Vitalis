@@ -24,7 +24,8 @@
     "check:fall": "npx tsx apps/native/scripts/fall-check.ts",
     "check:sms": "npx tsx apps/api/scripts/sms-check.ts",
     "check:voice": "npx tsx apps/native/scripts/voice-check.ts",
-    "check:eta": "npx tsx apps/api/scripts/eta-check.ts"
+    "check:eta": "npx tsx apps/api/scripts/eta-check.ts",
+    "check:track": "npx tsx apps/api/scripts/track-check.ts"
   },
   "overrides": {
     "react": "19.2.3",

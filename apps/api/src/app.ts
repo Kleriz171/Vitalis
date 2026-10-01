@@ -27,6 +27,7 @@ import adminRoutes from './modules/admin/admin.routes';
 import doctorApplicationsRoutes from './modules/doctorApplications/doctorApplications.routes';
 import aedRoutes from './modules/aed/aed.routes';
 import pushRoutes from './modules/push/push.routes';
+import trackRoutes from './modules/track/track.routes';
 
 export function buildApp() {
   const app = express();
@@ -64,6 +65,7 @@ export function buildApp() {
   // PIN guessing is also capped per check-in (5 wrong → silent alarm).
   app.use('/api/checkin', strict(30), checkInRoutes);
   app.use('/api/sms', strict(60), smsRoutes); // Twilio webhook; signature-checked
+  app.use('/api/track', strict(60), trackRoutes); // public live link for the emergency contact
   app.use('/api/medicine', medicineRoutes);
   app.use('/api/biopassport', bioRoutes);
   app.use('/api/drones', droneRoutes);
