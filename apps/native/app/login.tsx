@@ -158,7 +158,6 @@ export default function SignIn() {
             textContentType="telephoneNumber"
             autoFocus
           />
-          <Button variant="ghost" onPress={() => setStep('email')}>{t("Sign in with email instead")}</Button>
         </>
       ),
       cta: <Button size="lg" style={styles.primaryButton} onPress={sendCode} loading={busy} disabled={!isE164(phone)}>{t("Send code")}</Button>,
@@ -365,7 +364,7 @@ export default function SignIn() {
             <View style={styles.form}>
               {s.body}
               <View style={styles.actions}>
-                <View style={styles.ctaBubble}>{s.cta}</View>
+                {s.cta}
               </View>
             </View>
           </Animated.View>
@@ -712,18 +711,8 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 6,
   },
-  ctaBubble: {
-    alignSelf: 'center',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    borderRadius: radius.full,
-    backgroundColor: colors.primary,
-  },
   primaryButton: {
-    width: 236,
-    backgroundColor: colors.primaryStrong,
-    borderRadius: radius.full,
+    alignSelf: 'stretch',
   },
   secondaryLink: {
     alignItems: 'center',
