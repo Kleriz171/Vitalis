@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Speech from 'expo-speech';
-import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
+import { speech, useSpeechEvent } from '@/lib/speech';
 import { ArrowLeft, Bot, Mic, Send, Sparkles, User } from 'lucide-react-native';
 import { AppScreen } from '@/components/AppScreen';
 import { toast } from 'sonner-native';
@@ -43,7 +43,7 @@ export default function Assistant() {
   const canSpeak = useRef(false);
   const triedEnglish = useRef(false);
   const sosSent = useRef(false);
-  const canListen = ExpoSpeechRecognitionModule.isRecognitionAvailable();
+  const canListen = !!speech?.isRecognitionAvailable();
   const { listen: fromWakeWord } = useLocalSearchParams<{ listen?: string }>();
 
   useEffect(() => {
@@ -53,17 +53,17 @@ export default function Assistant() {
       .catch(() => {});
     // Opened by "Hey Vitalis": listen straight away, once the wake-word listener has let go of the mic.
     const timer = fromWakeWord === '1' && canListen ? setTimeout(() => void listen(), 500) : undefined;
-    return () => { clearTimeout(timer); Speech.stop(); ExpoSpeechRecognitionModule.abort(); };
+    return () => { clearTimeout(timer); Speech.stop(); speech?.abort(); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useSpeechRecognitionEvent('start', () => setListening(true));
-  useSpeechRecognitionEvent('end', () => { setListening(false); setHeard(''); });
-  useSpeechRecognitionEvent('error', (e) => {
+  useSpeechEvent('start', () => setListening(true));
+  useSpeechEvent('end', () => { setListening(false); setHeard(''); });
+  useSpeechEvent('error', (e) => {
     // iPhone has no Albanian recogniser: fall back to English once.
     if (e.error === 'language-not-supported' && !triedEnglish.current) { triedEnglish.current = true; void listen('en-US'); }
     else if (e.error !== 'no-speech' && e.error !== 'aborted') toast.error(t('Voice input is not available right now.'));
   });
-  useSpeechRecognitionEvent('result', (e) => {
+  useSpeechEvent('result', (e) => {
     const text = e.results[0]?.transcript ?? '';
     setHeard(text);
     // Only final text: an interim "help" may still become "help me with CPR".
@@ -71,7 +71,7 @@ export default function Assistant() {
     if (isEmergencyPhrase(text)) {
       if (sosSent.current) return;
       sosSent.current = true;
-      ExpoSpeechRecognitionModule.abort();
+      speech?.abort();
       router.push({ pathname: '/emergency', params: { start: '1', reason: 'voice' } } as never);
     } else {
       void send(text, true);
@@ -80,9 +80,10 @@ export default function Assistant() {
 
   const listen = async (language = locale) => {
     Speech.stop();
-    const perm = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+    if (!speech) return;
+    const perm = await speech.requestPermissionsAsync();
     if (!perm.granted) { toast.error(t('Allow the microphone to talk to Vitalis.')); return; }
-    ExpoSpeechRecognitionModule.start({ lang: language, interimResults: true });
+    speech.start({ lang: language, interimResults: true });
   };
 
   useEffect(() => {
@@ -133,7 +134,7 @@ export default function Assistant() {
             <View style={styles.composerRow}>
               {canListen ? (
                 <Pressable
-                  onPress={() => (listening ? ExpoSpeechRecognitionModule.stop() : void listen())}
+                  onPress={() => (listening ? speech?.stop() : void listen())}
                   style={[styles.sendButton, styles.micButton, listening && styles.micButtonOn]}
                   accessibilityRole="button"
                   accessibilityLabel={listening ? t('Stop listening') : t('Speak your question')}

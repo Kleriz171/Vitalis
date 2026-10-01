@@ -31,7 +31,7 @@ import { apiError, lang, locale, setLanguage, t } from '@/lib/i18n';
 import { formatPhone, isE164, toE164 } from '@/lib/geo';
 import { setFallDetection, useFallDetectionEnabled } from '@/lib/fallDetection';
 import { setWakeWord, useWakeWordEnabled, wakeWordSupported } from '@/lib/wakeWord';
-import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
+import { speech } from '@/lib/speech';
 
 type Severity = 'mild' | 'moderate' | 'severe';
 
@@ -165,7 +165,7 @@ export default function Profile() {
   const fallOn = useFallDetectionEnabled();
   const wakeOn = useWakeWordEnabled();
   const toggleWakeWord = async (on: boolean) => {
-    if (on && !(await ExpoSpeechRecognitionModule.requestPermissionsAsync()).granted) {
+    if (on && !(await speech?.requestPermissionsAsync())?.granted) {
       toast.error(t('Allow the microphone to talk to Vitalis.'));
       return;
     }
