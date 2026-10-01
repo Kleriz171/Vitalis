@@ -13,7 +13,7 @@ import { AdminUserDetail } from './features/command/pages/admin/AdminUserDetail'
 import { AdminDoctorApplications } from './features/command/pages/admin/AdminDoctorApplications';
 import { Toaster } from './components/ui/sonner';
 
-const Protected = ({ children }: { children: JSX.Element }) => {
+const Protected = ({ children }: { children: React.JSX.Element }) => {
   const t = useSelector((s: RootState) => s.auth.accessToken);
   return t ? children : <Navigate to="/login" replace />;
 };

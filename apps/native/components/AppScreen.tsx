@@ -2,11 +2,10 @@ import { ReactNode } from 'react';
 import {
   ScrollView,
   ScrollViewProps,
-  StyleProp,
   StyleSheet,
   Text,
   View,
-  ViewStyle,
+  type ViewProps,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -25,8 +24,8 @@ interface AppScreenProps {
   children: ReactNode;
   footer?: ReactNode;
   scroll?: boolean;
-  contentContainerStyle?: StyleProp<ViewStyle>;
-  bodyStyle?: StyleProp<ViewStyle>;
+  contentContainerStyle?: ScrollViewProps['contentContainerStyle'];
+  bodyStyle?: ViewProps['style']; // the View's own type: shared ViewStyle is widened by web typings
   headerContent?: ReactNode;
   scrollProps?: Omit<ScrollViewProps, 'contentContainerStyle'>;
 }

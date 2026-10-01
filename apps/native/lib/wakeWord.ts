@@ -28,12 +28,12 @@ export function useWakeWord(active: boolean, onWake: () => void, onSos: () => vo
     if (!active || !Spotter.isAvailable) return;
     // Mic permission revoked or the model failed: switch off, so the "listening" pill never lies.
     const fail = () => { setWakeWord(false); onError(); };
-    const run = (state: string) => {
+    const run = (state: string | null | undefined) => {
       try { if (state === 'active') Spotter.start(); else Spotter.stop(); } catch { fail(); }
     };
     let quietUntil = 0; // one keyword per 3 s: the screen change that pauses listening takes a moment
     const heard = (fire: () => void) => { if (Date.now() >= quietUntil) { quietUntil = Date.now() + 3000; fire(); } };
-    run(AppState.currentState);
+    run(AppState.currentState ?? 'active');
     const subs = [
       AppState.addEventListener('change', run),
       Spotter.addListener('onKeyword', ({ keyword }) => heard(keyword.startsWith('sos:') ? onSos : onWake)),
