@@ -5,7 +5,7 @@ import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { useSelector } from 'react-redux';
 import { toast } from 'sonner-native';
-import { ChevronLeft, ClipboardList, Inbox as InboxIcon, Navigation, Radio, ShieldCheck, Zap } from 'lucide-react-native';
+import { ChevronLeft, ClipboardList, Inbox as InboxIcon, Navigation, Radio, ShieldCheck, Zap, Siren } from 'lucide-react-native';
 import Animated, { FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
 
 import { AppScreen } from '@/components/AppScreen';
@@ -407,13 +407,17 @@ export default function ResponderInbox() {
             <Animated.View key={e._id} entering={FadeInDown.duration(200)} exiting={FadeOut.duration(150)} layout={LinearTransition.duration(200)}>
               <Card style={styles.incident}>
                 <View style={styles.incidentTop}>
-                  <Text style={[styles.incidentType, e.priority === 1 && { color: colors.destructive }]}>{TYPE_LABEL[e.type] ?? t('Emergency')}</Text>
-                  <Text style={styles.incidentTime}>{timeAgo(e.createdAt)}</Text>
+                  <View style={[styles.incidentIcon, { backgroundColor: e.priority === 1 ? colors.destructive : colors.destructiveSoft }]}>
+                    <Siren size={18} color={e.priority === 1 ? '#fff' : colors.destructive} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.incidentType, e.priority === 1 && { color: colors.destructive }]}>{TYPE_LABEL[e.type] ?? t('Emergency')}</Text>
+                    <Text style={styles.incidentTime}>
+                      {timeAgo(e.createdAt)}{e.needsAedRunner ? ` · ${t('Responder on the way, AED needed')}` : ''}
+                    </Text>
+                  </View>
+                  <Text style={styles.incidentDistance}>{distTo(e.location?.coordinates) ?? '—'}</Text>
                 </View>
-                <Text style={styles.incidentMeta}>
-                  {distTo(e.location?.coordinates) ?? t('Distance unknown')}
-                  {e.needsAedRunner ? ' · Responder on the way, AED needed' : ''}
-                </Text>
                 {/* The app writes known descriptions in English; t() shows them in the responder's language. */}
                 {e.description ? <Text style={styles.incidentDesc} numberOfLines={2}>{t(e.description)}</Text> : null}
                 <Button
@@ -450,9 +454,10 @@ const styles = StyleSheet.create({
   listTitle: { color: colors.foreground, fontSize: 18, fontWeight: '800' },
   listCount: { color: colors.mutedForeground, fontSize: 15, fontVariant: ['tabular-nums'] },
   incident: { padding: 16, gap: 8, borderRadius: radius.lg },
-  incidentTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  incidentTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  incidentIcon: { width: 40, height: 40, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
+  incidentDistance: { color: colors.foreground, fontSize: 18, fontWeight: '800', fontVariant: ['tabular-nums'] },
   incidentType: { color: colors.foreground, fontSize: 17, fontWeight: '700' },
   incidentTime: { color: colors.mutedForeground, fontSize: 13 },
-  incidentMeta: { color: colors.foreground, fontSize: 14 },
   incidentDesc: { color: colors.mutedForeground, fontSize: 14, lineHeight: 20 },
 });

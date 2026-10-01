@@ -1,5 +1,6 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { LayoutAnimation, Pressable, StyleSheet, Text, View, type PressableProps, type ViewProps } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { ChevronDown, ChevronRight } from 'lucide-react-native';
 import { colors, radius, shadows } from '@/lib/theme';
@@ -10,6 +11,8 @@ import { colors, radius, shadows } from '@/lib/theme';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const SPRING = { damping: 18, stiffness: 260, mass: 0.6 };
+// A light tick on touch, so presses feel confirmed without looking. Web and old phones just skip it.
+export const tick = () => { Haptics.selectionAsync().catch(() => {}); };
 
 /** A Pressable that dips slightly while held and springs back: the app's one touch feel. */
 export function Press({ style, children, scaleTo = 0.97, ...props }: PressableProps & { scaleTo?: number; style?: ViewProps['style']; children: ReactNode }) {
@@ -18,7 +21,7 @@ export function Press({ style, children, scaleTo = 0.97, ...props }: PressablePr
   return (
     <AnimatedPressable
       {...props}
-      onPressIn={(e) => { scale.set(withSpring(scaleTo, SPRING)); props.onPressIn?.(e); }}
+      onPressIn={(e) => { tick(); scale.set(withSpring(scaleTo, SPRING)); props.onPressIn?.(e); }}
       onPressOut={(e) => { scale.set(withSpring(1, SPRING)); props.onPressOut?.(e); }}
       style={[style, anim]}
     >
@@ -151,7 +154,7 @@ export function Segmented<T extends string>({
         return (
           <Pressable
             key={o.key}
-            onPress={() => onChange(o.key)}
+            onPress={() => { if (!active) tick(); onChange(o.key); }}
             style={styles.segItem}
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}

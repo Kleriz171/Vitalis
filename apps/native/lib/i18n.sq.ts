@@ -773,6 +773,7 @@ export const ui: Record<string, string> = {
 
   // Medical ID on the lock screen
   'Medical ID': 'ID mjekësore',
+  'Responder on the way, AED needed': 'Një ndihmës po vjen, duhet defibrilatori',
   'After a hard fall, asks if you are OK. No answer in 30 s sends an SOS.': 'Pas një rënieje të fortë, ju pyet nëse jeni mirë. Pa përgjigje për 30 s dërgohet SOS.',
   'Medical ID on lock screen': 'ID mjekësore në ekranin e kyçur',
   'Responders can read your blood type, allergies, medication and emergency contact without unlocking your phone.': 'Ndihmësit mund të lexojnë grupin e gjakut, alergjitë, ilaçet dhe kontaktin e urgjencës pa e zhbllokuar telefonin.',
