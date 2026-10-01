@@ -45,6 +45,11 @@ if (process.env.CLICK) {
   await send('Runtime.evaluate', { expression: `([...document.querySelectorAll('[role=tab],[role=button],[role=link]')].find((e) => e.textContent.trim() === ${text}) ?? [...document.querySelectorAll('div,span')].find((e) => e.textContent.trim() === ${text}))?.click()` });
   await sleep(1500);
 }
+if (process.env.SCROLL) {
+  // Scroll every scrollable area to its end, like a finger would.
+  await send('Runtime.evaluate', { expression: `[...document.querySelectorAll('*')].filter((e) => e.scrollHeight > e.clientHeight + 4 && getComputedStyle(e).overflowY !== 'visible').forEach((e) => { e.scrollTop = e.scrollHeight; })` });
+  await sleep(1200);
+}
 const shot = await send('Page.captureScreenshot', { format: 'png' });
 mkdirSync('.expo/shots', { recursive: true });
 writeFileSync(`.expo/shots/${name}.png`, Buffer.from(shot.result.data, 'base64'));

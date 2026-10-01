@@ -1,5 +1,6 @@
-import { ReactNode } from 'react';
-import { LayoutAnimation, Pressable, StyleSheet, Text, View, type ViewProps } from 'react-native';
+import { ReactNode, useEffect, useState } from 'react';
+import { LayoutAnimation, Pressable, StyleSheet, Text, View, type PressableProps, type ViewProps } from 'react-native';
+import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { ChevronDown, ChevronRight } from 'lucide-react-native';
 import { colors, radius, shadows } from '@/lib/theme';
 
@@ -7,12 +8,31 @@ import { colors, radius, shadows } from '@/lib/theme';
 // title and rows separated by hairlines. Rows carry an icon, a title, one line of summary, and
 // either a chevron (navigates), a right-hand element (switch, value), or open in place.
 
-export function Group({ title, children, style }: { title?: string; children: ReactNode; style?: ViewProps['style'] }) {
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+const SPRING = { damping: 18, stiffness: 260, mass: 0.6 };
+
+/** A Pressable that dips slightly while held and springs back: the app's one touch feel. */
+export function Press({ style, children, scaleTo = 0.97, ...props }: PressableProps & { scaleTo?: number; style?: ViewProps['style']; children: ReactNode }) {
+  const scale = useSharedValue(1);
+  const anim = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   return (
-    <View style={[styles.group, style]}>
+    <AnimatedPressable
+      {...props}
+      onPressIn={(e) => { scale.value = withSpring(scaleTo, SPRING); props.onPressIn?.(e); }}
+      onPressOut={(e) => { scale.value = withSpring(1, SPRING); props.onPressOut?.(e); }}
+      style={[style, anim]}
+    >
+      {children}
+    </AnimatedPressable>
+  );
+}
+
+export function Group({ title, children, style, delay = 60 }: { title?: string; children: ReactNode; style?: ViewProps['style']; delay?: number }) {
+  return (
+    <Animated.View entering={FadeInDown.delay(delay).springify().damping(18).stiffness(140)} style={[styles.group, style]}>
       {title ? <Text style={styles.groupTitle}>{title}</Text> : null}
       {children}
-    </View>
+    </Animated.View>
   );
 }
 
@@ -45,17 +65,29 @@ export function Row({ icon, tint, title, summary, right, onPress, first, childre
     </>
   );
   return onPress ? (
-    <Pressable
+    <Press
       onPress={onPress}
-      style={({ pressed }) => [styles.row, !first && styles.divider, pressed && styles.pressed]}
+      scaleTo={0.98}
+      style={[styles.row, !first && styles.divider]}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? title}
       accessibilityHint={summary}
     >
       {body}
-    </Pressable>
+    </Press>
   ) : (
     <View style={[styles.row, !first && styles.divider]}>{body}</View>
+  );
+}
+
+function Chevron({ open }: { open: boolean }) {
+  const turn = useSharedValue(open ? 1 : 0);
+  useEffect(() => { turn.value = withSpring(open ? 1 : 0, SPRING); }, [open, turn]);
+  const anim = useAnimatedStyle(() => ({ transform: [{ rotate: `${turn.value * 180}deg` }] }));
+  return (
+    <Animated.View style={anim}>
+      <ChevronDown size={18} color={colors.mutedForeground} />
+    </Animated.View>
   );
 }
 
@@ -72,9 +104,10 @@ export function Disclosure({
 }: Omit<RowProps, 'right' | 'onPress'> & { open: boolean; onToggle: () => void }) {
   return (
     <View style={!first ? styles.divider : undefined}>
-      <Pressable
+      <Press
+        scaleTo={0.98}
         onPress={() => {
-          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+          LayoutAnimation.configureNext(LayoutAnimation.create(260, 'easeInEaseOut', 'opacity'));
           onToggle();
         }}
         style={styles.row}
@@ -87,10 +120,8 @@ export function Disclosure({
           <Text style={styles.title}>{title}</Text>
           {!open && summary ? <Text style={styles.summary} numberOfLines={1}>{summary}</Text> : null}
         </View>
-        <View style={open ? styles.chevronOpen : undefined}>
-          <ChevronDown size={18} color={colors.mutedForeground} />
-        </View>
-      </Pressable>
+        <Chevron open={open} />
+      </Press>
       {open ? <View style={styles.open}>{children}</View> : null}
     </View>
   );
@@ -106,15 +137,22 @@ export function Segmented<T extends string>({
   value: T;
   onChange: (key: T) => void;
 }) {
+  const [width, setWidth] = useState(0);
+  const index = Math.max(0, options.findIndex((o) => o.key === value));
+  const slot = width ? (width - 6) / options.length : 0;
+  const x = useSharedValue(0);
+  useEffect(() => { x.value = withSpring(index * slot, SPRING); }, [index, slot, x]);
+  const pill = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
   return (
-    <View style={styles.segTrack} accessibilityRole="tablist">
+    <View style={styles.segTrack} accessibilityRole="tablist" onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+      {slot ? <Animated.View pointerEvents="none" style={[styles.segPill, { width: slot }, pill]} /> : null}
       {options.map((o) => {
         const active = o.key === value;
         return (
           <Pressable
             key={o.key}
             onPress={() => onChange(o.key)}
-            style={[styles.segItem, active && styles.segItemActive]}
+            style={styles.segItem}
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
           >
@@ -129,15 +167,16 @@ export function Segmented<T extends string>({
 /** Round icon button for a row's action (call, route). Always give it an accessibility label. */
 export function IconButton({ icon, onPress, color = colors.primary, label }: { icon: ReactNode; onPress: () => void; color?: string; label: string }) {
   return (
-    <Pressable
+    <Press
       onPress={onPress}
-      style={({ pressed }) => [styles.iconButton, { backgroundColor: color }, pressed && styles.pressed]}
+      scaleTo={0.9}
+      style={[styles.iconButton, { backgroundColor: color }]}
       accessibilityRole="button"
       accessibilityLabel={label}
       hitSlop={6}
     >
       {icon}
-    </Pressable>
+    </Press>
   );
 }
 
@@ -185,7 +224,6 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
   },
-  pressed: { opacity: 0.6 },
   icon: {
     width: 36,
     height: 36,
@@ -197,7 +235,6 @@ const styles = StyleSheet.create({
   text: { flex: 1, gap: 2 },
   title: { color: colors.foreground, fontSize: 15, fontWeight: '700' },
   summary: { color: colors.mutedForeground, fontSize: 13, lineHeight: 18 },
-  chevronOpen: { transform: [{ rotate: '180deg' }] },
   open: { gap: 12, paddingBottom: 16 },
   iconButton: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   segTrack: {
@@ -213,7 +250,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
     alignItems: 'center',
   },
-  segItemActive: { backgroundColor: colors.card, ...shadows.card },
+  segPill: { position: 'absolute', top: 3, bottom: 3, left: 3, borderRadius: radius.full, backgroundColor: colors.card, ...shadows.card },
   segLabel: { color: colors.mutedForeground, fontSize: 13, fontWeight: '700' },
   segLabelActive: { color: colors.foreground },
   stats: { flexDirection: 'row', paddingVertical: 12, paddingHorizontal: 8 },

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSelector } from 'react-redux';
 import * as Haptics from 'expo-haptics';
@@ -8,7 +8,7 @@ import { Bot, GraduationCap, Heart, Phone, QrCode, Siren, Stethoscope, Timer, Us
 import { api } from '@/lib/api';
 import { RootState } from '@/lib/store';
 import { AppScreen } from '@/components/AppScreen';
-import { Group, Row } from '@/components/ui/List';
+import { Group, Press, Row } from '@/components/ui/List';
 import { colors, radius } from '@/lib/theme';
 import { t } from '@/lib/i18n';
 
@@ -53,9 +53,10 @@ export default function Home() {
     >
       {/* SOS stays the biggest, reddest thing in the app. */}
       <Animated.View style={sosStyle}>
-        <Pressable
+        <Press
           onPress={openSos}
-          style={({ pressed }) => [styles.sosButton, pressed && { opacity: 0.92 }]}
+          scaleTo={0.96}
+          style={styles.sosButton}
           accessibilityRole="button"
           accessibilityLabel={liveSos ? t('Open your live SOS') : t('Start SOS')}
           accessibilityHint={liveSos ? undefined : t('Starts a 3 second countdown you can cancel')}
@@ -67,7 +68,7 @@ export default function Home() {
               ? liveSos.status === 'pending' ? t('Alerting responders. Tap to follow.') : t('A responder is on the way. Tap to follow.')
               : t('Alerts certified responders near you. 3 s to cancel.')}
           </Text>
-        </Pressable>
+        </Press>
       </Animated.View>
 
       <Group>

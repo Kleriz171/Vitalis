@@ -61,8 +61,8 @@ export function AppScreen({
   const palette = toneMap[tone];
 
   const body = (
-    <View style={[styles.body, bodyStyle]}>
-      <Animated.View entering={FadeInDown.duration(320)} style={[styles.hero, compact && styles.heroCompact, { backgroundColor: palette.background }]}>
+    <View style={[styles.body, !scroll && styles.fill, bodyStyle]}>
+      <Animated.View entering={FadeInDown.springify().damping(18).stiffness(160)} style={[styles.hero, compact && styles.heroCompact, { backgroundColor: palette.background }]}>
         <View style={[styles.heroTop, compact && styles.heroTopCompact]}>
           <View style={styles.heroTitleWrap}>
             {eyebrow && !compact ? <Text style={[styles.eyebrow, { color: 'rgba(255,255,255,0.74)' }]}>{eyebrow}</Text> : null}
@@ -82,13 +82,15 @@ export function AppScreen({
         </View>
         {headerContent ? <View style={[styles.heroContent, { backgroundColor: palette.chip }]}>{headerContent}</View> : null}
       </Animated.View>
-      <Animated.View entering={FadeIn.delay(80).duration(260)} style={styles.content}>{children}</Animated.View>
+      <Animated.View entering={FadeIn.delay(80).duration(260)} style={[styles.content, !scroll && styles.fill]}>{children}</Animated.View>
     </View>
   );
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <StatusBar style="light" />
+      {/* Soft wash of the screen's colour behind the header, so pages never feel bare. */}
+      <View pointerEvents="none" style={[styles.wash, { backgroundColor: tone === 'dark' ? colors.accent : palette.soft }]} />
       {scroll ? (
         <ScrollView
           contentContainerStyle={[styles.scroll, contentContainerStyle]}
@@ -110,6 +112,17 @@ export function AppScreen({
 }
 
 const styles = StyleSheet.create({
+  fill: { flex: 1 },
+  wash: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 280,
+    borderBottomLeftRadius: 48,
+    borderBottomRightRadius: 48,
+    opacity: 0.7,
+  },
   safe: {
     flex: 1,
     backgroundColor: colors.background,
