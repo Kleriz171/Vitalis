@@ -39,7 +39,7 @@ async function main() {
   const signup = (await call('POST', '/auth/phone/verify', undefined, { phone, code })).data.signupToken;
   const me = (await call('POST', '/auth/phone/register', undefined, {
     signupToken: signup, firstName: 'Sms', lastName: 'Test', dateOfBirth: '1990-01-01',
-    emergencyContact: { name: 'C', phone: '+355691112233' }, bloodType: 'unknown', allergies: [], medications: [], conditions: [],
+    emergencyContact: { name: 'C', phone: '+355691112233' }, bloodType: 'unknown', allergies: [], medications: [], conditions: [], consent: true,
   })).data.accessToken as string;
 
   const params = { From: phone, Body: 'VITALIS SOS 41.3275,19.8187 C' };

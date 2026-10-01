@@ -1,6 +1,9 @@
 import { Schema, model } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
+// Bump when the privacy policy changes in substance (landing /privacy).
+export const PRIVACY_VERSION = '2026-10-01';
+
 export const ROLES = ['citizen','blood_donor','doctor','nurse','student_responder','dispatcher','admin'] as const;
 export type Role = typeof ROLES[number];
 export const BLOOD_TYPES = ['A+','A-','B+','B-','AB+','AB-','O+','O-'] as const;
@@ -40,6 +43,9 @@ const UserSchema = new Schema({
   // App language, reported with the push token; server-written text (push) follows it.
   language: { type: String, enum: ['sq', 'en'], default: 'sq' },
   refreshTokenHash: { type: String, select: false },
+  // Consent to the privacy policy (health data), given at sign-up.
+  consentAt: Date,
+  consentVersion: String,
 }, { timestamps: true });
 
 UserSchema.index({ location: '2dsphere' });

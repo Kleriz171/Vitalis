@@ -89,6 +89,7 @@ export const App = () => (
         <Logo />
         <p className="max-w-[52ch]">
           Vitalis does not replace emergency services. In an emergency, also call <a className="font-semibold text-ink underline underline-offset-2" href="tel:127">127</a> or <a className="font-semibold text-ink underline underline-offset-2" href="tel:112">112</a>.
+          {' '}<a className="underline underline-offset-2" href="/privacy">Privacy</a>
         </p>
       </div>
     </footer>

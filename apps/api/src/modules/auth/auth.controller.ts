@@ -66,6 +66,8 @@ export const phoneRegisterSchema = z.object({
   allergies: z.array(z.object({ allergen: z.string().trim().min(1).max(80), severity: z.enum(['mild', 'moderate', 'severe']) }).strict()).max(50),
   medications: z.array(z.object({ name: z.string().trim().min(1).max(80), dosage: z.string().trim().max(80).optional() }).strict()).max(50),
   conditions: z.array(z.string().trim().min(1).max(120)).max(50),
+  // Explicit consent to processing health data (privacy policy on the landing site, /privacy).
+  consent: z.literal(true, { errorMap: () => ({ message: 'Please accept the privacy policy to continue.' }) }),
 }).strict();
 
 export const loginSchema = z.object({ email: z.string().email(), password: z.string() });

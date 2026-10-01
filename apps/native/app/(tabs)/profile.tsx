@@ -1,8 +1,11 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   Image,
+  Linking,
   Pressable,
   RefreshControl,
+  Share,
   Switch,
   ScrollView,
   StyleSheet,
@@ -14,7 +17,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useRouter } from 'expo-router';
 import { AlertTriangle, Award, Calendar, Heart, LogOut, Pill, QrCode, ShieldCheck, Syringe, UserCircle, X } from 'lucide-react-native';
 import { toast } from 'sonner-native';
-import { api } from '@/lib/api';
+import { api, PRIVACY_URL } from '@/lib/api';
 import { signOut } from '@/lib/session';
 import { AppScreen } from '@/components/AppScreen';
 import { Badge } from '@/components/ui/Badge';
@@ -83,7 +86,7 @@ type BioPassport = {
   qr: string;
 };
 
-type SaveTarget = 'overview' | 'contact' | 'medication' | 'allergy' | 'vaccination' | 'appointment' | 'condition' | 'disability' | null;
+type SaveTarget = 'overview' | 'contact' | 'medication' | 'allergy' | 'vaccination' | 'appointment' | 'condition' | 'disability' | 'export' | 'delete' | null;
 
 const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 // Values must match GENDERS in apps/api/src/models/User.ts.
@@ -168,6 +171,42 @@ export default function Profile() {
     }
     setWakeWord(on);
   };
+
+  // ponytail: shares the JSON as text; a file (expo-file-system + expo-sharing) if exports get large.
+  const exportData = async () => {
+    setSaving('export');
+    try {
+      const { data } = await api.get('/account/export');
+      await Share.share({ title: 'vitalis-data.json', message: JSON.stringify(data, null, 2) });
+    } catch (e) {
+      toast.error(apiError(e, 'Could not export your data. Try again.'));
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  // Two steps, like the system: an account and its Bio Passport cannot be brought back.
+  const confirmDelete = () =>
+    Alert.alert(t('Delete your account?'), t('Your Bio Passport, health records, certificates and check-ins are erased for good. This cannot be undone.'), [
+      { text: t('Cancel'), style: 'cancel' },
+      {
+        text: t('Delete'),
+        style: 'destructive',
+        onPress: async () => {
+          setSaving('delete');
+          try {
+            await api.delete('/account', { data: { confirm: 'DELETE' } });
+            await signOut();
+            router.replace('/');
+            toast.success(t('Your account was deleted.'));
+          } catch (e) {
+            toast.error(apiError(e, 'Could not delete your account. Try again.'));
+          } finally {
+            setSaving(null);
+          }
+        },
+      },
+    ]);
   const [contactName, setContactName] = useState('');
   const [contactPhoneRaw, setContactPhoneRaw] = useState('');
 
@@ -739,6 +778,15 @@ export default function Profile() {
               </Pressable>
             ))}
           </View>
+        </Card>
+
+        {/* Your data: a copy of everything, or erase it (account.routes.ts on the API). */}
+        <Card style={styles.editorCard}>
+          <Text style={styles.sectionTitle}>{t('Your data')}</Text>
+          <Text style={styles.sectionBody}>{t('Get a copy of everything Vitalis stores about you, or delete your account.')}</Text>
+          <Button variant="outline" onPress={() => void exportData()} loading={saving === 'export'}>{t('Download my data')}</Button>
+          <Button variant="ghost" onPress={() => void Linking.openURL(PRIVACY_URL)}>{t('Privacy policy')}</Button>
+          <Button variant="destructive" onPress={confirmDelete} loading={saving === 'delete'}>{t('Delete my account')}</Button>
         </Card>
 
         {loading ? (

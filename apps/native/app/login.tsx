@@ -1,5 +1,5 @@
 import { ReactNode, useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInputProps, View } from 'react-native';
+import { KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInputProps, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
@@ -11,7 +11,7 @@ import { toast } from 'sonner-native';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
-import { api } from '@/lib/api';
+import { api, PRIVACY_URL } from '@/lib/api';
 import { setSession } from '@/lib/store';
 import { colors, radius, shadows } from '@/lib/theme';
 import { apiError, t } from '@/lib/i18n';
@@ -41,6 +41,7 @@ export default function SignIn() {
   const router = useRouter();
   const dispatch = useDispatch();
   const [step, setStep] = useState<Step>('phone');
+  const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const [phoneRaw, setPhoneRaw] = useState('');
@@ -114,6 +115,7 @@ export default function SignIn() {
       allergies: hasAllergies ? allergies : [],
       medications: hasMeds ? meds : [],
       conditions: hasConditions ? conditions : [],
+      consent,
     });
     signedIn(data);
   });
@@ -137,7 +139,7 @@ export default function SignIn() {
   const aboutDone = firstName.trim() && lastName.trim() && isoDob(day, month, year)
     && contactName.trim() && isE164(contactPhone) && contactPhone !== phone;
   const answered = (has: boolean | null, n: number) => has === false || (has === true && n > 0);
-  const passportDone = bloodType !== null
+  const passportDone = consent && bloodType !== null
     && answered(hasAllergies, allergies.length) && answered(hasMeds, meds.length) && answered(hasConditions, conditions.length);
 
   const screens: Record<Step, { title: string; subtitle: string; body: ReactNode; cta: ReactNode }> = {
@@ -256,6 +258,24 @@ export default function SignIn() {
               onAdd={(name) => setConditions([...conditions, name])}
             />
           </YesNo>
+
+          {/* Health data needs explicit consent (Albanian data-protection law, GDPR-style). */}
+          <Pressable
+            style={styles.consentRow}
+            onPress={() => setConsent(c => !c)}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: consent }}
+          >
+            <View style={[styles.consentBox, consent && styles.consentBoxOn]}>
+              {consent ? <Check size={16} color="#fff" /> : null}
+            </View>
+            <Text style={styles.consentText}>
+              {t('I agree that Vitalis stores my health information and shows it to responders and dispatchers when I send an SOS.')}{' '}
+              <Text style={styles.consentLink} onPress={() => void Linking.openURL(PRIVACY_URL)} accessibilityRole="link">
+                {t('Privacy policy')}
+              </Text>
+            </Text>
+          </Pressable>
         </>
       ),
       cta: <Button size="lg" style={styles.primaryButton} onPress={register} loading={busy} disabled={!passportDone}>{t("Create account")}</Button>,
@@ -546,6 +566,14 @@ const styles = StyleSheet.create({
     gap: 16,
     ...shadows.floating,
   },
+  consentRow: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', paddingVertical: 8 },
+  consentBox: {
+    width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: colors.border,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: colors.card, marginTop: 1,
+  },
+  consentBoxOn: { backgroundColor: colors.primary, borderColor: colors.primary },
+  consentText: { flex: 1, color: colors.foreground, fontSize: 14, lineHeight: 20 },
+  consentLink: { color: colors.primaryStrong, fontWeight: '700', textDecorationLine: 'underline' },
   modeSwitch: {
     flexDirection: 'row',
     gap: 8,

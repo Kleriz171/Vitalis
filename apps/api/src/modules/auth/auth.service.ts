@@ -1,4 +1,4 @@
-import { User, ageOf } from '../../models/User';
+import { User, ageOf, PRIVACY_VERSION } from '../../models/User';
 import { signAccess, signRefresh, verifyRefresh } from '../../utils/jwt';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -234,6 +234,8 @@ export const authService = {
         dateOfBirth: new Date(`${input.dateOfBirth}T00:00:00.000Z`),
         emergencyContact: { name: input.emergencyContact.name.trim(), phone: input.emergencyContact.phone },
         bloodType: input.bloodType === 'unknown' ? undefined : input.bloodType,
+        consentAt: new Date(),
+        consentVersion: PRIVACY_VERSION,
       });
     } catch (e: any) {
       if (e?.code === 11000) throw fail(409, 'This number already has an account. Sign in instead.');

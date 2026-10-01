@@ -209,13 +209,14 @@ async function main() {
   assert.equal((await call('GET', '/biopassport/me', verified.data.signupToken)).status, 401);
   const profile = {
     signupToken: verified.data.signupToken, firstName: 'P', lastName: 'Q', dateOfBirth: '1990-01-01',
-    emergencyContact: { name: 'R', phone: '+355691111111' }, bloodType: 'unknown', allergies: [], medications: [], conditions: [],
+    emergencyContact: { name: 'R', phone: '+355691111111' }, bloodType: 'unknown', allergies: [], medications: [], conditions: [], consent: true,
   };
   assert.equal((await call('POST', '/auth/phone/register', undefined, { ...profile, role: 'admin' })).status, 400);
+  assert.equal((await call('POST', '/auth/phone/register', undefined, { ...profile, consent: undefined })).status, 400, 'consent required');
   const phoneUser = await call('POST', '/auth/phone/register', undefined, profile);
   assert.equal(phoneUser.status, 200);
   assert.equal(phoneUser.data.user.role, 'citizen');
-  ok('phone sign-up: single-use code, resend limit, token scoping, no role injection');
+  ok('phone sign-up: single-use code, resend limit, token scoping, no role injection, consent required');
 
   const other = `+35568${String(stamp).slice(-7)}`;
   const fresh = await call('POST', '/auth/phone/start', undefined, { phone: other });

@@ -2,6 +2,7 @@ import { Server, Socket } from 'socket.io';
 import http from 'http';
 import { env } from '../config/env';
 import { verifyAccess } from '../utils/jwt';
+import { isRevoked } from '../middleware/auth';
 import { logger } from '../config/logger';
 import { Emergency } from '../models/Emergency';
 import { registerWebRTC } from './webrtc';
@@ -51,6 +52,7 @@ export const initSocket = (server: http.Server) => {
       const token = socket.handshake.auth?.token;
       if (!token) return next(new Error('no token'));
       const decoded = verifyAccess(token);
+      if (isRevoked(decoded.sub)) return next(new Error('auth failed'));
       (socket.data as any).user = { id: decoded.sub, role: decoded.role };
       (socket.data as any).responding = new Set<string>();
       next();

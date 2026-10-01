@@ -147,3 +147,7 @@ api.interceptors.response.use(
     }
   }
 );
+
+// Public website (apps/landing). The privacy policy lives there so it can change without an app release.
+export const WEB_URL = (process.env.EXPO_PUBLIC_WEB_URL ?? 'http://localhost:5175').replace(/\/$/, '');
+export const PRIVACY_URL = `${WEB_URL}/privacy`;

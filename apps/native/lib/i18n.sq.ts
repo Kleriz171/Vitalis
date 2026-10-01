@@ -730,6 +730,20 @@ export const ui: Record<string, string> = {
   'Fall detection': 'Zbulimi i rënies',
   'While Vitalis is open, a hard fall followed by no movement asks if you are OK. No answer in 30 seconds sends an SOS.': 'Kur Vitalis është i hapur, një rënie e fortë e ndjekur nga palëvizshmëri ju pyet nëse jeni mirë. Pa përgjigje për 30 sekonda dërgohet një SOS.',
 
+  // Privacy: consent at sign-up, export and delete on Profile
+  'I agree that Vitalis stores my health information and shows it to responders and dispatchers when I send an SOS.': 'Pranoj që Vitalis të ruajë të dhënat e mia shëndetësore dhe t’ua tregojë ndihmësve dhe dispeçerëve kur dërgoj një SOS.',
+  'Privacy policy': 'Politika e privatësisë',
+  'Your data': 'Të dhënat tuaja',
+  'Get a copy of everything Vitalis stores about you, or delete your account.': 'Merrni një kopje të gjithçkaje që Vitalis ruan për ju, ose fshini llogarinë tuaj.',
+  'Download my data': 'Shkarko të dhënat e mia',
+  'Delete my account': 'Fshi llogarinë time',
+  'Delete your account?': 'Ta fshini llogarinë?',
+  'Your Bio Passport, health records, certificates and check-ins are erased for good. This cannot be undone.': 'Bio Pasaporta, të dhënat shëndetësore, certifikatat dhe paraqitjet fshihen përgjithmonë. Kjo nuk mund të kthehet.',
+  'Delete': 'Fshi',
+  'Your account was deleted.': 'Llogaria juaj u fshi.',
+  'Could not export your data. Try again.': 'Të dhënat nuk u eksportuan. Provoni sërish.',
+  'Could not delete your account. Try again.': 'Llogaria nuk u fshi. Provoni sërish.',
+
   // Voice assistant
   'Voice input is not available right now.': 'Hyrja me zë nuk është e disponueshme tani.',
   'Allow the microphone to talk to Vitalis.': 'Lejoni mikrofonin për të folur me Vitalis.',
@@ -753,6 +767,9 @@ export const ui: Record<string, string> = {
 
 // Messages the API sends (error texts, emergency number names). Matched at runtime via t().
 export const api: Record<string, string> = {
+  'Finish or cancel your active SOS first.': 'Përfundoni ose anuloni fillimisht SOS-in aktiv.',
+  'Staff accounts are removed by an administrator.': 'Llogaritë e stafit i fshin një administrator.',
+  'Please accept the privacy policy to continue.': 'Pranoni politikën e privatësisë për të vazhduar.',
   'Ambulance': 'Ambulanca',
   'European emergency number': 'Numri evropian i urgjencës',
   'Police': 'Policia',

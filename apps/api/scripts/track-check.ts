@@ -34,7 +34,7 @@ async function main() {
   const signup = (await call('POST', '/auth/phone/verify', undefined, { phone, code })).data.signupToken;
   const me = (await call('POST', '/auth/phone/register', undefined, {
     signupToken: signup, firstName: 'Drita', lastName: 'Track', dateOfBirth: '1960-05-01',
-    emergencyContact: { name: 'Son', phone: '+355691112244' }, bloodType: 'unknown', allergies: [], medications: [], conditions: [],
+    emergencyContact: { name: 'Son', phone: '+355691112244' }, bloodType: 'unknown', allergies: [], medications: [], conditions: [], consent: true,
   })).data.accessToken as string;
   const doctor = (await call('POST', '/auth/login', undefined, { email: 'doctor@vitalis.com', password: 'Doctor1!' })).data.accessToken as string;
   await call('PATCH', '/biopassport/me', doctor, { available: true, location: { type: 'Point', coordinates: [19.84, 41.33] } });
