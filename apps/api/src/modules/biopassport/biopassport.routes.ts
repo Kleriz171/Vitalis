@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { authRequired, AuthReq } from '../../middleware/auth';
 import { validate } from '../../middleware/validate';
 import { User, ageOf } from '../../models/User';
-import { generateQR } from '../../utils/qr';
+import { generateTextQR } from '../../utils/qr';
 import { Allergy, Medication, Vaccination, Condition, Disability } from '../../models/HealthRecord';
 import { hasResponderCertification } from '../../models/Training';
 
@@ -23,16 +23,22 @@ r.get('/me', async (req: AuthReq, res, next) => {
     if (!u) return res.status(404).json({ error: 'Not found' });
     // The QR is readable by any camera, so it carries only what a first responder
     // needs in the first minutes. The full record stays behind auth.
-    const qr = await generateQR({
-      v: 1,
-      name: u.name,
-      bloodType: u.bloodType,
-      age: ageOf(u),
-      allergies: allergies.map(a => `${a.allergen} (${a.severity})`),
-      conditions: [...new Set([...conditions.map(c => c.name), ...(u.illnesses ?? [])])],
-      medications: medications.filter(m => m.isActive).map(m => [m.name, m.dosage].filter(Boolean).join(' ')),
-      contact: u.emergencyContact,
-    });
+    // Plain text, not JSON: any phone camera shows it as readable lines, offline, and the code
+    // stays sparse enough to scan quickly. Labels follow the user's app language.
+    const sq = u.language !== 'en';
+    const L = sq
+      ? { blood: 'Gjaku', allergy: 'Alergji', meds: 'Ilaçe', cond: 'Sëmundje', ice: 'Kontakt', sev: { mild: 'e lehtë', moderate: 'mesatare', severe: 'e rëndë' } as Record<string, string> }
+      : { blood: 'Blood', allergy: 'Allergies', meds: 'Meds', cond: 'Conditions', ice: 'ICE', sev: { mild: 'mild', moderate: 'moderate', severe: 'severe' } as Record<string, string> };
+    const age = ageOf(u);
+    const lines = [
+      `VITALIS · ${u.name}${age != null ? `, ${age}` : ''}`,
+      `${L.blood}: ${u.bloodType ?? '?'}`,
+      allergies.length ? `${L.allergy}: ${allergies.map(a => `${a.allergen} (${L.sev[a.severity] ?? a.severity})`).join(', ')}` : null,
+      medications.some(m => m.isActive) ? `${L.meds}: ${medications.filter(m => m.isActive).map(m => [m.name, m.dosage].filter(Boolean).join(' ')).join(', ')}` : null,
+      conditions.length || u.illnesses?.length ? `${L.cond}: ${[...new Set([...conditions.map(c => c.name), ...(u.illnesses ?? [])])].join(', ')}` : null,
+      u.emergencyContact?.phone ? `${L.ice}: ${u.emergencyContact.name ?? ''} ${u.emergencyContact.phone}`.replace(/\s+/g, ' ') : null,
+    ].filter(Boolean);
+    const qr = await generateTextQR(lines.join('\n'));
     res.json({
       profile: {
         id: String(u._id),
