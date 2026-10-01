@@ -459,7 +459,11 @@ export default function Profile() {
           <Text style={styles.passportMeta}>
             {passport?.profile.bloodType ?? profile?.user.bloodType ?? t('Unknown blood type')} · {genderLabels[passport?.profile.gender ?? profile?.user.gender ?? ''] ?? t('Profile pending')}
           </Text>
-          {passport?.qr ? <Image source={{ uri: passport.qr }} style={styles.qrImage} /> : null}
+          {passport?.qr ? (
+            <View style={styles.qrTile}>
+              <Image source={{ uri: passport.qr }} style={styles.qrImage} accessibilityLabel={t('Bio Passport')} />
+            </View>
+          ) : null}
           <Text style={styles.passportHint}>{t('Show this during triage, intake, or when confirming matched supply requests.')}</Text>
         </Animated.View>
 
@@ -936,14 +940,24 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.82)',
     fontSize: 13,
   },
-  qrImage: {
-    width: 138,
-    height: 138,
-    borderRadius: radius.lg,
+  // White tile = the quiet zone scanners need; the code itself keeps square corners.
+  qrTile: {
     alignSelf: 'center',
-    marginVertical: 8,
+    marginVertical: 10,
+    padding: 12,
+    borderRadius: radius.xl,
     backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
+  qrImage: {
+    width: 168,
+    height: 168,
+  },
+
   passportHint: {
     color: 'rgba(255,255,255,0.85)',
     fontSize: 12,
