@@ -730,6 +730,15 @@ export const ui: Record<string, string> = {
   'Fall detection': 'Zbulimi i rënies',
   'While Vitalis is open, a hard fall followed by no movement asks if you are OK. No answer in 30 seconds sends an SOS.': 'Kur Vitalis është i hapur, një rënie e fortë e ndjekur nga palëvizshmëri ju pyet nëse jeni mirë. Pa përgjigje për 30 sekonda dërgohet një SOS.',
 
+  // Medical ID on the lock screen
+  'Medical ID': 'ID mjekësore',
+  'After a hard fall, asks if you are OK. No answer in 30 s sends an SOS.': 'Pas një rënieje të fortë, ju pyet nëse jeni mirë. Pa përgjigje për 30 s dërgohet SOS.',
+  'Medical ID on lock screen': 'ID mjekësore në ekranin e kyçur',
+  'Responders can read your blood type, allergies, medication and emergency contact without unlocking your phone.': 'Ndihmësit mund të lexojnë grupin e gjakut, alergjitë, ilaçet dhe kontaktin e urgjencës pa e zhbllokuar telefonin.',
+  'Allow notifications to show your Medical ID.': 'Lejoni njoftimet për të shfaqur ID-në mjekësore.',
+  'On iPhone, add it in the Health app: Medical ID, Show When Locked.': 'Në iPhone, shtojeni te aplikacioni Health: Medical ID, Show When Locked.',
+  'Open Health': 'Hap Health',
+
   // Grouped lists on Home, Supply, Doctors, Training, Community
   'Services': 'Shërbime',
   'One QR code with what a paramedic needs.': 'Një kod QR me atë që i duhet paramedikut.',

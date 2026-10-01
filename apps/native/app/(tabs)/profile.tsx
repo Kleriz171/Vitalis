@@ -15,7 +15,7 @@ import {
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useDispatch, useSelector } from 'react-redux';
 import { useRouter } from 'expo-router';
-import { Accessibility, Activity, AlertTriangle, Award, Calendar, FileText, LogOut, Phone, Pill, Syringe, User, UserCircle, X } from 'lucide-react-native';
+import { Accessibility, Activity, AlertTriangle, Heart, Award, Calendar, FileText, LogOut, Phone, Pill, Syringe, User, UserCircle, X } from 'lucide-react-native';
 import { toast } from 'sonner-native';
 import { api, PRIVACY_URL } from '@/lib/api';
 import { signOut } from '@/lib/session';
@@ -32,6 +32,7 @@ import { apiError, lang, locale, setLanguage, t } from '@/lib/i18n';
 import { formatPhone, isE164, toE164 } from '@/lib/geo';
 import { setFallDetection, useFallDetectionEnabled } from '@/lib/fallDetection';
 import { setWakeWord, useWakeWordEnabled, wakeWordSupported } from '@/lib/wakeWord';
+import { medicalIdSupported, setMedicalId, showMedicalId, useMedicalIdEnabled, type MedicalFacts } from '@/lib/medicalId';
 import { speech } from '@/lib/speech';
 
 type Severity = 'mild' | 'moderate' | 'severe';
@@ -162,6 +163,17 @@ export default function Profile() {
   const [disabilityNotes, setDisabilityNotes] = useState('');
   const fallOn = useFallDetectionEnabled();
   const wakeOn = useWakeWordEnabled();
+  const medicalIdOn = useMedicalIdEnabled();
+  const medicalFacts = useMemo<MedicalFacts | null>(() => profile ? {
+    name: profile.user.name,
+    bloodType: profile.user.bloodType,
+    allergies: profile.allergies.map((a) => `${a.allergen} (${severityLabels[a.severity] ?? a.severity})`),
+    medications: profile.medications.filter((m) => m.isActive !== false).map((m) => m.name),
+    conditions: profile.conditions.map((c) => c.name),
+    contact: profile.user.emergencyContact,
+  } : null, [profile]);
+  // Keep the lock-screen card in step with the Bio Passport.
+  useEffect(() => { if (medicalFacts && medicalIdOn) void showMedicalId(medicalFacts); }, [medicalFacts, medicalIdOn]);
   const toggleWakeWord = async (on: boolean) => {
     if (on && !(await speech?.requestPermissionsAsync())?.granted) {
       toast.error(t('Allow the microphone to talk to Vitalis.'));
@@ -707,9 +719,7 @@ export default function Profile() {
           <View style={styles.switchRow}>
             <View style={{ flex: 1, gap: 4 }}>
               <Text style={styles.rowTitle}>{t('Fall detection')}</Text>
-              <Text style={styles.rowSummary}>
-                {t('While Vitalis is open, a hard fall followed by no movement asks if you are OK. No answer in 30 seconds sends an SOS.')}
-              </Text>
+              <Text style={styles.rowSummary}>{t('After a hard fall, asks if you are OK. No answer in 30 s sends an SOS.')}</Text>
             </View>
             <Switch
               value={fallOn}
@@ -718,6 +728,32 @@ export default function Profile() {
               accessibilityLabel={t('Fall detection')}
             />
           </View>
+
+          {medicalIdSupported ? (
+            <View style={[styles.switchRow, styles.rowDivider]}>
+              <View style={{ flex: 1, gap: 4 }}>
+                <Text style={styles.rowTitle}>{t('Medical ID on lock screen')}</Text>
+                <Text style={styles.rowSummary}>{t('Responders can read your blood type, allergies, medication and emergency contact without unlocking your phone.')}</Text>
+              </View>
+              <Switch
+                value={medicalIdOn}
+                onValueChange={(on) => void setMedicalId(on, medicalFacts ?? undefined).then((ok) => { if (on && !ok) toast.error(t('Allow notifications to show your Medical ID.')); })}
+                trackColor={{ true: colors.primary, false: colors.border }}
+                accessibilityLabel={t('Medical ID on lock screen')}
+              />
+            </View>
+          ) : (
+            <Section
+              icon={<Heart size={18} color={colors.destructive} />}
+              title={t('Medical ID on lock screen')}
+              summary={t('On iPhone, add it in the Health app: Medical ID, Show When Locked.')}
+              open={open === 'medicalid'}
+              onToggle={() => toggle('medicalid')}
+            >
+              <Text style={styles.sectionBody}>{t('On iPhone, add it in the Health app: Medical ID, Show When Locked.')}</Text>
+              <Button variant="outline" onPress={() => void Linking.openURL('x-apple-health://').catch(() => {})}>{t('Open Health')}</Button>
+            </Section>
+          )}
 
           {wakeWordSupported ? (
             <View style={[styles.switchRow, styles.rowDivider]}>
