@@ -2,7 +2,6 @@ import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react
 import {
   Alert,
   Image,
-  LayoutAnimation,
   Linking,
   Pressable,
   RefreshControl,
@@ -16,7 +15,7 @@ import {
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useDispatch, useSelector } from 'react-redux';
 import { useRouter } from 'expo-router';
-import { Accessibility, Activity, AlertTriangle, Award, Calendar, ChevronDown, FileText, LogOut, Phone, Pill, Syringe, User, UserCircle, X } from 'lucide-react-native';
+import { Accessibility, Activity, AlertTriangle, Award, Calendar, FileText, LogOut, Phone, Pill, Syringe, User, UserCircle, X } from 'lucide-react-native';
 import { toast } from 'sonner-native';
 import { api, PRIVACY_URL } from '@/lib/api';
 import { signOut } from '@/lib/session';
@@ -24,6 +23,7 @@ import { AppScreen } from '@/components/AppScreen';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Disclosure as Section } from '@/components/ui/List';
 import { Input } from '@/components/ui/Input';
 import { RootState, setSession, setTraining } from '@/lib/store';
 import type { TrainingCertification, TrainingEnrollment } from '@/lib/store';
@@ -134,10 +134,7 @@ export default function Profile() {
   const [saving, setSaving] = useState<SaveTarget>(null);
   // One record section open at a time keeps the page short (Bio Passport stays the focus).
   const [open, setOpen] = useState<string | null>(null);
-  const toggle = (id: string) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setOpen((current) => (current === id ? null : id));
-  };
+  const toggle = (id: string) => setOpen((current) => (current === id ? null : id));
   const listSummary = (names: (string | undefined)[]) =>
     names.filter(Boolean).length ? names.filter(Boolean).join(', ') : t('None added');
 
@@ -813,45 +810,6 @@ function EntryCard({
   );
 }
 
-/** A row that opens to show its editor: title, a one-line summary, and a chevron. */
-function Section({
-  icon,
-  title,
-  summary,
-  open,
-  onToggle,
-  children,
-}: {
-  icon: ReactNode;
-  title: string;
-  summary: string;
-  open: boolean;
-  onToggle: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <View style={styles.rowDivider}>
-      <Pressable
-        onPress={onToggle}
-        style={styles.sectionHead}
-        accessibilityRole="button"
-        accessibilityState={{ expanded: open }}
-        accessibilityHint={summary}
-      >
-        <View style={styles.sectionIcon}>{icon}</View>
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text style={styles.rowTitle}>{title}</Text>
-          {!open ? <Text style={styles.rowSummary} numberOfLines={1}>{summary}</Text> : null}
-        </View>
-        <View style={open ? styles.chevronOpen : undefined}>
-          <ChevronDown size={18} color={colors.mutedForeground} />
-        </View>
-      </Pressable>
-      {open ? <View style={styles.sectionOpen}>{children}</View> : null}
-    </View>
-  );
-}
-
 function RecordRow({
   title,
   subtitle,
@@ -899,21 +857,6 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
   },
-  sectionHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 12,
-    minHeight: 56,
-  },
-  sectionIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.background,
-  },
   rowTitle: {
     color: colors.foreground,
     fontSize: 15,
@@ -922,13 +865,6 @@ const styles = StyleSheet.create({
   rowSummary: {
     color: colors.mutedForeground,
     fontSize: 13,
-  },
-  chevronOpen: {
-    transform: [{ rotate: '180deg' }],
-  },
-  sectionOpen: {
-    gap: 12,
-    paddingBottom: 16,
   },
   content: {
     gap: 16,

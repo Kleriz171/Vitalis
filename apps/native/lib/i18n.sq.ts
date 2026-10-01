@@ -730,6 +730,22 @@ export const ui: Record<string, string> = {
   'Fall detection': 'Zbulimi i rënies',
   'While Vitalis is open, a hard fall followed by no movement asks if you are OK. No answer in 30 seconds sends an SOS.': 'Kur Vitalis është i hapur, një rënie e fortë e ndjekur nga palëvizshmëri ju pyet nëse jeni mirë. Pa përgjigje për 30 sekonda dërgohet një SOS.',
 
+  // Grouped lists on Home, Supply, Doctors, Training, Community
+  'Services': 'Shërbime',
+  'One QR code with what a paramedic needs.': 'Një kod QR me atë që i duhet paramedikut.',
+  'Pass the 20-minute CPR course and Vitalis can call you to an arrest next door.': 'Kaloni kursin 20-minutësh të CPR dhe Vitalis mund t’ju thërrasë për një arrest kardiak afër jush.',
+  'Open requests': 'Kërkesa të hapura',
+  'Match found': 'U gjet përputhje',
+  'Position {n}': 'Vendi {n}',
+  '1 reply': '1 përgjigje',
+  '{n} replies': '{n} përgjigje',
+  '1 doctor': '1 mjek',
+  '{n} doctors': '{n} mjekë',
+  'Courses': 'Kurset',
+  'Anonymous posting is available.': 'Mund të postoni edhe anonimisht.',
+  '1 post': '1 postim',
+  '{n} posts': '{n} postime',
+
   // Profile: grouped, collapsible sections
   'Medical record': 'Kartela mjekësore',
   'Settings': 'Cilësimet',

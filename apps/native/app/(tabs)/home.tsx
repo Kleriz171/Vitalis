@@ -4,26 +4,11 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useSelector } from 'react-redux';
 import * as Haptics from 'expo-haptics';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
-import {
-  Bot,
-  ChevronRight,
-  GraduationCap,
-  Heart,
-  LogOut,
-  Phone,
-  QrCode,
-  Siren,
-  Stethoscope,
-  Users,
-  Timer,
-  Zap,
-} from 'lucide-react-native';
+import { Bot, GraduationCap, Heart, Phone, QrCode, Siren, Stethoscope, Timer, Users, Zap } from 'lucide-react-native';
 import { api } from '@/lib/api';
-import { signOut } from '@/lib/session';
 import { RootState } from '@/lib/store';
 import { AppScreen } from '@/components/AppScreen';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
+import { Group, Row } from '@/components/ui/List';
 import { colors, radius } from '@/lib/theme';
 import { t } from '@/lib/i18n';
 
@@ -57,147 +42,95 @@ export default function Home() {
     router.push(liveSos ? '/emergency' : ({ pathname: '/emergency', params: { start: '1' } } as never));
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    router.replace('/');
-  };
-
-  const quickActions = [
-    ...(isResponder
-      ? [{ label: t('Responder inbox'), hint: t('Go on duty, accept calls'), icon: <Siren size={18} color={colors.primaryStrong} />, path: '/responder-inbox' as const }]
-      : []),
-    { label: t('Defibrillators'), hint: t('Nearest public AEDs'), icon: <Zap size={18} color={colors.warning} />, path: '/aeds' as const },
-    { label: t('Doctors'), hint: t('Find a specialist'), icon: <Stethoscope size={18} color={colors.info} />, path: '/(tabs)/doctors' as const },
-    { label: t('Supply'), hint: t('Blood, organs, medicine'), icon: <Heart size={18} color={colors.destructive} />, path: '/(tabs)/blood' as const },
-    { label: t('Community'), hint: t('Support groups'), icon: <Users size={18} color={colors.purple} />, path: '/(tabs)/community' as const },
-    { label: t('Safety check-in'), hint: t('Alerts your contact if you go quiet'), icon: <Timer size={18} color={colors.info} />, path: '/checkin' as const },
-    { label: t('Assistant'), hint: t('Health questions'), icon: <Bot size={18} color={colors.success} />, path: '/assistant' as const },
-  ];
+  const row = (path: string) => () => router.push(path as never);
 
   return (
     <AppScreen
       tone="dark"
       title={firstName ? t('Hello, {name}', { name: firstName }) : t('Hello')}
-      subtitle={t('Your emergency tools and medical identity, ready when you need them.')}
-      icon={<Heart size={24} color="#fff" fill="#fff" />}
-      action={
-        <Pressable onPress={handleSignOut} style={styles.iconButton} accessibilityRole="button" accessibilityLabel={t('Sign out')}>
-          <LogOut size={16} color="#fff" />
-        </Pressable>
-      }
+      subtitle={user?.bloodType ? t('Blood {type}', { type: user.bloodType }) : undefined}
+      icon={<Heart size={20} color="#fff" fill="#fff" />}
+      compact
     >
+      {/* SOS stays the biggest, reddest thing in the app. */}
       <Animated.View style={sosStyle}>
         <Pressable
           onPress={openSos}
-          style={({ pressed }) => [styles.sosButton, pressed && { opacity: 0.9 }]}
+          style={({ pressed }) => [styles.sosButton, pressed && { opacity: 0.92 }]}
           accessibilityRole="button"
           accessibilityLabel={liveSos ? t('Open your live SOS') : t('Start SOS')}
           accessibilityHint={liveSos ? undefined : t('Starts a 3 second countdown you can cancel')}
         >
-          <View style={styles.sosIcon}><Siren size={30} color={colors.destructive} /></View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.sosLabel}>{liveSos ? t('Your SOS is live') : 'SOS'}</Text>
-            <Text style={styles.sosHint}>
-              {liveSos
-                ? liveSos.status === 'pending' ? t('Alerting responders. Tap to follow.') : t('A responder is on the way. Tap to follow.')
-                : t('Alerts certified responders near you. 3 s to cancel.')}
-            </Text>
-          </View>
-          <ChevronRight size={22} color="#fff" />
+          <View style={styles.sosIcon}><Siren size={34} color={colors.destructive} /></View>
+          <Text style={styles.sosLabel}>{liveSos ? t('Your SOS is live') : 'SOS'}</Text>
+          <Text style={styles.sosHint}>
+            {liveSos
+              ? liveSos.status === 'pending' ? t('Alerting responders. Tap to follow.') : t('A responder is on the way. Tap to follow.')
+              : t('Alerts certified responders near you. 3 s to cancel.')}
+          </Text>
         </Pressable>
       </Animated.View>
 
-      <Button variant="outline" onPress={() => router.push('/sos')}>
-        <Phone size={16} color={colors.foreground} />
-        {t('Emergency numbers & hospitals')}
-      </Button>
+      <Group>
+        <Row first icon={<Phone size={18} color={colors.destructive} />} title={t('Emergency numbers & hospitals')} summary="127 · 112" onPress={row('/sos')} />
+        <Row icon={<Zap size={18} color={colors.warning} />} title={t('Defibrillators')} summary={t('Nearest public AEDs')} onPress={row('/aeds')} />
+        <Row icon={<Timer size={18} color={colors.info} />} title={t('Safety check-in')} summary={t('Alerts your contact if you go quiet')} onPress={row('/checkin')} />
+        {isResponder ? (
+          <Row icon={<Siren size={18} color={colors.primaryStrong} />} title={t('Responder inbox')} summary={t('Go on duty, accept calls')} onPress={row('/responder-inbox')} />
+        ) : null}
+      </Group>
+
+      <Group>
+        <Row
+          first
+          icon={<QrCode size={18} color="#fff" />}
+          tint={colors.primary}
+          title={t('Bio Passport')}
+          summary={t('One QR code with what a paramedic needs.')}
+          onPress={row('/(tabs)/profile')}
+        />
+      </Group>
+
+      <Group title={t('Services')}>
+        <Row first icon={<Stethoscope size={18} color={colors.info} />} title={t('Doctors')} summary={t('Find a specialist')} onPress={row('/(tabs)/doctors')} />
+        <Row icon={<Heart size={18} color={colors.destructive} />} title={t('Supply')} summary={t('Blood, organs, medicine')} onPress={row('/(tabs)/blood')} />
+        <Row icon={<Bot size={18} color={colors.success} />} title={t('Assistant')} summary={t('Health questions')} onPress={row('/assistant')} />
+        <Row icon={<Users size={18} color={colors.purple} />} title={t('Community')} summary={t('Support groups')} onPress={row('/(tabs)/community')} />
+      </Group>
 
       {!isResponder ? (
-        <Card style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>{t('Be the first on scene')}</Text>
-          <Text style={styles.sectionBody}>
-            {t('Ambulances in a city take 10+ minutes. Pass the 20-minute CPR course and Vitalis can call you to an arrest next door.')}
-          </Text>
-          <Button onPress={() => router.push('/(tabs)/training')} style={styles.secondaryAction}>
-            <GraduationCap size={16} color="#fff" />
-            {t('Start CPR training')}
-          </Button>
-        </Card>
+        <Group>
+          <Row
+            first
+            icon={<GraduationCap size={18} color={colors.primaryStrong} />}
+            title={t('Be the first on scene')}
+            summary={t('Pass the 20-minute CPR course and Vitalis can call you to an arrest next door.')}
+            onPress={row('/(tabs)/training')}
+          />
+        </Group>
       ) : null}
-
-      <View style={styles.grid}>
-        {quickActions.map((action) => (
-          <Pressable key={action.label} onPress={() => router.push(action.path)} style={styles.gridItem} accessibilityRole="button">
-            <Card style={styles.gridCard}>
-              <View style={styles.gridIcon}>{action.icon}</View>
-              <Text style={styles.gridLabel}>{action.label}</Text>
-              <Text style={styles.gridHint}>{action.hint}</Text>
-            </Card>
-          </Pressable>
-        ))}
-      </View>
-
-      <Card style={styles.sectionCard}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>{t('Bio Passport')}</Text>
-          <QrCode size={18} color={colors.primaryStrong} />
-        </View>
-        <Text style={styles.sectionBody}>
-          {t('Blood type, allergies and medication in one QR code a paramedic can scan. Keep it up to date.')}
-        </Text>
-        <Button variant="outline" onPress={() => router.push('/(tabs)/profile')}>
-          {t('Open Bio Passport')}
-        </Button>
-      </Card>
     </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  iconButton: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.14)',
-  },
   sosButton: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    minHeight: 96,
-    paddingHorizontal: 18,
-    paddingVertical: 18,
+    gap: 6,
+    paddingHorizontal: 24,
+    paddingVertical: 26,
     borderRadius: radius.xl,
     backgroundColor: colors.destructive,
   },
   sosIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 4,
   },
-  sosLabel: { color: '#fff', fontSize: 26, fontWeight: '800', letterSpacing: -0.3 },
-  sosHint: { color: 'rgba(255,255,255,0.92)', fontSize: 14, lineHeight: 19, marginTop: 2 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  gridItem: { width: '48%' },
-  gridCard: { padding: 16, gap: 10, minHeight: 124, borderRadius: radius.lg },
-  gridIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.background,
-  },
-  gridLabel: { color: colors.foreground, fontSize: 15, fontWeight: '700' },
-  gridHint: { color: colors.mutedForeground, fontSize: 13, lineHeight: 18 },
-  sectionCard: { padding: 18, gap: 10, borderRadius: radius.lg },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  sectionTitle: { color: colors.foreground, fontSize: 18, fontWeight: '800' },
-  sectionBody: { color: colors.mutedForeground, fontSize: 14, lineHeight: 20 },
-  secondaryAction: { backgroundColor: colors.primaryStrong },
+  sosLabel: { color: '#fff', fontSize: 34, fontWeight: '800', letterSpacing: -0.5 },
+  sosHint: { color: 'rgba(255,255,255,0.92)', fontSize: 14, lineHeight: 19, textAlign: 'center' },
 });

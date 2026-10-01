@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Filter, MessageCircle, Search, Star, Stethoscope, UserPlus, Video } from 'lucide-react-native';
+import { MessageCircle, Search, Star, Stethoscope, UserPlus, Video } from 'lucide-react-native';
 import { toast } from 'sonner-native';
 import { api } from '@/lib/api';
 import { AppScreen } from '@/components/AppScreen';
-import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Empty } from '@/components/ui/Empty';
 import { Input } from '@/components/ui/Input';
+import { Disclosure, Group, Row } from '@/components/ui/List';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { colors, radius } from '@/lib/theme';
 import { apiError, t, tn } from '@/lib/i18n';
@@ -46,7 +46,7 @@ export default function Doctors() {
   const [search, setSearch] = useState('');
   const [specialty, setSpecialty] = useState('All');
   const [onlineOnly, setOnlineOnly] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
+  const [openId, setOpenId] = useState<string | null>(null);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -81,298 +81,161 @@ export default function Doctors() {
       icon={<Stethoscope size={20} color="#fff" />}
       compact
     >
-      <Pressable onPress={() => router.push('/doctor-application')}>
-        <Card style={styles.applyCard}>
-          <View style={styles.applyIcon}><UserPlus size={20} color={colors.info} /></View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.applyTitle}>{t('Are you a doctor?')}</Text>
-            <Text style={styles.applyBody}>{t('Apply to join Vitalis — upload your specialty certification for admin review.')}</Text>
-          </View>
-        </Card>
-      </Pressable>
-
-      <Card style={styles.searchCard}>
-        <View style={styles.searchRow}>
-          <View style={styles.searchBox}>
-            <Search size={18} color={colors.mutedForeground} />
-            <Input
-              value={search}
-              onChangeText={setSearch}
-              placeholder={t('Search doctor or specialty')}
-              style={styles.searchInput}
-            />
-          </View>
-          <Pressable onPress={() => setShowFilters((value) => !value)} style={styles.filterButton}>
-            <Filter size={18} color={showFilters ? '#fff' : colors.mutedForeground} />
-          </Pressable>
+      <View style={styles.searchRow}>
+        <View style={styles.searchBox}>
+          <Search size={18} color={colors.mutedForeground} />
+          <Input
+            value={search}
+            onChangeText={setSearch}
+            placeholder={t('Search doctor or specialty')}
+            style={styles.searchInput}
+          />
         </View>
-        {showFilters ? (
-          <View style={styles.filterPanel}>
-            <Pressable onPress={() => setOnlineOnly((value) => !value)} style={[styles.filterPill, onlineOnly && styles.filterPillActive]}>
-              <Video size={12} color={onlineOnly ? '#fff' : colors.mutedForeground} />
-              <Text style={[styles.filterPillText, onlineOnly && styles.filterPillTextActive]}>{t('Online only')}</Text>
+        <Pressable
+          onPress={() => setOnlineOnly((value) => !value)}
+          style={[styles.onlineToggle, onlineOnly && styles.onlineToggleOn]}
+          accessibilityRole="switch"
+          accessibilityState={{ checked: onlineOnly }}
+          accessibilityLabel={t('Online only')}
+        >
+          <Video size={16} color={onlineOnly ? '#fff' : colors.mutedForeground} />
+        </Pressable>
+      </View>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+        {SPECIALTIES.map((entry) => {
+          const active = specialty === entry;
+          return (
+            <Pressable
+              key={entry}
+              onPress={() => setSpecialty(entry)}
+              style={[styles.chip, active && styles.chipActive]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+            >
+              <Text style={[styles.chipText, active && styles.chipTextActive]}>{t(entry)}</Text>
             </Pressable>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.specialtyRow}>
-              {SPECIALTIES.map((entry) => {
-                const active = specialty === entry;
-                return (
-                  <Pressable key={entry} onPress={() => setSpecialty(entry)} style={[styles.specialtyPill, active && styles.specialtyPillActive]}>
-                    <Text style={[styles.specialtyText, active && styles.specialtyTextActive]}>{t(entry)}</Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-          </View>
-        ) : null}
-      </Card>
+          );
+        })}
+      </ScrollView>
 
       {loading ? (
-        Array.from({ length: 3 }).map((_, index) => (
-          <Card key={index} style={styles.loadingCard}>
-            <Skeleton style={{ width: 60, height: 60, borderRadius: radius.lg }} />
-            <View style={{ flex: 1, gap: 8 }}>
-              <Skeleton style={{ height: 16, width: 140 }} />
-              <Skeleton style={{ height: 12, width: 90 }} />
-              <Skeleton style={{ height: 12, width: '100%' }} />
-            </View>
-          </Card>
-        ))
-      ) : error ? (
-        <Card style={styles.emptyCard}>
-          <Empty icon={Search} title={t('Couldn’t load doctors')} description={error} />
-        </Card>
-      ) : doctors.length ? (
-        doctors.map((doctor) => (
-          <Card key={doctor.id} style={styles.doctorCard}>
-            <View style={styles.doctorTop}>
-              <View style={styles.doctorIcon}>
-                <Stethoscope size={24} color={colors.info} />
-              </View>
+        <Group>
+          {Array.from({ length: 4 }).map((_, index) => (
+            <View key={index} style={styles.skeletonRow}>
+              <Skeleton style={{ width: 40, height: 40, borderRadius: 20 }} />
               <View style={{ flex: 1, gap: 6 }}>
-                <View style={styles.doctorHeading}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.doctorName}>{doctor.name}</Text>
-                    <Text style={styles.doctorSpecialty}>{t(doctor.specialty)}</Text>
-                  </View>
-                  {doctor.availableOnline ? (
-                    <View style={styles.onlineTag}>
-                      <Video size={10} color={colors.success} />
-                      <Text style={styles.onlineTagText}>{t('Online')}</Text>
-                    </View>
-                  ) : null}
-                </View>
-                <View style={styles.ratingRow}>
-                  <Star size={14} color={colors.warning} fill={colors.warning} />
-                  <Text style={styles.ratingText}>{doctor.rating?.toFixed(1) ?? '—'}</Text>
-                  {doctor.reviewCount != null ? <Text style={styles.reviewText}>({doctor.reviewCount})</Text> : null}
-                  {doctor.experience ? <Text style={styles.reviewText}>{tn(doctor.experience, '1 year experience', '{n} years experience')}</Text> : null}
-                </View>
-                {doctor.biography ? <Text style={styles.doctorBio}>{doctor.biography}</Text> : null}
+                <Skeleton style={{ height: 14, width: 140 }} />
+                <Skeleton style={{ height: 12, width: '70%' }} />
               </View>
             </View>
-            <View style={styles.buttonRow}>
+          ))}
+        </Group>
+      ) : error ? (
+        <Group>
+          <Empty icon={Search} title={t('Couldn’t load doctors')} description={error} />
+        </Group>
+      ) : doctors.length ? (
+        <Group title={tn(doctors.length, '1 doctor', '{n} doctors')}>
+          {doctors.map((doctor, index) => (
+            <Disclosure
+              key={doctor.id}
+              first={index === 0}
+              icon={<Text style={styles.initials}>{initials(doctor.name)}</Text>}
+              tint={colors.infoSoft}
+              title={doctor.name}
+              summary={[
+                t(doctor.specialty),
+                doctor.rating != null ? `★ ${doctor.rating.toFixed(1)}` : null,
+                doctor.availableOnline ? `● ${t('Online')}` : null,
+              ].filter(Boolean).join(' · ')}
+              open={openId === doctor.id}
+              onToggle={() => setOpenId(openId === doctor.id ? null : doctor.id)}
+            >
+              <View style={styles.metaRow}>
+                <Star size={14} color={colors.warning} fill={colors.warning} />
+                <Text style={styles.meta}>
+                  {[
+                    doctor.rating?.toFixed(1) ?? '—',
+                    doctor.reviewCount != null ? `(${doctor.reviewCount})` : null,
+                    doctor.experience ? tn(doctor.experience, '1 year experience', '{n} years experience') : null,
+                  ].filter(Boolean).join(' ')}
+                </Text>
+              </View>
+              {doctor.biography ? <Text style={styles.bio}>{doctor.biography}</Text> : null}
               {doctor.phone ? (
-                <Button
-                  size="sm"
-                  style={styles.bookButton}
-                  onPress={() => void openWhatsApp(doctor.phone!, doctor.name)}
-                >
-                  <MessageCircle size={14} color="#fff" />
+                <Button style={styles.whatsApp} onPress={() => void openWhatsApp(doctor.phone!, doctor.name)}>
+                  <MessageCircle size={16} color="#fff" />
                   {t('Contact on WhatsApp')}
                 </Button>
               ) : (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onPress={() => toast(t('No contact number'), { description: t("{name} hasn't shared a WhatsApp number yet.", { name: doctor.name }) })}
-                >
-                  {t('Contact unavailable')}
-                </Button>
+                <Text style={styles.meta}>{t("{name} hasn't shared a WhatsApp number yet.", { name: doctor.name })}</Text>
               )}
-            </View>
-          </Card>
-        ))
+            </Disclosure>
+          ))}
+        </Group>
       ) : (
-        <Card style={styles.emptyCard}>
+        <Group>
           <Empty icon={Search} title={t('No doctors matched')} description={t('Try widening the specialty or turning off online-only.')} />
-        </Card>
+        </Group>
       )}
+
+      <Group>
+        <Row
+          first
+          icon={<UserPlus size={18} color={colors.info} />}
+          title={t('Are you a doctor?')}
+          summary={t('Apply to join Vitalis — upload your specialty certification for admin review.')}
+          onPress={() => router.push('/doctor-application')}
+        />
+      </Group>
     </AppScreen>
   );
 }
 
+const initials = (name: string) =>
+  name.replace(/^Dr\.?\s+/i, '').split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('');
+
 const styles = StyleSheet.create({
-  searchCard: {
-    padding: 16,
-    gap: 12,
-  },
-  searchRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
+  searchRow: { flexDirection: 'row', gap: 10 },
   searchBox: {
     flex: 1,
-    height: 46,
+    height: 48,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingHorizontal: 12,
-    borderRadius: radius.lg,
-    backgroundColor: colors.background,
+    paddingHorizontal: 14,
+    borderRadius: radius.full,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  searchInput: {
-    flex: 1,
-    height: 40,
-    borderWidth: 0,
-    paddingHorizontal: 0,
-    backgroundColor: 'transparent',
-  },
-  filterButton: {
-    width: 46,
-    height: 46,
-    borderRadius: radius.lg,
+  searchInput: { flex: 1, height: 40, borderWidth: 0, paddingHorizontal: 0, backgroundColor: 'transparent' },
+  onlineToggle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.info,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  filterPanel: {
-    gap: 12,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: 12,
-  },
-  filterPill: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
+  onlineToggleOn: { backgroundColor: colors.success, borderColor: colors.success },
+  chips: { gap: 8, paddingRight: 4 },
+  chip: {
+    paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: radius.full,
-    backgroundColor: colors.background,
+    backgroundColor: colors.muted,
   },
-  filterPillActive: {
-    backgroundColor: colors.success,
-  },
-  filterPillText: {
-    color: colors.mutedForeground,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  filterPillTextActive: {
-    color: '#fff',
-  },
-  specialtyRow: {
-    gap: 8,
-  },
-  specialtyPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: radius.full,
-    backgroundColor: colors.background,
-  },
-  specialtyPillActive: {
-    backgroundColor: colors.info,
-  },
-  specialtyText: {
-    color: colors.mutedForeground,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  specialtyTextActive: {
-    color: '#fff',
-  },
-  loadingCard: {
-    padding: 16,
-    flexDirection: 'row',
-    gap: 12,
-  },
-  emptyCard: {
-    padding: 18,
-  },
-  doctorCard: {
-    padding: 16,
-    gap: 14,
-  },
-  doctorTop: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  doctorIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: radius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.infoSoft,
-  },
-  doctorHeading: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  doctorName: {
-    color: colors.foreground,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  doctorSpecialty: {
-    color: colors.info,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  onlineTag: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: colors.successSoft,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: radius.full,
-  },
-  onlineTagText: {
-    color: colors.success,
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  ratingText: {
-    color: colors.foreground,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  reviewText: {
-    color: colors.mutedForeground,
-    fontSize: 12,
-  },
-  doctorBio: {
-    color: colors.mutedForeground,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
-  bookButton: {
-    backgroundColor: colors.info,
-  },
-  applyCard: {
-    padding: 16,
-    flexDirection: 'row',
-    gap: 12,
-    alignItems: 'center',
-  },
-  applyIcon: {
-    width: 44, height: 44, borderRadius: radius.lg,
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: colors.infoSoft,
-  },
-  applyTitle: { color: colors.foreground, fontSize: 14, fontWeight: '800' },
-  applyBody: { color: colors.mutedForeground, fontSize: 12, lineHeight: 17, marginTop: 2 },
+  chipActive: { backgroundColor: colors.foreground },
+  chipText: { color: colors.mutedForeground, fontSize: 13, fontWeight: '700' },
+  chipTextActive: { color: '#fff' },
+  skeletonRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
+  initials: { color: colors.info, fontSize: 13, fontWeight: '800' },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  meta: { color: colors.mutedForeground, fontSize: 13 },
+  bio: { color: colors.foreground, fontSize: 14, lineHeight: 20 },
+  whatsApp: { backgroundColor: '#25D366' },
 });
