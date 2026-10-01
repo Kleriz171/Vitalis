@@ -76,16 +76,10 @@ export default function Doctors() {
   return (
     <AppScreen
       tone="info"
-      eyebrow={t('Care discovery')}
-      title={t('Doctors and specialist access.')}
+      title={t('Doctors')}
       subtitle={t('Search by specialty, online availability, or symptoms.')}
-      icon={<Stethoscope size={24} color="#fff" />}
-      headerContent={
-        <View style={styles.headerContent}>
-          <Text style={styles.headerMetric}>{doctors.length}</Text>
-          <Text style={styles.headerMetricLabel}>{t('results in the current filter')}</Text>
-        </View>
-      }
+      icon={<Stethoscope size={20} color="#fff" />}
+      compact
     >
       <Pressable onPress={() => router.push('/doctor-application')}>
         <Card style={styles.applyCard}>
@@ -208,18 +202,6 @@ export default function Doctors() {
 }
 
 const styles = StyleSheet.create({
-  headerContent: {
-    gap: 2,
-  },
-  headerMetric: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: '800',
-  },
-  headerMetricLabel: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 12,
-  },
   searchCard: {
     padding: 16,
     gap: 12,

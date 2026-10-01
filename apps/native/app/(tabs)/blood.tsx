@@ -286,31 +286,23 @@ export default function SupplyScreen() {
   return (
     <AppScreen
       tone="info"
-      eyebrow={t('Supply center')}
-      title={t('Find care fast and track every request in one place.')}
-      subtitle={t('Request blood, organs, tissue, or medicine, stay in queue, and answer urgent exchange needs.')}
-      icon={<HeartHandshake size={24} color="#fff" />}
+      title={t('Supply')}
+      subtitle={user?.bloodType ? t('Blood {type}', { type: user.bloodType }) : t('Profile incomplete')}
+      icon={<HeartHandshake size={20} color="#fff" />}
       contentContainerStyle={{ paddingBottom: 148 }}
       scrollProps={{
         refreshControl: <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />,
       }}
-      headerContent={
-        <View style={styles.heroPanel}>
-          <View style={styles.heroIdentityRow}>
-            <Badge variant="outline" style={styles.heroBadge}>
-              {user?.bloodType ?? t('Profile incomplete')}
-            </Badge>
-            <Text style={styles.heroHint}>{t('Connected to your Vitalis profile and live supply matching.')}</Text>
-          </View>
-          <View style={styles.heroStatsRow}>
-            <HeroStat label={t('Queued')} value={String(queuedCount)} />
-            <HeroStat label={t('Matched')} value={String(matchedCount)} />
-            <HeroStat label={t('Exchange')} value={String(exchangeRequests.length)} />
-            <HeroStat label={t('Replies')} value={String(inquiries.length)} />
-          </View>
-        </View>
-      }
+      compact
     >
+      {/* Your supply activity at a glance: one slim row instead of a panel in the header. */}
+      <Card style={styles.statStrip}>
+        <HeroStat label={t('Queued')} value={String(queuedCount)} />
+        <HeroStat label={t('Matched')} value={String(matchedCount)} />
+        <HeroStat label={t('Exchange')} value={String(exchangeRequests.length)} />
+        <HeroStat label={t('Replies')} value={String(inquiries.length)} />
+      </Card>
+
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabRail}>
         {tabs.map((item) => {
           const active = tab === item.key;
@@ -740,43 +732,25 @@ function StepTile({ title, body }: { title: string; body: string }) {
 }
 
 const styles = StyleSheet.create({
-  heroPanel: {
-    gap: 12,
-  },
-  heroIdentityRow: {
-    gap: 8,
-  },
-  heroBadge: {
-    alignSelf: 'flex-start',
-  },
-  heroHint: {
-    fontSize: 13,
-    lineHeight: 18,
-    color: '#F4FBFE',
-  },
-  heroStatsRow: {
+  statStrip: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
   },
   heroStat: {
-    minWidth: 88,
-    flexGrow: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: radius.lg,
-    backgroundColor: 'rgba(255,255,255,0.14)',
+    flex: 1,
+    alignItems: 'center',
     gap: 2,
   },
   heroStatValue: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: colors.foreground,
   },
   heroStatLabel: {
     fontSize: 11,
     fontWeight: '700',
-    color: 'rgba(255,255,255,0.82)',
+    color: colors.mutedForeground,
   },
   tabRail: {
     gap: 8,

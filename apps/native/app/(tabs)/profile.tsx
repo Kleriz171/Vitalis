@@ -2,6 +2,7 @@ import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react
 import {
   Alert,
   Image,
+  LayoutAnimation,
   Linking,
   Pressable,
   RefreshControl,
@@ -15,7 +16,7 @@ import {
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useDispatch, useSelector } from 'react-redux';
 import { useRouter } from 'expo-router';
-import { AlertTriangle, Award, Calendar, Heart, LogOut, Pill, QrCode, ShieldCheck, Syringe, UserCircle, X } from 'lucide-react-native';
+import { Accessibility, Activity, AlertTriangle, Award, Calendar, ChevronDown, FileText, LogOut, Phone, Pill, Syringe, User, UserCircle, X } from 'lucide-react-native';
 import { toast } from 'sonner-native';
 import { api, PRIVACY_URL } from '@/lib/api';
 import { signOut } from '@/lib/session';
@@ -115,14 +116,6 @@ const toIsoDate = (value: string) => {
   return new Date(`${value.trim()}T00:00:00.000Z`).toISOString();
 };
 
-const ROLE_LABEL: Record<string, string> = {
-  citizen: t('Citizen'),
-  blood_donor: t('Blood donor'),
-  doctor: t('Doctor'),
-  nurse: t('Nurse'),
-  student_responder: t('Certified first-aider'),
-};
-
 export default function Profile() {
   const dispatch = useDispatch();
   const router = useRouter();
@@ -139,6 +132,14 @@ export default function Profile() {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<SaveTarget>(null);
+  // One record section open at a time keeps the page short (Bio Passport stays the focus).
+  const [open, setOpen] = useState<string | null>(null);
+  const toggle = (id: string) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setOpen((current) => (current === id ? null : id));
+  };
+  const listSummary = (names: (string | undefined)[]) =>
+    names.filter(Boolean).length ? names.filter(Boolean).join(', ') : t('None added');
 
   const [bloodType, setBloodType] = useState('');
   const [age, setAge] = useState('');
@@ -274,16 +275,6 @@ export default function Profile() {
       setRefreshing(false);
     }
   };
-
-  const stats = useMemo(
-    () => [
-      { label: t('Medications'), value: profile?.medications.length ?? 0, icon: <Pill size={16} color={colors.warning} /> },
-      { label: t('Allergies'), value: profile?.allergies.length ?? 0, icon: <AlertTriangle size={16} color={colors.destructive} /> },
-      { label: t('Vaccines'), value: profile?.vaccinations.length ?? 0, icon: <Syringe size={16} color={colors.success} /> },
-      { label: t('Appointments'), value: profile?.appointments.length ?? 0, icon: <Calendar size={16} color={colors.info} /> },
-    ],
-    [profile]
-  );
 
   const contactPhone = toE164(contactPhoneRaw);
   const contactOwnNumber = !!profile?.user.phone && contactPhone === profile.user.phone;
@@ -432,7 +423,8 @@ export default function Profile() {
       eyebrow={t('Bio Passport')}
       title={profile?.user.name ?? auth.user?.name ?? t('Your profile')}
       subtitle={formatPhone(profile?.user.phone ?? auth.user?.phone) || profile?.user.email || auth.user?.email || t('Citizen account')}
-      icon={<UserCircle size={28} color="#fff" />}
+      icon={<UserCircle size={24} color="#fff" />}
+      compact
       action={
         <Pressable
           onPress={async () => {
@@ -446,18 +438,6 @@ export default function Profile() {
           <LogOut size={16} color="#fff" />
         </Pressable>
       }
-      headerContent={
-        <View style={styles.headerContent}>
-          <View style={styles.headerChip}>
-            <Heart size={14} color="#fff" fill="#fff" />
-            <Text style={styles.headerChipText}>{t('Blood {type}', { type: profile?.user.bloodType ?? t('Unknown') })}</Text>
-          </View>
-          <View style={styles.headerChip}>
-            <ShieldCheck size={14} color="#fff" />
-            <Text style={styles.headerChipText}>{ROLE_LABEL[profile?.user.role ?? auth.user?.role ?? 'citizen'] ?? profile?.user.role}</Text>
-          </View>
-        </View>
-      }
       scroll={false}
     >
       <ScrollView
@@ -465,60 +445,22 @@ export default function Profile() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.statsGrid}>
-          {stats.map((stat) => (
-            <Card key={stat.label} style={styles.statCard}>
-              <View style={styles.statIcon}>{stat.icon}</View>
-              <Text style={styles.statValue}>{stat.value}</Text>
-              <Text style={styles.statLabel}>{stat.label}</Text>
-            </Card>
-          ))}
-        </View>
-
-        <Animated.View entering={FadeInDown.duration(280)}>
-          <Card style={styles.passportCard}>
-            <View style={styles.passportHeader}>
-              <View style={styles.passportIcon}>
-                <QrCode size={22} color="#fff" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.sectionTitle}>{t('Generated Bio Passport')}</Text>
-                <Text style={styles.sectionBody}>{t('Your emergency identity updates from the same data used during signup and profile edits.')}</Text>
-              </View>
-            </View>
-
-            <View style={styles.passportBodyCard}>
-              <Text style={styles.passportBrand}>VITALIS</Text>
-              <Text style={styles.passportName}>{passport?.profile.name ?? profile?.user.name ?? t('Citizen')}</Text>
-              <Text style={styles.passportMeta}>
-                {passport?.profile.bloodType ?? profile?.user.bloodType ?? t('Unknown blood type')} · {genderLabels[passport?.profile.gender ?? profile?.user.gender ?? ''] ?? t('Profile pending')}
-              </Text>
-              {passport?.qr ? <Image source={{ uri: passport.qr }} style={styles.qrImage} /> : null}
-              <Text style={styles.passportHint}>{t('Show this during triage, intake, or when confirming matched supply requests.')}</Text>
-            </View>
-
-            <View style={styles.tagWrap}>
-              {(profile?.user.illnesses ?? []).map((item) => (
-                <Badge key={item} variant="outline">
-                  {item}
-                </Badge>
-              ))}
-              {(profile?.conditions ?? []).map((item) => (
-                <Badge key={item.id} style={styles.softBadge}>
-                  {item.name}
-                </Badge>
-              ))}
-            </View>
-          </Card>
+        <Animated.View entering={FadeInDown.duration(280)} style={styles.passportBodyCard}>
+          <Text style={styles.passportBrand}>VITALIS · {t('Bio Passport').toUpperCase()}</Text>
+          <Text style={styles.passportName}>{passport?.profile.name ?? profile?.user.name ?? t('Citizen')}</Text>
+          <Text style={styles.passportMeta}>
+            {passport?.profile.bloodType ?? profile?.user.bloodType ?? t('Unknown blood type')} · {genderLabels[passport?.profile.gender ?? profile?.user.gender ?? ''] ?? t('Profile pending')}
+          </Text>
+          {passport?.qr ? <Image source={{ uri: passport.qr }} style={styles.qrImage} /> : null}
+          <Text style={styles.passportHint}>{t('Show this during triage, intake, or when confirming matched supply requests.')}</Text>
         </Animated.View>
 
         {activeCertifications.length ? (
           <Card style={styles.certCard}>
             <View style={styles.certHeader}>
               <Award size={18} color={colors.primary} />
-              <Text style={styles.sectionTitle}>{t('First aid certifications')}</Text>
+              <Text style={styles.rowTitle}>{t('First aid certifications')}</Text>
             </View>
-            <Text style={styles.sectionBody}>{t('Visible to dispatchers during emergencies.')}</Text>
             <View style={styles.certRow}>
               {activeCertifications.map((cert: TrainingCertification) => (
                 <Pressable
@@ -528,7 +470,7 @@ export default function Profile() {
                 >
                   <Text style={styles.certBadgeText}>{cert.badgeLabel}</Text>
                   <Text style={styles.certBadgeMeta}>
-                    Valid until {new Date(cert.expiresAt).toLocaleDateString()}
+                    {t('Valid until {date}', { date: formatDate(cert.expiresAt) })}
                   </Text>
                 </Pressable>
               ))}
@@ -536,8 +478,15 @@ export default function Profile() {
           </Card>
         ) : null}
 
-        <Card style={styles.editorCard}>
-          <Text style={styles.sectionTitle}>{t('Core health profile')}</Text>
+        <Card style={styles.groupCard}>
+          <Text style={styles.groupTitle}>{t('Medical record')}</Text>
+          <Section
+            icon={<User size={18} color={colors.primary} />}
+            title={t('Core health profile')}
+            summary={[profile?.user.bloodType, profile?.user.dateOfBirth ? formatDate(profile.user.dateOfBirth) : undefined, genderLabels[profile?.user.gender ?? '']].filter(Boolean).join(' · ') || t('None added')}
+            open={open === 'basics'}
+            onToggle={() => toggle('basics')}
+          >
           <Text style={styles.sectionBody}>{t('Keep your blood type, biometrics, and ongoing illnesses current so the rest of the app stays accurate.')}</Text>
           <View style={styles.formGrid}>
             <Input value={bloodType} onChangeText={setBloodType} placeholder={t('Blood type')} />
@@ -568,11 +517,16 @@ export default function Profile() {
           <Button onPress={saveOverview} loading={saving === 'overview'}>
             {t('Save profile basics')}
           </Button>
-        </Card>
+          </Section>
 
         {/* Called when you cannot answer; paramedics also see it through the QR. */}
-        <Card style={styles.editorCard}>
-          <Text style={styles.sectionTitle}>{t('Emergency contact')}</Text>
+        <Section
+          icon={<Phone size={18} color={colors.primary} />}
+          title={t('Emergency contact')}
+          summary={contactName ? `${contactName} · ${formatPhone(toE164(contactPhoneRaw) ?? contactPhoneRaw) || contactPhoneRaw}` : t('Not set')}
+          open={open === 'contact'}
+          onToggle={() => toggle('contact')}
+        >
           <Text style={styles.sectionBody}>{t("Someone we can call if you can't answer.")}</Text>
           <View style={styles.formStack}>
             <Input value={contactName} onChangeText={setContactName} placeholder={t('Their name')} accessibilityLabel={t('Their name')} />
@@ -582,10 +536,14 @@ export default function Profile() {
               {t('Save')}
             </Button>
           </View>
-        </Card>
+        </Section>
 
         <EntryCard
+          icon={<Pill size={18} color={colors.warning} />}
           title={t('Medications')}
+          summary={listSummary((profile?.medications ?? []).map((m) => m.name))}
+          open={open === 'meds'}
+          onToggle={() => toggle('meds')}
           description={t('Routine medication appears on your passport and helps responders avoid unsafe conflicts.')}
           fields={
             <>
@@ -608,7 +566,11 @@ export default function Profile() {
         />
 
         <EntryCard
+          icon={<AlertTriangle size={18} color={colors.destructive} />}
           title={t('Allergies')}
+          summary={listSummary((profile?.allergies ?? []).map((a) => a.allergen))}
+          open={open === 'allergies'}
+          onToggle={() => toggle('allergies')}
           description={t('Severity stays attached to every allergy so emergency teams can act faster.')}
           fields={
             <>
@@ -636,7 +598,11 @@ export default function Profile() {
         />
 
         <EntryCard
+          icon={<Syringe size={18} color={colors.success} />}
           title={t('Vaccines')}
+          summary={listSummary((profile?.vaccinations ?? []).map((v) => v.name))}
+          open={open === 'vaccines'}
+          onToggle={() => toggle('vaccines')}
           description={t('Enter the vaccine name, optional provider, and date so your passport can surface them correctly.')}
           fields={
             <>
@@ -659,7 +625,11 @@ export default function Profile() {
         />
 
         <EntryCard
+          icon={<Calendar size={18} color={colors.info} />}
           title={t('Appointments')}
+          summary={listSummary((profile?.appointments ?? []).map((a) => a.appointmentType))}
+          open={open === 'appointments'}
+          onToggle={() => toggle('appointments')}
           description={t('This is where you actually input upcoming visits and checkups for the profile screen.')}
           fields={
             <>
@@ -683,7 +653,11 @@ export default function Profile() {
         />
 
         <EntryCard
+          icon={<Activity size={18} color={colors.primary} />}
           title={t('Conditions')}
+          summary={listSummary((profile?.conditions ?? []).map((c) => c.name))}
+          open={open === 'conditions'}
+          onToggle={() => toggle('conditions')}
           description={t('Add longer-term medical conditions that should live on the passport.')}
           fields={
             <>
@@ -705,7 +679,11 @@ export default function Profile() {
         />
 
         <EntryCard
+          icon={<Accessibility size={18} color={colors.purple} />}
           title={t('Disabilities')}
+          summary={listSummary((profile?.disabilities ?? []).map((d) => d.name))}
+          open={open === 'disabilities'}
+          onToggle={() => toggle('disabilities')}
           description={t('Capture accessibility needs and chronic disability notes directly inside the generated passport.')}
           fields={
             <>
@@ -726,11 +704,14 @@ export default function Profile() {
           ))}
         />
 
-        <Card style={styles.editorCard}>
+        </Card>
+
+        <Card style={styles.groupCard}>
+          <Text style={styles.groupTitle}>{t('Settings')}</Text>
           <View style={styles.switchRow}>
             <View style={{ flex: 1, gap: 4 }}>
-              <Text style={styles.sectionTitle}>{t('Fall detection')}</Text>
-              <Text style={styles.sectionBody}>
+              <Text style={styles.rowTitle}>{t('Fall detection')}</Text>
+              <Text style={styles.rowSummary}>
                 {t('While Vitalis is open, a hard fall followed by no movement asks if you are OK. No answer in 30 seconds sends an SOS.')}
               </Text>
             </View>
@@ -741,14 +722,12 @@ export default function Profile() {
               accessibilityLabel={t('Fall detection')}
             />
           </View>
-        </Card>
 
-        {wakeWordSupported ? (
-          <Card style={styles.editorCard}>
-            <View style={styles.switchRow}>
+          {wakeWordSupported ? (
+            <View style={[styles.switchRow, styles.rowDivider]}>
               <View style={{ flex: 1, gap: 4 }}>
-                <Text style={styles.sectionTitle}>{t('“Hey Vitalis”')}</Text>
-                <Text style={styles.sectionBody}>
+                <Text style={styles.rowTitle}>{t('“Hey Vitalis”')}</Text>
+                <Text style={styles.rowSummary}>
                   {t('While Vitalis is open, say “Hey Vitalis” to ask a question or to call for help. Listening happens on your phone; no sound is sent anywhere until you speak after “Hey Vitalis”.')}
                 </Text>
               </View>
@@ -759,13 +738,12 @@ export default function Profile() {
                 accessibilityLabel={t('“Hey Vitalis”')}
               />
             </View>
-          </Card>
-        ) : null}
+          ) : null}
 
-        {/* Always bilingual, so someone who cannot read the current language can still find it. */}
-        <Card style={styles.editorCard}>
-          <Text style={styles.sectionTitle}>Gjuha · Language</Text>
-          <View style={styles.selectionRow}>
+          {/* Always bilingual, so someone who cannot read the current language can still find it. */}
+          <View style={[styles.switchRow, styles.rowDivider]}>
+            <Text style={[styles.rowTitle, { flex: 1 }]}>Gjuha · Language</Text>
+            <View style={styles.selectionRow}>
             {(['sq', 'en'] as const).map((code) => (
               <Pressable
                 key={code}
@@ -777,16 +755,22 @@ export default function Profile() {
                 <Text style={[styles.choiceLabel, lang === code && styles.choiceLabelActive]}>{code === 'sq' ? 'Shqip' : 'English'}</Text>
               </Pressable>
             ))}
+            </View>
           </View>
-        </Card>
 
-        {/* Your data: a copy of everything, or erase it (account.routes.ts on the API). */}
-        <Card style={styles.editorCard}>
-          <Text style={styles.sectionTitle}>{t('Your data')}</Text>
-          <Text style={styles.sectionBody}>{t('Get a copy of everything Vitalis stores about you, or delete your account.')}</Text>
-          <Button variant="outline" onPress={() => void exportData()} loading={saving === 'export'}>{t('Download my data')}</Button>
-          <Button variant="ghost" onPress={() => void Linking.openURL(PRIVACY_URL)}>{t('Privacy policy')}</Button>
-          <Button variant="destructive" onPress={confirmDelete} loading={saving === 'delete'}>{t('Delete my account')}</Button>
+          {/* Your data: a copy of everything, or erase it (account.routes.ts on the API). */}
+          <Section
+            icon={<FileText size={18} color={colors.mutedForeground} />}
+            title={t('Your data')}
+            summary={t('Download, privacy policy, delete account')}
+            open={open === 'data'}
+            onToggle={() => toggle('data')}
+          >
+            <Text style={styles.sectionBody}>{t('Get a copy of everything Vitalis stores about you, or delete your account.')}</Text>
+            <Button variant="outline" onPress={() => void exportData()} loading={saving === 'export'}>{t('Download my data')}</Button>
+            <Button variant="ghost" onPress={() => void Linking.openURL(PRIVACY_URL)}>{t('Privacy policy')}</Button>
+            <Button variant="destructive" onPress={confirmDelete} loading={saving === 'delete'}>{t('Delete my account')}</Button>
+          </Section>
         </Card>
 
         {loading ? (
@@ -800,27 +784,71 @@ export default function Profile() {
 }
 
 function EntryCard({
+  icon,
   title,
+  summary,
+  open,
+  onToggle,
   description,
   fields,
   items,
 }: {
+  icon: ReactNode;
   title: string;
+  summary: string;
+  open: boolean;
+  onToggle: () => void;
   description: string;
   fields: ReactNode;
   items: ReactNode[];
 }) {
   return (
-    <Animated.View entering={FadeInDown.duration(260)}>
-      <Card style={styles.editorCard}>
-        <Text style={styles.sectionTitle}>{title}</Text>
-        <Text style={styles.sectionBody}>{description}</Text>
-        <View style={styles.formStack}>{fields}</View>
-        <View style={styles.listStack}>
-          {items.length ? items : <Text style={styles.emptyText}>{t('Nothing added yet.')}</Text>}
+    <Section icon={icon} title={title} summary={summary} open={open} onToggle={onToggle}>
+      <View style={styles.listStack}>
+        {items.length ? items : <Text style={styles.emptyText}>{t('Nothing added yet.')}</Text>}
+      </View>
+      <Text style={styles.sectionBody}>{description}</Text>
+      <View style={styles.formStack}>{fields}</View>
+    </Section>
+  );
+}
+
+/** A row that opens to show its editor: title, a one-line summary, and a chevron. */
+function Section({
+  icon,
+  title,
+  summary,
+  open,
+  onToggle,
+  children,
+}: {
+  icon: ReactNode;
+  title: string;
+  summary: string;
+  open: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <View style={styles.rowDivider}>
+      <Pressable
+        onPress={onToggle}
+        style={styles.sectionHead}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        accessibilityHint={summary}
+      >
+        <View style={styles.sectionIcon}>{icon}</View>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={styles.rowTitle}>{title}</Text>
+          {!open ? <Text style={styles.rowSummary} numberOfLines={1}>{summary}</Text> : null}
         </View>
-      </Card>
-    </Animated.View>
+        <View style={open ? styles.chevronOpen : undefined}>
+          <ChevronDown size={18} color={colors.mutedForeground} />
+        </View>
+      </Pressable>
+      {open ? <View style={styles.sectionOpen}>{children}</View> : null}
+    </View>
   );
 }
 
@@ -854,6 +882,54 @@ function RecordRow({
 }
 
 const styles = StyleSheet.create({
+  groupCard: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+  },
+  groupTitle: {
+    color: colors.mutedForeground,
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    paddingTop: 10,
+    paddingBottom: 4,
+  },
+  rowDivider: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  sectionHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    minHeight: 56,
+  },
+  sectionIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.background,
+  },
+  rowTitle: {
+    color: colors.foreground,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  rowSummary: {
+    color: colors.mutedForeground,
+    fontSize: 13,
+  },
+  chevronOpen: {
+    transform: [{ rotate: '180deg' }],
+  },
+  sectionOpen: {
+    gap: 12,
+    paddingBottom: 16,
+  },
   content: {
     gap: 16,
     paddingBottom: 140,
@@ -866,76 +942,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.14)',
   },
-  headerContent: {
-    flexDirection: 'row',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
-  headerChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: radius.full,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-  },
-  headerChipText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'capitalize',
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  statCard: {
-    width: '48%',
-    padding: 16,
-    gap: 10,
-  },
-  statIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: radius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.background,
-  },
-  statValue: {
-    color: colors.foreground,
-    fontSize: 24,
-    fontWeight: '800',
-  },
-  statLabel: {
-    color: colors.mutedForeground,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  passportCard: {
-    padding: 18,
-    gap: 16,
-  },
-  passportHeader: {
-    flexDirection: 'row',
-    gap: 12,
-    alignItems: 'center',
-  },
-  passportIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
-  },
   passportBodyCard: {
     borderRadius: radius.xl,
     backgroundColor: colors.primary,
     padding: 20,
-    gap: 8,
+    gap: 6,
+    alignItems: 'center',
   },
   passportBrand: {
     color: 'rgba(255,255,255,0.82)',
@@ -947,6 +959,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 24,
     fontWeight: '800',
+    textAlign: 'center',
   },
   passportMeta: {
     color: 'rgba(255,255,255,0.82)',
@@ -964,15 +977,6 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.85)',
     fontSize: 12,
     textAlign: 'center',
-  },
-  tagWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  softBadge: {
-    backgroundColor: `${colors.primary}12`,
-    borderColor: `${colors.primary}22`,
   },
   editorCard: {
     padding: 18,
@@ -1052,7 +1056,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.destructiveSoft,
   },
   errorText: { color: colors.destructive, fontSize: 13 },
-  switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
   emptyText: {
     color: colors.mutedForeground,
     fontSize: 13,
@@ -1076,8 +1080,9 @@ const styles = StyleSheet.create({
     padding: 18,
   },
   certCard: {
-    padding: 18,
-    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 10,
   },
   certHeader: {
     flexDirection: 'row',

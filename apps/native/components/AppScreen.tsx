@@ -29,6 +29,8 @@ interface AppScreenProps {
   bodyStyle?: StyleProp<ViewStyle>;
   headerContent?: ReactNode;
   scrollProps?: Omit<ScrollViewProps, 'contentContainerStyle'>;
+  /** Slim header for tab screens: one line of title, smaller icon, no eyebrow; content gets the space. */
+  compact?: boolean;
 }
 
 const toneMap: Record<Tone, { background: string; soft: string; text: string; chip: string }> = {
@@ -54,24 +56,29 @@ export function AppScreen({
   bodyStyle,
   headerContent,
   scrollProps,
+  compact = false,
 }: AppScreenProps) {
   const palette = toneMap[tone];
 
   const body = (
     <View style={[styles.body, bodyStyle]}>
-      <Animated.View entering={FadeInDown.duration(320)} style={[styles.hero, { backgroundColor: palette.background }]}>
-        <View style={styles.heroTop}>
+      <Animated.View entering={FadeInDown.duration(320)} style={[styles.hero, compact && styles.heroCompact, { backgroundColor: palette.background }]}>
+        <View style={[styles.heroTop, compact && styles.heroTopCompact]}>
           <View style={styles.heroTitleWrap}>
-            {eyebrow ? <Text style={[styles.eyebrow, { color: 'rgba(255,255,255,0.74)' }]}>{eyebrow}</Text> : null}
+            {eyebrow && !compact ? <Text style={[styles.eyebrow, { color: 'rgba(255,255,255,0.74)' }]}>{eyebrow}</Text> : null}
             <View style={styles.heroHeadingRow}>
-              {icon ? <View style={[styles.iconBadge, { backgroundColor: palette.chip }]}>{icon}</View> : null}
+              {icon ? <View style={[styles.iconBadge, compact && styles.iconBadgeCompact, { backgroundColor: palette.chip }]}>{icon}</View> : null}
               <View style={styles.heroTextWrap}>
-                <Text style={[styles.title, { color: palette.text }]}>{title}</Text>
-                {subtitle ? <Text style={[styles.subtitle, { color: 'rgba(255,255,255,0.82)' }]}>{subtitle}</Text> : null}
+                <Text style={[styles.title, compact && styles.titleCompact, { color: palette.text }]} numberOfLines={compact ? 1 : undefined}>{title}</Text>
+                {subtitle ? (
+                  <Text style={[styles.subtitle, compact && styles.subtitleCompact, { color: 'rgba(255,255,255,0.82)' }]} numberOfLines={compact ? 2 : undefined}>
+                    {subtitle}
+                  </Text>
+                ) : null}
               </View>
             </View>
           </View>
-          {action ? <View style={styles.actionWrap}>{action}</View> : null}
+          {action ? <View style={[styles.actionWrap, compact && styles.actionWrapCompact]}>{action}</View> : null}
         </View>
         {headerContent ? <View style={[styles.heroContent, { backgroundColor: palette.chip }]}>{headerContent}</View> : null}
       </Animated.View>
@@ -120,6 +127,29 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 16,
     ...shadows.card,
+  },
+  heroCompact: {
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  heroTopCompact: {
+    alignItems: 'center',
+  },
+  iconBadgeCompact: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+  },
+  titleCompact: {
+    fontSize: 20,
+  },
+  subtitleCompact: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  actionWrapCompact: {
+    alignSelf: 'center',
   },
   heroTop: {
     flexDirection: 'row',

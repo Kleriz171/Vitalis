@@ -3,7 +3,7 @@ import { Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useDispatch, useSelector } from 'react-redux';
-import { Award, BookOpen, Clock3, GraduationCap, Heart, ShieldCheck } from 'lucide-react-native';
+import { BookOpen, Clock3, GraduationCap, Heart } from 'lucide-react-native';
 import { toast } from 'sonner-native';
 import { SvgXml } from 'react-native-svg';
 import { courseArt } from '@/lib/courseArt';
@@ -98,22 +98,10 @@ export default function Training() {
   return (
     <AppScreen
       tone="primary"
-      eyebrow={t('First aid training')}
-      title={t('Become a life-saver.')}
-      subtitle={t('Quick lessons based on Red Cross guidelines — certify yourself in minutes.')}
-      icon={<GraduationCap size={24} color="#fff" />}
-      headerContent={
-        <View style={styles.heroChips}>
-          <View style={styles.heroChip}>
-            <Award size={14} color="#fff" />
-            <Text style={styles.heroChipText}>{tn(activeCerts.length, '1 active certificate', '{n} active certificates')}</Text>
-          </View>
-          <View style={styles.heroChip}>
-            <ShieldCheck size={14} color="#fff" />
-            <Text style={[styles.heroChipText, { flexShrink: 1 }]}>{t('Educational. Not a replacement for in-person training.')}</Text>
-          </View>
-        </View>
-      }
+      title={t('Training')}
+      subtitle={t('Educational. Not a replacement for in-person training.')}
+      icon={<GraduationCap size={20} color="#fff" />}
+      compact
       scrollProps={{
         refreshControl: <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />,
       }}
@@ -213,13 +201,6 @@ export default function Training() {
 }
 
 const styles = StyleSheet.create({
-  heroChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  heroChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 6, maxWidth: '100%',
-    paddingHorizontal: 12, paddingVertical: 8,
-    borderRadius: radius.full, backgroundColor: 'rgba(255,255,255,0.14)',
-  },
-  heroChipText: { color: '#fff', fontSize: 12, fontWeight: '600' },
   certCard: { padding: 16, gap: 12 },
   certHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   certTitle: { color: colors.foreground, fontSize: 15, fontWeight: '800' },

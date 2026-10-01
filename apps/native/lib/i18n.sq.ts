@@ -730,6 +730,14 @@ export const ui: Record<string, string> = {
   'Fall detection': 'Zbulimi i rënies',
   'While Vitalis is open, a hard fall followed by no movement asks if you are OK. No answer in 30 seconds sends an SOS.': 'Kur Vitalis është i hapur, një rënie e fortë e ndjekur nga palëvizshmëri ju pyet nëse jeni mirë. Pa përgjigje për 30 sekonda dërgohet një SOS.',
 
+  // Profile: grouped, collapsible sections
+  'Medical record': 'Kartela mjekësore',
+  'Settings': 'Cilësimet',
+  'None added': 'Asgjë e shtuar',
+  'Not set': 'Pa vendosur',
+  'Download, privacy policy, delete account': 'Shkarkim, privatësia, fshirja e llogarisë',
+  'Valid until {date}': 'E vlefshme deri më {date}',
+
   // Privacy: consent at sign-up, export and delete on Profile
   'I agree that Vitalis stores my health information and shows it to responders and dispatchers when I send an SOS.': 'Pranoj që Vitalis të ruajë të dhënat e mia shëndetësore dhe t’ua tregojë ndihmësve dhe dispeçerëve kur dërgoj një SOS.',
   'Privacy policy': 'Politika e privatësisë',
