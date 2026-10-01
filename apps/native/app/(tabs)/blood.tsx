@@ -288,7 +288,6 @@ export default function SupplyScreen() {
       scrollProps={{
         refreshControl: <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />,
       }}
-      compact
     >
       <Stats
         items={[

@@ -101,7 +101,6 @@ export default function Training() {
       title={t('Training')}
       subtitle={t('Educational. Not a replacement for in-person training.')}
       icon={<GraduationCap size={20} color="#fff" />}
-      compact
       scrollProps={{
         refreshControl: <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />,
       }}

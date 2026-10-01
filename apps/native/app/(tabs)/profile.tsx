@@ -421,7 +421,6 @@ export default function Profile() {
       title={profile?.user.name ?? auth.user?.name ?? t('Your profile')}
       subtitle={formatPhone(profile?.user.phone ?? auth.user?.phone) || profile?.user.email || auth.user?.email || t('Citizen account')}
       icon={<UserCircle size={24} color="#fff" />}
-      compact
       action={
         <Pressable
           onPress={async () => {

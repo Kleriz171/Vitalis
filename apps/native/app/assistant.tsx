@@ -117,7 +117,7 @@ export default function Assistant() {
         tone="success"
         eyebrow={t('Wellness guidance')}
         title={t('Health assistant')}
-        subtitle={t('A calmer space for quick health questions and everyday guidance.')}
+        subtitle={t('Health questions')}
         icon={<Sparkles size={24} color="#fff" />}
         scroll={false}
         bodyStyle={styles.screenBody}

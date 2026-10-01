@@ -126,6 +126,21 @@ export function Segmented<T extends string>({
   );
 }
 
+/** Round icon button for a row's action (call, route). Always give it an accessibility label. */
+export function IconButton({ icon, onPress, color = colors.primary, label }: { icon: ReactNode; onPress: () => void; color?: string; label: string }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.iconButton, { backgroundColor: color }, pressed && styles.pressed]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={6}
+    >
+      {icon}
+    </Pressable>
+  );
+}
+
 /** Small numbers side by side in one slim card (e.g. queued / matched / replies). */
 export function Stats({ items }: { items: { label: string; value: string | number }[] }) {
   return (
@@ -184,6 +199,7 @@ const styles = StyleSheet.create({
   summary: { color: colors.mutedForeground, fontSize: 13, lineHeight: 18 },
   chevronOpen: { transform: [{ rotate: '180deg' }] },
   open: { gap: 12, paddingBottom: 16 },
+  iconButton: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   segTrack: {
     flexDirection: 'row',
     backgroundColor: colors.muted,

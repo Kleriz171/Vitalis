@@ -79,7 +79,6 @@ export default function Doctors() {
       title={t('Doctors')}
       subtitle={t('Search by specialty, online availability, or symptoms.')}
       icon={<Stethoscope size={20} color="#fff" />}
-      compact
     >
       <View style={styles.searchRow}>
         <View style={styles.searchBox}>

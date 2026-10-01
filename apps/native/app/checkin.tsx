@@ -116,7 +116,7 @@ export default function CheckInScreen() {
     <AppScreen
       tone="info"
       title={t('Safety check-in')}
-      subtitle={t('Going somewhere alone? Set a timer. If you do not check in, Vitalis alerts your emergency contact, then dispatch.')}
+      subtitle={t('Alerts your contact if you go quiet')}
       icon={<Timer size={24} color="#fff" />}
       action={
         <Pressable onPress={() => router.back()} style={styles.iconButton} accessibilityRole="button" accessibilityLabel={t('Back')}>

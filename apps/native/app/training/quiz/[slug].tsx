@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Award, Check, CircleHelp, ClipboardCheck, X } from 'lucide-react-native';
+import { ArrowLeft, Award, Check, X } from 'lucide-react-native';
 import { useDispatch } from 'react-redux';
 import { toast } from 'sonner-native';
 
@@ -159,21 +159,9 @@ export default function Quiz() {
       tone="primary"
       eyebrow={course.badgeLabel}
       title={t('Final quiz')}
-      subtitle={t('Pass with {n}% or higher.', { n: course.passingScore })}
+      subtitle={`${tn(course.quiz.length, '1 question', '{n} questions')} · ${t('Pass with {n}% or higher.', { n: course.passingScore })}`}
       icon={<Award size={22} color="#fff" />}
       action={<BackBtn />}
-      headerContent={
-        <View style={styles.heroContent}>
-          <View style={styles.heroChip}>
-            <ClipboardCheck size={14} color="#fff" />
-            <Text style={styles.heroChipText}>{tn(course.quiz.length, '1 question', '{n} questions')}</Text>
-          </View>
-          <View style={styles.heroChip}>
-            <CircleHelp size={14} color="#fff" />
-            <Text style={styles.heroChipText}>{t('One answer per question')}</Text>
-          </View>
-        </View>
-      }
       footer={
         <Button onPress={submit} loading={submitting} disabled={!allAnswered}>
           {allAnswered ? t('Submit answers') : t('Answer every question')}
@@ -226,17 +214,6 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.16)',
   },
-  heroContent: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  heroChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: radius.full,
-    backgroundColor: 'rgba(255,255,255,0.14)',
-  },
-  heroChipText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   qCard: { padding: 18, gap: 14, marginBottom: 12 },
   questionHeader: { flexDirection: 'row', justifyContent: 'flex-start' },
   indexBadge: { backgroundColor: colors.soft, borderColor: colors.border, paddingHorizontal: 10, paddingVertical: 6 },

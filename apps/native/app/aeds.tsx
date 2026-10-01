@@ -65,7 +65,7 @@ export default function AedsScreen() {
     <AppScreen
       tone="dark"
       title={t('Defibrillators')}
-      subtitle={t('Nearest public AEDs. In a cardiac arrest, every minute without one cuts survival.')}
+      subtitle={t('Nearest public AEDs')}
       icon={<Zap size={22} color="#fff" />}
       action={
         <Pressable onPress={() => router.back()} style={styles.iconButton} accessibilityRole="button" accessibilityLabel={t('Back')}>

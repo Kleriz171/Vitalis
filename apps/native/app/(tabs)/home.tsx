@@ -50,7 +50,6 @@ export default function Home() {
       title={firstName ? t('Hello, {name}', { name: firstName }) : t('Hello')}
       subtitle={user?.bloodType ? t('Blood {type}', { type: user.bloodType }) : undefined}
       icon={<Heart size={20} color="#fff" fill="#fff" />}
-      compact
     >
       {/* SOS stays the biggest, reddest thing in the app. */}
       <Animated.View style={sosStyle}>

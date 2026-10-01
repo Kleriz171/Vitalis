@@ -29,7 +29,7 @@ interface AppScreenProps {
   bodyStyle?: StyleProp<ViewStyle>;
   headerContent?: ReactNode;
   scrollProps?: Omit<ScrollViewProps, 'contentContainerStyle'>;
-  /** Slim header for tab screens: one line of title, smaller icon, no eyebrow; content gets the space. */
+  /** Slim header (default): title, one short line, smaller icon, no eyebrow; content gets the space. */
   compact?: boolean;
 }
 
@@ -56,7 +56,7 @@ export function AppScreen({
   bodyStyle,
   headerContent,
   scrollProps,
-  compact = false,
+  compact = true,
 }: AppScreenProps) {
   const palette = toneMap[tone];
 
@@ -69,7 +69,7 @@ export function AppScreen({
             <View style={styles.heroHeadingRow}>
               {icon ? <View style={[styles.iconBadge, compact && styles.iconBadgeCompact, { backgroundColor: palette.chip }]}>{icon}</View> : null}
               <View style={styles.heroTextWrap}>
-                <Text style={[styles.title, compact && styles.titleCompact, { color: palette.text }]} numberOfLines={compact ? 1 : undefined}>{title}</Text>
+                <Text style={[styles.title, compact && styles.titleCompact, { color: palette.text }]} numberOfLines={compact ? 2 : undefined}>{title}</Text>
                 {subtitle ? (
                   <Text style={[styles.subtitle, compact && styles.subtitleCompact, { color: 'rgba(255,255,255,0.82)' }]} numberOfLines={compact ? 2 : undefined}>
                     {subtitle}

@@ -742,6 +742,8 @@ export const ui: Record<string, string> = {
   '1 doctor': '1 mjek',
   '{n} doctors': '{n} mjekë',
   'Courses': 'Kurset',
+  'to pass': 'për të kaluar',
+  'done': 'kryer',
   'Anonymous posting is available.': 'Mund të postoni edhe anonimisht.',
   '1 post': '1 postim',
   '{n} posts': '{n} postime',

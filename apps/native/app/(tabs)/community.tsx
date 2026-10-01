@@ -118,8 +118,7 @@ export default function Community() {
         title={selected.name}
         subtitle={tn(selected.memberCount ?? 0, '1 member', '{n} members')}
         icon={<Text style={styles.heroEmoji}>{categoryIcons[selected.category] ?? '💬'}</Text>}
-        compact
-        action={
+          action={
           <Pressable onPress={() => setSelected(null)} style={styles.backBtn} accessibilityRole="button" accessibilityLabel={t('Back')}>
             <ArrowLeft size={16} color="#fff" />
           </Pressable>
@@ -202,7 +201,6 @@ export default function Community() {
       title={t('Community')}
       subtitle={t('Anonymous posting is available.')}
       icon={<Users size={20} color="#fff" />}
-      compact
     >
       {groupsLoading ? (
         <Group>
