@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Redirect, useRouter } from 'expo-router';
 import { useSelector } from 'react-redux';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
-import { Heart, MapPin, Phone, QrCode, Siren } from 'lucide-react-native';
+import { Heart, HeartPulse, MapPin, Phone, QrCode, Siren } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { Group, Row } from '@/components/ui/List';
 import { RootState } from '@/lib/store';
@@ -79,6 +79,11 @@ export default function Onboarding() {
             <Button size="lg" variant="outline" onPress={() => callNumber('127')} accessibilityHint={t('Calls the ambulance')}>
               <Phone size={18} color={colors.destructive} />
               <Text style={styles.callText}>{t('Emergency? Call 127')}</Text>
+            </Button>
+
+            <Button size="lg" variant="outline" onPress={() => router.push('/first-aid' as never)}>
+              <HeartPulse size={18} color={colors.foreground} />
+              {t('First aid')}
             </Button>
 
             <Pressable onPress={() => router.push('/login')} style={styles.signIn} accessibilityRole="link">

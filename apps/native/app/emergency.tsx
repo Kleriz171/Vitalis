@@ -300,6 +300,14 @@ export default function EmergencyScreen() {
           </Pressable>
         ) : null}
 
+        {/* While waiting: step-by-step first aid (choking, bleeding, stroke, allergic shock, burns). */}
+        {!ended ? (
+          <Pressable style={styles.firstAidButton} onPress={() => router.push('/first-aid' as never)} accessibilityRole="button">
+            <HeartPulse size={20} color={colors.destructive} />
+            <Text style={styles.firstAidText}>{t('First aid while you wait')}</Text>
+          </Pressable>
+        ) : null}
+
         {responderId ? (
           <PersonRow
             icon={<UserRound size={20} color={colors.primaryStrong} />}
@@ -464,6 +472,11 @@ const styles = StyleSheet.create({
   headerTitle: { color: '#fff', fontSize: 30, fontWeight: '800', letterSpacing: -0.5 },
   headerBody: { color: '#fff', fontSize: 16, lineHeight: 22 },
   body: { padding: 16, gap: 12, paddingBottom: 32 },
+  firstAidButton: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    minHeight: 52, borderRadius: radius.lg, backgroundColor: '#fff', borderWidth: 1, borderColor: colors.border,
+  },
+  firstAidText: { color: colors.destructive, fontSize: 16, fontWeight: '700' },
   callButton: {
     height: 60, borderRadius: radius.lg, backgroundColor: colors.foreground,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,

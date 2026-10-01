@@ -4,7 +4,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useSelector } from 'react-redux';
 import * as Haptics from 'expo-haptics';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
-import { Bot, GraduationCap, Heart, Phone, QrCode, Siren, Stethoscope, Timer, Users, Zap } from 'lucide-react-native';
+import { Bot, GraduationCap, Heart, HeartPulse, Phone, QrCode, Siren, Stethoscope, Timer, Users, Zap } from 'lucide-react-native';
 import { api } from '@/lib/api';
 import { RootState } from '@/lib/store';
 import { AppScreen } from '@/components/AppScreen';
@@ -73,6 +73,7 @@ export default function Home() {
 
       <Group>
         <Row first icon={<Phone size={18} color={colors.destructive} />} title={t('Emergency numbers & hospitals')} summary="127 · 112" onPress={row('/sos')} />
+        <Row icon={<HeartPulse size={18} color={colors.destructive} />} title={t('First aid')} summary={t('Choking, bleeding, stroke, burns')} onPress={row('/first-aid')} />
         <Row icon={<Zap size={18} color={colors.warning} />} title={t('Defibrillators')} summary={t('Nearest public AEDs')} onPress={row('/aeds')} />
         <Row icon={<Timer size={18} color={colors.info} />} title={t('Safety check-in')} summary={t('Alerts your contact if you go quiet')} onPress={row('/checkin')} />
         {isResponder ? (
