@@ -1,4 +1,5 @@
-import { ReactNode } from 'react';
+import { ReactNode, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 import {
   ScrollView,
   ScrollViewProps,
@@ -10,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import Animated, { Easing, FadeInDown, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { colors, radius, shadows } from '@/lib/theme';
 
 type Tone = 'primary' | 'critical' | 'info' | 'purple' | 'success' | 'dark';
@@ -60,9 +61,20 @@ export function AppScreen({
 }: AppScreenProps) {
   const palette = toneMap[tone];
 
+  // Fade and rise in every time the screen comes into focus (tabs stay mounted, so entering
+  // animations alone would play only once). Nothing remounts: scroll and inputs are kept.
+  const appear = useSharedValue(0);
+  useFocusEffect(
+    useCallback(() => {
+      appear.set(withSequence(withTiming(0, { duration: 0 }), withTiming(1, { duration: 320, easing: Easing.out(Easing.cubic) })));
+    }, [appear]),
+  );
+  const heroIn = useAnimatedStyle(() => ({ opacity: 0.4 + appear.get() * 0.6 }));
+  const contentIn = useAnimatedStyle(() => ({ opacity: appear.get(), transform: [{ translateY: (1 - appear.get()) * 10 }] }));
+
   const body = (
     <View style={[styles.body, !scroll && styles.fill, bodyStyle]}>
-      <Animated.View entering={FadeInDown.springify().damping(18).stiffness(160)} style={[styles.hero, compact && styles.heroCompact, { backgroundColor: palette.background }]}>
+      <Animated.View style={[styles.hero, heroIn, compact && styles.heroCompact, { backgroundColor: palette.background }]}>
         <View style={[styles.heroTop, compact && styles.heroTopCompact]}>
           <View style={styles.heroTitleWrap}>
             {eyebrow && !compact ? <Text style={[styles.eyebrow, { color: 'rgba(255,255,255,0.74)' }]}>{eyebrow}</Text> : null}
@@ -82,7 +94,7 @@ export function AppScreen({
         </View>
         {headerContent ? <View style={[styles.heroContent, { backgroundColor: palette.chip }]}>{headerContent}</View> : null}
       </Animated.View>
-      <Animated.View entering={FadeIn.delay(80).duration(260)} style={[styles.content, !scroll && styles.fill]}>{children}</Animated.View>
+      <Animated.View style={[styles.content, !scroll && styles.fill, contentIn]}>{children}</Animated.View>
     </View>
   );
 

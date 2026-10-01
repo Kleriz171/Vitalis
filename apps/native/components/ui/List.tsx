@@ -1,7 +1,7 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { LayoutAnimation, Pressable, StyleSheet, Text, View, type PressableProps, type ViewProps } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, { Easing, FadeInDown, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { ChevronDown, ChevronRight } from 'lucide-react-native';
 import { colors, radius, shadows } from '@/lib/theme';
 
@@ -10,7 +10,11 @@ import { colors, radius, shadows } from '@/lib/theme';
 // either a chevron (navigates), a right-hand element (switch, value), or open in place.
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-const SPRING = { damping: 18, stiffness: 260, mass: 0.6 };
+// Eased timing, never springs: quick, smooth, no overshoot (the iOS feel).
+const EASE = Easing.out(Easing.cubic);
+const PRESS_IN = { duration: 110, easing: EASE };
+const PRESS_OUT = { duration: 180, easing: EASE };
+const MOVE = { duration: 240, easing: EASE };
 // A light tick on touch, so presses feel confirmed without looking. Web and old phones just skip it.
 export const tick = () => { Haptics.selectionAsync().catch(() => {}); };
 
@@ -21,8 +25,8 @@ export function Press({ style, children, scaleTo = 0.97, ...props }: PressablePr
   return (
     <AnimatedPressable
       {...props}
-      onPressIn={(e) => { tick(); scale.set(withSpring(scaleTo, SPRING)); props.onPressIn?.(e); }}
-      onPressOut={(e) => { scale.set(withSpring(1, SPRING)); props.onPressOut?.(e); }}
+      onPressIn={(e) => { tick(); scale.set(withTiming(scaleTo, PRESS_IN)); props.onPressIn?.(e); }}
+      onPressOut={(e) => { scale.set(withTiming(1, PRESS_OUT)); props.onPressOut?.(e); }}
       style={[style, anim]}
     >
       {children}
@@ -30,9 +34,9 @@ export function Press({ style, children, scaleTo = 0.97, ...props }: PressablePr
   );
 }
 
-export function Group({ title, children, style, delay = 60 }: { title?: string; children: ReactNode; style?: ViewProps['style']; delay?: number }) {
+export function Group({ title, children, style, delay = 40 }: { title?: string; children: ReactNode; style?: ViewProps['style']; delay?: number }) {
   return (
-    <Animated.View entering={FadeInDown.delay(delay).springify().damping(18).stiffness(140)} style={[styles.group, style]}>
+    <Animated.View entering={FadeInDown.delay(delay).duration(300).easing(EASE)} style={[styles.group, style]}>
       {title ? <Text style={styles.groupTitle}>{title}</Text> : null}
       {children}
     </Animated.View>
@@ -85,7 +89,7 @@ export function Row({ icon, tint, title, summary, right, onPress, first, childre
 
 function Chevron({ open }: { open: boolean }) {
   const turn = useSharedValue(open ? 1 : 0);
-  useEffect(() => { turn.set(withSpring(open ? 1 : 0, SPRING)); }, [open, turn]);
+  useEffect(() => { turn.set(withTiming(open ? 1 : 0, MOVE)); }, [open, turn]);
   const anim = useAnimatedStyle(() => ({ transform: [{ rotate: `${turn.get() * 180}deg` }] }));
   return (
     <Animated.View style={anim}>
@@ -144,7 +148,7 @@ export function Segmented<T extends string>({
   const index = Math.max(0, options.findIndex((o) => o.key === value));
   const slot = width ? (width - 6) / options.length : 0;
   const x = useSharedValue(0);
-  useEffect(() => { x.set(withSpring(index * slot, SPRING)); }, [index, slot, x]);
+  useEffect(() => { x.set(withTiming(index * slot, MOVE)); }, [index, slot, x]);
   const pill = useAnimatedStyle(() => ({ transform: [{ translateX: x.get() }] }));
   return (
     <View style={styles.segTrack} accessibilityRole="tablist" onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
