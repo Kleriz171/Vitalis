@@ -90,9 +90,10 @@ export default function Training() {
     return map;
   }, [trainingState.certifications]);
 
+  const [now] = useState(Date.now);
   const activeCerts = useMemo(
-    () => trainingState.certifications.filter((c) => new Date(c.expiresAt).getTime() > Date.now()),
-    [trainingState.certifications]
+    () => trainingState.certifications.filter((c) => new Date(c.expiresAt).getTime() > now),
+    [trainingState.certifications, now]
   );
 
   return (

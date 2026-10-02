@@ -48,7 +48,7 @@ export default function SignIn() {
   const phone = toE164(phoneRaw);
   const [code, setCode] = useState('');
   const [resendAt, setResendAt] = useState(0);
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(Date.now);
   const [signupToken, setSignupToken] = useState('');
 
   const [firstName, setFirstName] = useState('');

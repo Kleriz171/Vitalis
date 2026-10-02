@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Award, Check, X } from 'lucide-react-native';
@@ -54,12 +54,9 @@ export default function Quiz() {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<QuizResult | null>(null);
 
-  const load = useCallback(async () => {
-    const { data } = await api.get<CourseQuiz>(`/training/courses/${slug}`);
-    setCourse(data);
+  useEffect(() => {
+    api.get<CourseQuiz>(`/training/courses/${slug}`).then(({ data }) => setCourse(data)).catch((err) => toast.error(t('Could not load the quiz'), { description: apiError(err, 'Try again.') }));
   }, [slug]);
-
-  useEffect(() => { void load(); }, [load]);
 
   if (!course) {
     return (

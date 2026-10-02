@@ -53,7 +53,7 @@ export default function CheckInScreen() {
   const [note, setNote] = useState('');
   const [entry, setEntry] = useState('');
   const [busy, setBusy] = useState(false);
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(Date.now);
 
   const load = useCallback(async () => {
     try {

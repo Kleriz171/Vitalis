@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Image, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Award, ArrowLeft, Share2 } from 'lucide-react-native';
@@ -29,16 +29,11 @@ export default function CertificateScreen() {
   const router = useRouter();
   const [cert, setCert] = useState<CertificateView | null>(null);
 
-  const load = useCallback(async () => {
-    try {
-      const { data } = await api.get<CertificateView>(`/training/certifications/${id}`);
-      setCert(data);
-    } catch (err: any) {
-      toast.error(t('Could not load certificate'), { description: apiError(err, 'Try again.') });
-    }
+  useEffect(() => {
+    api.get<CertificateView>(`/training/certifications/${id}`)
+      .then(({ data }) => setCert(data))
+      .catch((err) => toast.error(t('Could not load certificate'), { description: apiError(err, 'Try again.') }));
   }, [id]);
-
-  useEffect(() => { void load(); }, [load]);
 
   const share = async () => {
     if (!cert) return;

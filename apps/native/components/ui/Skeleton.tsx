@@ -7,10 +7,10 @@ export const Skeleton = ({ style, ...props }: ViewProps & { style?: ViewStyle })
   const opacity = useSharedValue(0.5);
 
   useEffect(() => {
-    opacity.value = withRepeat(withTiming(1, { duration: 800 }), -1, true);
+    opacity.set(withRepeat(withTiming(1, { duration: 800 }), -1, true));
   }, [opacity]);
 
-  const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.get() }));
 
   return <Animated.View style={[styles.box, animatedStyle, style]} {...props} />;
 };

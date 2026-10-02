@@ -30,9 +30,9 @@ export default function Home() {
   );
 
   useEffect(() => {
-    pulse.value = liveSos ? withRepeat(withTiming(1.015, { duration: 900 }), -1, true) : withTiming(1);
+    pulse.set(liveSos ? withRepeat(withTiming(1.015, { duration: 900 }), -1, true) : withTiming(1));
   }, [liveSos, pulse]);
-  const sosStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
+  const sosStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.get() }] }));
 
   const firstName = user?.name?.split(' ')[0];
   const isResponder = ['doctor', 'nurse', 'student_responder', 'blood_donor'].includes(user?.role ?? '');

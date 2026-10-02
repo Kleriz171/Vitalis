@@ -100,13 +100,14 @@ export default function ResponderInbox() {
     }
   }, [me]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch on mount; state is set after the await
   useEffect(() => { if (canAccess) void load(); }, [canAccess, load]);
 
   // While on duty (or handling a call), keep our position fresh: the server uses it to decide
   // who gets alerted, and the caller sees us approach.
   const activeId = active?._id ?? null;
   const activeIdRef = useRef<string | null>(null);
-  activeIdRef.current = activeId;
+  useEffect(() => { activeIdRef.current = activeId; }, [activeId]);
   useEffect(() => {
     if (!available && !activeId) return;
     let sub: Location.LocationSubscription | null = null;

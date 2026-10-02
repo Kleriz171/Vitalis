@@ -180,16 +180,17 @@ export default function SupplyScreen() {
     run();
   }, [loadData]);
 
-  useEffect(() => {
-    if (requestCategory === 'blood' && user?.bloodType) {
+  // Blood prefills the user's own type and one unit; other categories clear those defaults.
+  const pickCategory = (category: QueueCategory) => {
+    setRequestCategory(category);
+    if (category === 'blood' && user?.bloodType) {
       setResourceType((current) => current.trim() ? current : `${user.bloodType} blood`);
       setQuantityLabel((current) => current.trim() ? current : '1 unit');
       return;
     }
-
     setResourceType((current) => (current === `${user?.bloodType} blood` ? '' : current));
     setQuantityLabel((current) => (current === '1 unit' ? '' : current));
-  }, [requestCategory, user?.bloodType]);
+  };
 
   const onRefresh = async () => {
     try {
@@ -318,7 +319,7 @@ export default function SupplyScreen() {
             <Segmented
               options={requestCategories.map((c) => ({ key: c.key, label: c.shortLabel }))}
               value={requestCategory}
-              onChange={setRequestCategory}
+              onChange={pickCategory}
             />
             <Text style={styles.helper}>{selectedCategory.helper}</Text>
 
