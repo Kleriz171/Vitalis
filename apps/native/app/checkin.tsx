@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import * as Location from 'expo-location';
-import { ChevronLeft, ShieldCheck, Timer } from 'lucide-react-native';
+import { ArrowLeft, ShieldCheck, Timer } from 'lucide-react-native';
 import { toast } from 'sonner-native';
 
 import { AppScreen } from '@/components/AppScreen';
@@ -120,7 +120,7 @@ export default function CheckInScreen() {
       icon={<Timer size={24} color="#fff" />}
       action={
         <Pressable onPress={() => router.back()} style={styles.iconButton} accessibilityRole="button" accessibilityLabel={t('Back')}>
-          <ChevronLeft size={20} color="#fff" />
+          <ArrowLeft size={16} color="#fff" />
         </Pressable>
       }
     >

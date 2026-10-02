@@ -3,11 +3,12 @@ import { Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 're
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { toast } from 'sonner-native';
-import { ChevronLeft, Navigation, Plus, ShieldCheck, Zap } from 'lucide-react-native';
+import { ArrowLeft, Navigation, Plus, ShieldCheck, Zap } from 'lucide-react-native';
 
 import { AppScreen } from '@/components/AppScreen';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Group, IconButton, Row } from '@/components/ui/List';
 import { Empty } from '@/components/ui/Empty';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { api } from '@/lib/api';
@@ -69,7 +70,7 @@ export default function AedsScreen() {
       icon={<Zap size={22} color="#fff" />}
       action={
         <Pressable onPress={() => router.back()} style={styles.iconButton} accessibilityRole="button" accessibilityLabel={t('Back')}>
-          <ChevronLeft size={20} color="#fff" />
+          <ArrowLeft size={16} color="#fff" />
         </Pressable>
       }
       scrollProps={{ refreshControl: <RefreshControl refreshing={false} onRefresh={load} tintColor={colors.primary} /> }}
@@ -79,46 +80,46 @@ export default function AedsScreen() {
           setReporting(false);
           if (created) void load();
         }} />
-      ) : (
-        <Button variant="outline" onPress={() => setReporting(true)} disabled={!here}>
-          <Plus size={16} color={colors.foreground} />
-          {t('Report a defibrillator here')}
-        </Button>
-      )}
+      ) : null}
 
       {loading ? (
         <View style={{ gap: 10 }}>
-          {[0, 1, 2].map(i => <Skeleton key={i} style={{ height: 88, borderRadius: radius.lg }} />)}
+          {[0, 1, 2].map(i => <Skeleton key={i} style={{ height: 72, borderRadius: radius.lg }} />)}
         </View>
       ) : error ? (
-        <Empty icon={Zap} title={t('No location')} description={error} />
-      ) : items.length === 0 ? (
-        <Empty icon={Zap} title={t('None registered within 10 km')} description={t('If you know where one hangs, report it. A dispatcher verifies each entry.')} />
+        <Group>
+          <Empty icon={Zap} title={t('No location')} description={error} />
+          <Button variant="outline" onPress={() => { setLoading(true); void load(); }}>{t('Try again')}</Button>
+        </Group>
       ) : (
-        <View style={{ gap: 10 }}>
-          {items.map(a => (
-            <Card key={a.id} style={styles.row}>
-              <View style={{ flex: 1, gap: 4 }}>
-                <View style={styles.titleRow}>
-                  <Text style={styles.name} numberOfLines={1}>{a.name}</Text>
-                  {a.verified ? <ShieldCheck size={16} color={colors.success} accessibilityLabel={t('Verified')} /> : null}
-                </View>
-                {a.placement ? <Text style={styles.placement} numberOfLines={2}>{a.placement}</Text> : null}
-                <Text style={styles.meta}>
-                  {a.distanceM != null ? `${formatDistance(a.distanceM)} · ` : ''}{ACCESS_LABEL[a.access]}{a.verified ? '' : ` · ${t('Unverified')}`}
-                </Text>
-              </View>
-              <Pressable
-                onPress={() => openDirections(a.coordinates, a.name)}
-                style={styles.navButton}
-                accessibilityRole="button"
-                accessibilityLabel={t('Directions to {place}', { place: a.name })}
-              >
-                <Navigation size={18} color={colors.primaryStrong} />
-              </Pressable>
-            </Card>
+        <Group title={items.length ? t('Nearest first') : undefined}>
+          {items.length === 0 ? (
+            <Empty icon={Zap} title={t('None registered within 10 km')} description={t('If you know where one hangs, report it. A dispatcher verifies each entry.')} />
+          ) : items.map((a, index) => (
+            <Row
+              key={a.id}
+              first={index === 0}
+              icon={a.verified ? <ShieldCheck size={18} color={colors.success} /> : <Zap size={18} color={colors.warning} />}
+              title={a.name}
+              summary={[a.distanceM != null ? formatDistance(a.distanceM) : null, ACCESS_LABEL[a.access], a.verified ? null : t('Unverified'), a.placement].filter(Boolean).join(' · ')}
+              right={
+                <IconButton
+                  icon={<Navigation size={18} color={colors.primaryStrong} />}
+                  onPress={() => openDirections(a.coordinates, a.name)}
+                  label={t('Directions to {place}', { place: a.name })}
+                />
+              }
+            />
           ))}
-        </View>
+          {!reporting && here ? (
+            <Row
+              icon={<Plus size={18} color={colors.primary} />}
+              title={t('Report a defibrillator here')}
+              summary={t('A dispatcher will verify it.')}
+              onPress={() => setReporting(true)}
+            />
+          ) : null}
+        </Group>
       )}
     </AppScreen>
   );

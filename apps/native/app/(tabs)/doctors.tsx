@@ -146,7 +146,7 @@ export default function Doctors() {
               summary={[
                 t(doctor.specialty),
                 doctor.rating != null ? `★ ${doctor.rating.toFixed(1)}` : null,
-                doctor.availableOnline ? `● ${t('Online')}` : null,
+                doctor.availableOnline ? t('Online') : null,
               ].filter(Boolean).join(' · ')}
               open={openId === doctor.id}
               onToggle={() => setOpenId(openId === doctor.id ? null : doctor.id)}
@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
     backgroundColor: colors.muted,
   },
-  chipActive: { backgroundColor: colors.foreground },
+  chipActive: { backgroundColor: colors.primaryStrong },
   chipText: { color: colors.mutedForeground, fontSize: 13, fontWeight: '700' },
   chipTextActive: { color: '#fff' },
   skeletonRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },

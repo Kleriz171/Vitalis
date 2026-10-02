@@ -532,6 +532,7 @@ export const ui: Record<string, string> = {
   'Track corneas, skin grafts, and tissue needs.': 'Ndiqni kërkesat për kornea, lëkurë dhe inde.',
   'Try a quick question': 'Provoni një pyetje të shpejtë',
   'Try again': 'Provo përsëri',
+  'Nearest first': 'Më të afërtit së pari',
   'Try widening the specialty or turning off online-only.': 'Provoni një specialitet më të gjerë ose çaktivizoni “vetëm online”.',
   'Urgency': 'Urgjenca',
   'Urgent': 'Urgjente',

@@ -223,6 +223,7 @@ const styles = StyleSheet.create({
   },
   messages: {
     gap: 12,
+    paddingTop: 44,
   },
   messageRow: {
     flexDirection: 'row',

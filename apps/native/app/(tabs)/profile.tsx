@@ -15,7 +15,7 @@ import {
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useDispatch, useSelector } from 'react-redux';
 import { useRouter } from 'expo-router';
-import { Accessibility, Activity, AlertTriangle, Heart, Award, Calendar, FileText, LogOut, Phone, Pill, Syringe, User, UserCircle, X } from 'lucide-react-native';
+import { Accessibility, Activity, AlertTriangle, Heart, Award, Languages, Mic, Calendar, FileText, LogOut, Phone, Pill, Syringe, User, UserCircle, X } from 'lucide-react-native';
 import { toast } from 'sonner-native';
 import { api, PRIVACY_URL } from '@/lib/api';
 import { signOut } from '@/lib/session';
@@ -23,7 +23,7 @@ import { AppScreen } from '@/components/AppScreen';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { Disclosure as Section } from '@/components/ui/List';
+import { Disclosure as Section, Group, Row } from '@/components/ui/List';
 import { Input } from '@/components/ui/Input';
 import { RootState, setSession, setTraining } from '@/lib/store';
 import type { TrainingCertification, TrainingEnrollment } from '@/lib/store';
@@ -468,26 +468,19 @@ export default function Profile() {
         </Animated.View>
 
         {activeCertifications.length ? (
-          <Card style={styles.certCard}>
-            <View style={styles.certHeader}>
-              <Award size={18} color={colors.primary} />
-              <Text style={styles.rowTitle}>{t('First aid certifications')}</Text>
-            </View>
-            <View style={styles.certRow}>
-              {activeCertifications.map((cert: TrainingCertification) => (
-                <Pressable
-                  key={cert.id}
-                  onPress={() => router.push({ pathname: '/training/certificate/[id]', params: { id: cert.id } } as never)}
-                  style={styles.certBadge}
-                >
-                  <Text style={styles.certBadgeText}>{cert.badgeLabel}</Text>
-                  <Text style={styles.certBadgeMeta}>
-                    {t('Valid until {date}', { date: formatDate(cert.expiresAt) })}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          </Card>
+          <Group title={t('First aid certifications')}>
+            {activeCertifications.map((cert: TrainingCertification, index: number) => (
+              <Row
+                key={cert.id}
+                first={index === 0}
+                icon={<Award size={18} color="#fff" />}
+                tint={colors.primary}
+                title={cert.badgeLabel}
+                summary={t('Valid until {date}', { date: formatDate(cert.expiresAt) })}
+                onPress={() => router.push({ pathname: '/training/certificate/[id]', params: { id: cert.id } } as never)}
+              />
+            ))}
+          </Group>
         ) : null}
 
         <Card style={styles.groupCard}>
@@ -721,6 +714,7 @@ export default function Profile() {
         <Card style={styles.groupCard}>
           <Text style={styles.groupTitle}>{t('Settings')}</Text>
           <View style={styles.switchRow}>
+            <View style={styles.tile}><Activity size={18} color={colors.warning} /></View>
             <View style={{ flex: 1, gap: 4 }}>
               <Text style={styles.rowTitle}>{t('Fall detection')}</Text>
               <Text style={styles.rowSummary}>{t('After a hard fall, asks if you are OK. No answer in 30 s sends an SOS.')}</Text>
@@ -735,7 +729,8 @@ export default function Profile() {
 
           {medicalIdSupported ? (
             <View style={[styles.switchRow, styles.rowDivider]}>
-              <View style={{ flex: 1, gap: 4 }}>
+              <View style={styles.tile}><Heart size={18} color={colors.destructive} /></View>
+            <View style={{ flex: 1, gap: 4 }}>
                 <Text style={styles.rowTitle}>{t('Medical ID on lock screen')}</Text>
                 <Text style={styles.rowSummary}>{t('Responders can read your blood type, allergies, medication and emergency contact without unlocking your phone.')}</Text>
               </View>
@@ -761,7 +756,8 @@ export default function Profile() {
 
           {wakeWordSupported ? (
             <View style={[styles.switchRow, styles.rowDivider]}>
-              <View style={{ flex: 1, gap: 4 }}>
+              <View style={styles.tile}><Mic size={18} color={colors.primary} /></View>
+            <View style={{ flex: 1, gap: 4 }}>
                 <Text style={styles.rowTitle}>{t('“Hey Vitalis”')}</Text>
                 <Text style={styles.rowSummary}>
                   {t('While Vitalis is open, say “Hey Vitalis” to ask a question or to call for help. Listening happens on your phone; no sound is sent anywhere until you speak after “Hey Vitalis”.')}
@@ -778,7 +774,9 @@ export default function Profile() {
 
           {/* Always bilingual, so someone who cannot read the current language can still find it. */}
           <View style={[styles.switchRow, styles.rowDivider]}>
-            <Text style={[styles.rowTitle, { flex: 1 }]}>Gjuha · Language</Text>
+            <View style={styles.tile}><Languages size={18} color={colors.info} /></View>
+            <View style={{ flex: 1, gap: 8 }}>
+            <Text style={styles.rowTitle}>Gjuha · Language</Text>
             <View style={styles.selectionRow}>
             {(['sq', 'en'] as const).map((code) => (
               <Pressable
@@ -791,6 +789,7 @@ export default function Profile() {
                 <Text style={[styles.choiceLabel, lang === code && styles.choiceLabelActive]}>{code === 'sq' ? 'Shqip' : 'English'}</Text>
               </Pressable>
             ))}
+            </View>
             </View>
           </View>
 
@@ -963,15 +962,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
   },
-  editorCard: {
-    padding: 18,
-    gap: 14,
-  },
-  sectionTitle: {
-    color: colors.foreground,
-    fontSize: 18,
-    fontWeight: '800',
-  },
   sectionBody: {
     color: colors.mutedForeground,
     fontSize: 13,
@@ -1042,6 +1032,7 @@ const styles = StyleSheet.create({
   },
   errorText: { color: colors.destructive, fontSize: 13 },
   switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
+  tile: { width: 36, height: 36, borderRadius: radius.md, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' },
   emptyText: {
     color: colors.mutedForeground,
     fontSize: 13,
@@ -1063,37 +1054,5 @@ const styles = StyleSheet.create({
   },
   loadingCard: {
     padding: 18,
-  },
-  certCard: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 10,
-  },
-  certHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  certRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  certBadge: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: radius.lg,
-    backgroundColor: colors.accent,
-    gap: 4,
-  },
-  certBadgeText: {
-    color: colors.accentForeground,
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  certBadgeMeta: {
-    color: colors.primaryStrong,
-    fontSize: 10,
-    fontWeight: '600',
   },
 });
