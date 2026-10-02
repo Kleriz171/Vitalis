@@ -5,7 +5,7 @@ import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { useSelector } from 'react-redux';
 import { toast } from 'sonner-native';
-import { ChevronLeft, ClipboardList, Inbox as InboxIcon, Navigation, Radio, ShieldCheck, Zap, Siren } from 'lucide-react-native';
+import { ArrowLeft, ClipboardList, Inbox as InboxIcon, Navigation, Radio, ShieldCheck, Zap, Siren } from 'lucide-react-native';
 import Animated, { FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
 
 import { AppScreen } from '@/components/AppScreen';
@@ -184,13 +184,25 @@ export default function ResponderInbox() {
 
   if (!canAccess) {
     return (
-      <AppScreen tone="dark" title={t('Responder inbox')} subtitle={t('For doctors, nurses and certified first-aiders.')}>
-        <Empty
-          icon={ShieldCheck}
-          title={t('Become a responder')}
-          description={t("Pass the CPR or AED course in Training. You'll then be able to go on duty and receive SOS calls near you.")}
-        />
-        <Button onPress={() => router.replace('/(tabs)/training')}>{t('Open training')}</Button>
+      <AppScreen
+        tone="dark"
+        title={t('Responder inbox')}
+        subtitle={t('For doctors, nurses and certified first-aiders.')}
+        icon={<Radio size={22} color="#fff" />}
+      action={
+        <Pressable onPress={() => router.back()} style={styles.iconButton} accessibilityRole="button" accessibilityLabel={t('Back')}>
+          <ArrowLeft size={16} color="#fff" />
+        </Pressable>
+      }
+      >
+        <Card style={styles.becomeCard}>
+          <Empty
+            icon={ShieldCheck}
+            title={t('Become a responder')}
+            description={t("Pass the CPR or AED course in Training. You'll then be able to go on duty and receive SOS calls near you.")}
+          />
+          <Button onPress={() => router.replace('/(tabs)/training')}>{t('Open training')}</Button>
+        </Card>
       </AppScreen>
     );
   }
@@ -304,7 +316,7 @@ export default function ResponderInbox() {
       icon={<Radio size={22} color="#fff" />}
       action={
         <Pressable onPress={() => router.back()} style={styles.iconButton} accessibilityRole="button" accessibilityLabel={t('Back')}>
-          <ChevronLeft size={20} color="#fff" />
+          <ArrowLeft size={16} color="#fff" />
         </Pressable>
       }
       scrollProps={{ refreshControl: <RefreshControl refreshing={false} onRefresh={load} tintColor={colors.primary} /> }}
@@ -395,13 +407,15 @@ export default function ResponderInbox() {
           {[0, 1].map(i => <Skeleton key={i} style={{ height: 110, borderRadius: radius.lg }} />)}
         </View>
       ) : incidents.length === 0 ? (
-        <Empty
-          icon={InboxIcon}
-          title={available ? t('All quiet nearby') : t('You are off duty')}
-          description={available
-            ? t('Keep Vitalis open. New calls within 20 km appear here with a vibration.')
-            : t('Turn on duty to receive SOS calls within 20 km of you.')}
-        />
+        <Card style={styles.becomeCard}>
+          <Empty
+            icon={InboxIcon}
+            title={available ? t('All quiet nearby') : t('You are off duty')}
+            description={available
+              ? t('Keep Vitalis open. New calls within 20 km appear here with a vibration.')
+              : t('Turn on duty to receive SOS calls within 20 km of you.')}
+          />
+        </Card>
       ) : (
         <View style={{ gap: 10 }}>
           {incidents.map(e => (
@@ -440,6 +454,7 @@ export default function ResponderInbox() {
 
 const styles = StyleSheet.create({
   iconButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.14)' },
+  becomeCard: { padding: 16, paddingTop: 0, paddingBottom: 8, borderRadius: radius.lg },
   dutyCard: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderRadius: radius.lg },
   dutyTitle: { color: colors.foreground, fontSize: 16, fontWeight: '700' },
   dutyBody: { color: colors.mutedForeground, fontSize: 14, marginTop: 2 },
