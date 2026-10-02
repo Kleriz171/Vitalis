@@ -94,7 +94,7 @@ export const checkInService = {
     const active = await CheckIn.findOne({ user: userId, status: 'active' }).lean();
     return {
       hasPins: !!(u as any)?.checkInPinHash,
-      active: active ? { id: String(active._id), dueAt: active.dueAt, note: active.note, stage: active.stage } : null,
+      active: active ? { id: String(active._id), startedAt: (active as any).createdAt, dueAt: active.dueAt, note: active.note, stage: active.stage } : null,
     };
   },
 
@@ -110,7 +110,7 @@ export const checkInService = {
       note: note?.trim() || undefined,
       location: coordinates ? { type: 'Point', coordinates } : undefined,
     });
-    return { id: String(c._id), dueAt: c.dueAt, note: c.note, stage: 0 };
+    return { id: String(c._id), startedAt: (c as any).createdAt, dueAt: c.dueAt, note: c.note, stage: 0 };
   },
 
   /**

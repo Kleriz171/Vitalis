@@ -533,6 +533,7 @@ export const ui: Record<string, string> = {
   'Try a quick question': 'Provoni një pyetje të shpejtë',
   'Try again': 'Provo përsëri',
   'Nearest first': 'Më të afërtit së pari',
+  'Due at {time}': 'Afati në {time}',
   'Try widening the specialty or turning off online-only.': 'Provoni një specialitet më të gjerë ose çaktivizoni “vetëm online”.',
   'Urgency': 'Urgjenca',
   'Urgent': 'Urgjente',
