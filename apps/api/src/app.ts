@@ -29,6 +29,7 @@ import aedRoutes from './modules/aed/aed.routes';
 import pushRoutes from './modules/push/push.routes';
 import trackRoutes from './modules/track/track.routes';
 import accountRoutes from './modules/account/account.routes';
+import mongoose from 'mongoose';
 
 export function buildApp() {
   const app = express();
@@ -60,7 +61,11 @@ export function buildApp() {
     });
   }
 
-  app.get('/health', (_req, res) => res.json({ status: 'ok', ts: Date.now() }));
+  // Uptime monitors poll this: 503 when the database is not connected.
+  app.get('/health', (_req, res) => {
+    const db = mongoose.connection.readyState === 1;
+    res.status(db ? 200 : 503).json({ status: db ? 'ok' : 'degraded', db, ts: Date.now() });
+  });
   app.use('/api/auth', strict(20), authRoutes);
   app.use('/api/emergencies', emergencyRoutes);
   // PIN guessing is also capped per check-in (5 wrong → silent alarm).

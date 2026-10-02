@@ -9,3 +9,5 @@ build/
 *.log
 .vscode/
 .idea/
+backups/
+data/osrm/

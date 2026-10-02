@@ -89,3 +89,13 @@ API_URL=http://localhost:4000 npm run check:drones     # needs the bridge in sim
 ## Deploying the website
 
 `apps/landing` is a static build (`npm run build -w @vitalis/landing`). Configure the host to serve `index.html` for `/verify/*` so certificate QR codes work, and set `PUBLIC_WEB_URL` on the API to the site's origin. Set `VITE_APP_STORE_URL` / `VITE_PLAY_STORE_URL` once the apps are published; until then the buttons read "Coming soon".
+
+## Running the API in production
+
+`docker compose up -d` starts MongoDB (loopback only), the API (`NODE_ENV=production`, Docker health check on `/health`), the console and a nightly backup.
+
+- **Secrets** go in a `.env` next to `docker-compose.yml`: `JWT_ACCESS`, `JWT_REFRESH` (`openssl rand -hex 32` each), `CORS_ORIGIN`, `PUBLIC_WEB_URL`, the `TWILIO_*` values, `GEMINI_API_KEY`, `DRONE_BRIDGE_KEY`.
+- **Backups**: one gzip dump a day in `./backups`, 14 days kept. Copy that folder off the server too (a backup on the same disk dies with it). Restore: `docker compose exec -T mongo mongorestore --gzip --archive --drop < backups/vitalis-YYYY-MM-DD.gz`.
+- **Road ETAs**: `scripts/osrm-prepare.sh` builds the Albania road map once, then `docker compose --profile osrm up -d osrm` and `OSRM_URL=http://osrm:5000`. Without it, ETAs fall back to straight-line estimates; the public OSRM demo is never used in production.
+- **Uptime**: point a monitor (e.g. UptimeRobot's free plan) at `https://<api>/health`. It returns 503 when the database is down, so an alert fires for a dead database as well as a dead server.
+- Put HTTPS in front (Caddy or the host's load balancer). Push, SMS and the tracking link all assume it.
