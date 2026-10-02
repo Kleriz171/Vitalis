@@ -8,6 +8,7 @@ export const ui: Record<string, string> = {
   // Navigation
   'Home': 'Kreu',
   'Back': 'Kthehu',
+  'Close': 'Mbyll',
 
   // Welcome and sign-in
   'Get started': 'Fillo',

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { X } from 'lucide-react-native';
+import { Activity, AlertTriangle, ClipboardList, Phone, Pill, X } from 'lucide-react-native';
+import { AppScreen } from '@/components/AppScreen';
+import { Group, IconButton, Row, Stats } from '@/components/ui/List';
 
 import { Skeleton } from '@/components/ui/Skeleton';
 import { api } from '@/lib/api';
@@ -66,107 +67,73 @@ export default function HandoverScreen() {
   const p = data?.patient;
   const severe = p?.allergies.filter(a => a.severity === 'severe') ?? [];
 
-  return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.bar}>
-        <Text style={styles.barTitle} accessibilityRole="header">{t('Patient handover')}</Text>
-        <Pressable onPress={() => router.back()} style={styles.close} accessibilityRole="button" accessibilityLabel="Close">
-          <X size={20} color={colors.foreground} />
-        </Pressable>
-      </View>
+  const facts = (items?: string[]) => (items?.length ? items.join('\n') : t('None recorded'));
 
-      {error ? <Text style={styles.error}>{error}</Text> : !data ? (
-        <View style={{ padding: 16, gap: 12 }}>
-          <Skeleton style={{ height: 120, borderRadius: radius.lg }} />
+  return (
+    <AppScreen
+      tone="dark"
+      title={p?.name ?? t('Patient handover')}
+      subtitle={p ? [p.age != null ? tn(p.age, '1 year', '{n} years') : null, p.gender ? GENDER[p.gender] ?? cap(p.gender) : null, p.bloodType ? t('Blood {type}', { type: p.bloodType }) : null].filter(Boolean).join(' · ') || t('No profile details') : t('Patient handover')}
+      icon={<ClipboardList size={20} color="#fff" />}
+      action={
+        <Pressable onPress={() => router.back()} style={styles.close} accessibilityRole="button" accessibilityLabel={t('Close')}>
+          <X size={18} color="#fff" />
+        </Pressable>
+      }
+    >
+      {error ? (
+        <Group><Text style={styles.error}>{error}</Text></Group>
+      ) : !data ? (
+        <View style={{ gap: 12 }}>
+          <Skeleton style={{ height: 80, borderRadius: radius.lg }} />
           <Skeleton style={{ height: 200, borderRadius: radius.lg }} />
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.body}>
-          <View style={styles.block}>
-            <Text style={styles.name}>{p?.name ?? t('Unknown patient')}</Text>
-            <Text style={styles.sub}>
-              {[p?.age != null ? tn(p.age, '1 year', '{n} years') : null, p?.gender ? GENDER[p.gender] ?? cap(p.gender) : null, p?.bloodType ? t('Blood {type}', { type: p.bloodType }) : null]
-                .filter(Boolean).join(' · ') || t('No profile details')}
-            </Text>
-            {severe.length ? (
-              <View style={styles.alert}>
-                <Text style={styles.alertText}>{t('Severe allergy: {items}', { items: severe.map(a => a.allergen).join(', ') })}</Text>
-              </View>
-            ) : null}
-          </View>
-
-          <Section title={t('Allergies')} items={p?.allergies.map(a => `${a.allergen} (${SEVERITY[a.severity] ?? a.severity})`)} />
-          <Section title={t('Current medication')} items={p?.medications} />
-          <Section title={t('Conditions')} items={p?.conditions} />
-
-          {p?.emergencyContact?.phone ? (
-            <Pressable style={styles.contact} onPress={() => callNumber(p.emergencyContact!.phone!)} accessibilityRole="button">
-              <Text style={styles.contactLabel}>{t('Emergency contact')}</Text>
-              <Text style={styles.contactValue}>{p.emergencyContact.name ?? t('Contact')} · {p.emergencyContact.phone}</Text>
-            </Pressable>
+        <>
+          {severe.length ? (
+            <View style={styles.alert} accessibilityRole="alert">
+              <AlertTriangle size={18} color="#fff" />
+              <Text style={styles.alertText}>{t('Severe allergy: {items}', { items: severe.map(a => a.allergen).join(', ') })}</Text>
+            </View>
           ) : null}
 
-          <View style={styles.metrics}>
-            <Metric label={t('To accept')} value={mmss(data.metrics.secondsToAssign)} />
-            <Metric label={t('To scene')} value={mmss(data.metrics.secondsToScene)} />
-            <Metric label={t('To AED')} value={mmss(data.metrics.secondsToAed)} />
-          </View>
+          <Stats
+            items={[
+              { label: t('To accept'), value: mmss(data.metrics.secondsToAssign) },
+              { label: t('To scene'), value: mmss(data.metrics.secondsToScene) },
+              { label: t('To AED'), value: mmss(data.metrics.secondsToAed) },
+            ]}
+          />
 
-          <View style={styles.block}>
-            <Text style={styles.sectionTitle}>{t('Timeline')}</Text>
-            {data.timeline.map((t, i) => (
-              <View key={i} style={styles.tlRow}>
-                <Text style={styles.tlTime}>{clock(t.at)}</Text>
-                <Text style={styles.tlText}>{STEP[t.status] ?? t.status}{t.by ? ` · ${t.by}` : ''}</Text>
-              </View>
+          <Group title={t('Patient')}>
+            <Row first icon={<AlertTriangle size={18} color={colors.destructive} />} title={t('Allergies')} summary={facts(p?.allergies.map(a => `${a.allergen} (${SEVERITY[a.severity] ?? a.severity})`))} />
+            <Row icon={<Pill size={18} color={colors.warning} />} title={t('Current medication')} summary={facts(p?.medications)} />
+            <Row icon={<Activity size={18} color={colors.primary} />} title={t('Conditions')} summary={facts(p?.conditions)} />
+            {p?.emergencyContact?.phone ? (
+              <Row
+                icon={<Phone size={18} color={colors.info} />}
+                title={t('Emergency contact')}
+                summary={`${p.emergencyContact.name ?? t('Contact')} · ${p.emergencyContact.phone}`}
+                right={<IconButton icon={<Phone size={16} color="#fff" />} color={colors.info} label={t('Call')} onPress={() => callNumber(p.emergencyContact!.phone!)} />}
+              />
+            ) : null}
+          </Group>
+
+          <Group title={t('Timeline')}>
+            {data.timeline.map((step, i) => (
+              <Row key={i} first={i === 0} icon={<Text style={styles.time}>{clock(step.at)}</Text>} title={STEP[step.status] ?? step.status} summary={step.by ?? undefined} />
             ))}
-          </View>
-        </ScrollView>
+          </Group>
+        </>
       )}
-    </SafeAreaView>
-  );
-}
-
-function Section({ title, items }: { title: string; items?: string[] }) {
-  return (
-    <View style={styles.block}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <Text style={styles.sectionBody}>{items?.length ? items.join('\n') : t('None recorded')}</Text>
-    </View>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.metric}>
-      <Text style={styles.metricValue}>{value}</Text>
-      <Text style={styles.metricLabel}>{label}</Text>
-    </View>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  bar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 8 },
-  barTitle: { color: colors.foreground, fontSize: 17, fontWeight: '700' },
-  close: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  error: { color: colors.destructive, fontSize: 15, padding: 16 },
-  body: { padding: 16, gap: 12, paddingBottom: 40 },
-  block: { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: 16, gap: 6 },
-  name: { color: colors.foreground, fontSize: 24, fontWeight: '800' },
-  sub: { color: colors.mutedForeground, fontSize: 15 },
-  alert: { marginTop: 8, backgroundColor: colors.destructiveSoft, borderRadius: radius.md, padding: 10 },
-  alertText: { color: '#A61B1B', fontSize: 15, fontWeight: '700' },
-  sectionTitle: { color: colors.mutedForeground, fontSize: 13, fontWeight: '700' },
-  sectionBody: { color: colors.foreground, fontSize: 16, lineHeight: 23 },
-  contact: { backgroundColor: colors.accent, borderRadius: radius.lg, padding: 16, gap: 2 },
-  contactLabel: { color: colors.accentForeground, fontSize: 13, fontWeight: '700' },
-  contactValue: { color: colors.accentForeground, fontSize: 16, fontWeight: '600' },
-  metrics: { flexDirection: 'row', gap: 10 },
-  metric: { flex: 1, backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: 12, alignItems: 'center' },
-  metricValue: { color: colors.foreground, fontSize: 20, fontWeight: '800', fontVariant: ['tabular-nums'] },
-  metricLabel: { color: colors.mutedForeground, fontSize: 12, marginTop: 2 },
-  tlRow: { flexDirection: 'row', gap: 12, paddingVertical: 4 },
-  tlTime: { color: colors.mutedForeground, fontSize: 14, width: 70, fontVariant: ['tabular-nums'] },
-  tlText: { color: colors.foreground, fontSize: 15, flex: 1 },
+  close: { width: 40, height: 40, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.14)' },
+  error: { color: colors.destructive, fontSize: 14, paddingVertical: 16 },
+  alert: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: radius.lg, backgroundColor: colors.destructive },
+  alertText: { flex: 1, color: '#fff', fontSize: 15, fontWeight: '700' },
+  time: { color: colors.foreground, fontSize: 11, fontWeight: '700', fontVariant: ['tabular-nums'] },
 });
