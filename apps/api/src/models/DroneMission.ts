@@ -7,6 +7,12 @@ const DroneMissionSchema = new Schema({
   origin: { type: { type: String, default: 'Point' }, coordinates: [Number] },
   destination: { type: { type: String, default: 'Point' }, coordinates: [Number] },
   route: [[Number]],
+  // Tello has no GPS: an autonomous flight is a list of relative SDK moves ("forward 200", "cw 90").
+  steps: [String],
+  routeName: String,
+  currentStep: { type: Number, default: -1 },
+  abortReason: String,
+  dispatchedBy: { type: Types.ObjectId, ref: 'User' },
   payload: String,
 }, { timestamps: true });
 

@@ -9,6 +9,7 @@ import {
   ViewStyle,
   TextStyle,
 } from 'react-native';
+import { tick } from '@/components/ui/List';
 import { colors, radius } from '@/lib/theme';
 
 export type ButtonVariant = 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost';
@@ -70,6 +71,9 @@ export const Button = forwardRef<View, ButtonProps>(
       <Pressable
         ref={ref as any}
         disabled={isDisabled}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: !!isDisabled, busy: !!loading }}
+        onPressIn={(e) => { tick(); props.onPressIn?.(e); }}
         style={({ pressed }) => [
           styles.base,
           variantBox[variant],

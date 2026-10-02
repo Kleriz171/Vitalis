@@ -15,14 +15,24 @@ const mine = (index: number, timestamp: Date, prevHash: string, payload: any, di
   }
 };
 
+const appendNow = async (payload: Record<string, any>) => {
+  const last = await BlockchainLog.findOne().sort('-index');
+  const index = ((last?.index as number | undefined) ?? -1) + 1;
+  const prevHash = (last?.hash as string | undefined) ?? GENESIS_PREV;
+  const timestamp = new Date();
+  const { hash, nonce } = mine(index, timestamp, prevHash, payload);
+  return BlockchainLog.create({ index, timestamp, prevHash, hash, nonce, payload });
+};
+
+// ponytail: in-process queue keeps indexes gapless on one API instance.
+// Running several instances needs a DB-level lock (or a counter doc with $inc).
+let tail: Promise<unknown> = Promise.resolve();
+
 export const blockchainService = {
-  async append(payload: Record<string, any>) {
-    const last = await BlockchainLog.findOne().sort('-index');
-    const index = ((last?.index as number | undefined) ?? -1) + 1;
-    const prevHash = (last?.hash as string | undefined) ?? GENESIS_PREV;
-    const timestamp = new Date();
-    const { hash, nonce } = mine(index, timestamp, prevHash, payload);
-    return BlockchainLog.create({ index, timestamp, prevHash, hash, nonce, payload });
+  append(payload: Record<string, any>) {
+    const run = tail.then(() => appendNow(payload));
+    tail = run.catch(() => undefined);
+    return run;
   },
 
   async verifyChain() {

@@ -87,7 +87,7 @@ export const AdminDoctorApplications = () => {
             <CardContent className="p-6 space-y-3">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <h3 className="text-lg font-bold">{a.fullName} <span className="text-xs uppercase tracking-wide text-muted-foreground ml-2">{a.status}</span></h3>
+                  <h3 className="text-lg font-bold">{a.fullName} <span className="text-xs text-muted-foreground ml-2">{a.status}</span></h3>
                   <p className="text-sm text-muted-foreground">{a.specialty} · {a.yearsExperience} years</p>
                   <p className="text-xs text-muted-foreground mt-1">{a.email} · {a.phone}</p>
                 </div>
@@ -100,7 +100,7 @@ export const AdminDoctorApplications = () => {
                   <FileText size={14} /> {a.certificateFilename}
                 </a>
               </div>
-              <p className="text-sm whitespace-pre-wrap border-l-2 border-border pl-3">{a.bio}</p>
+              <p className="text-sm whitespace-pre-wrap text-muted-foreground max-w-prose">{a.bio}</p>
               {a.rejectionReason ? <p className="text-xs text-destructive">Rejected: {a.rejectionReason}</p> : null}
               {a.status === 'pending' ? (
                 <div className="flex gap-2 pt-2">

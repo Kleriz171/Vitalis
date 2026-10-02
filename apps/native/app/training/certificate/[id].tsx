@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { api } from '@/lib/api';
 import { colors, radius } from '@/lib/theme';
+import { apiError, t } from '@/lib/i18n';
 
 interface CertificateView {
   id: string;
@@ -33,7 +34,7 @@ export default function CertificateScreen() {
       const { data } = await api.get<CertificateView>(`/training/certifications/${id}`);
       setCert(data);
     } catch (err: any) {
-      toast.error('Could not load certificate', { description: err.response?.data?.error ?? 'Try again.' });
+      toast.error(t('Could not load certificate'), { description: apiError(err, 'Try again.') });
     }
   }, [id]);
 
@@ -43,7 +44,7 @@ export default function CertificateScreen() {
     if (!cert) return;
     try {
       await Share.share({
-        message: `I'm certified in ${cert.badgeLabel} via Vitalis. Verify: ${cert.verifyUrl}`,
+        message: t("I'm certified in {badge} via Vitalis. Verify: {url}", { badge: cert.badgeLabel, url: cert.verifyUrl }),
         url: cert.verifyUrl,
       });
     } catch {}
@@ -52,9 +53,9 @@ export default function CertificateScreen() {
   return (
     <AppScreen
       tone="success"
-      eyebrow="First aid certified"
-      title={cert?.badgeLabel ?? 'Certificate'}
-      subtitle={cert ? `Scored ${cert.score}%` : 'Loading certificate'}
+      eyebrow={t('First aid certified')}
+      title={cert?.badgeLabel ?? t('Certificate')}
+      subtitle={cert ? t('Scored {n}%', { n: cert.score }) : t('Loading certificate')}
       icon={<Award size={22} color="#fff" />}
       action={
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
@@ -64,7 +65,7 @@ export default function CertificateScreen() {
       footer={
         <Button onPress={share} disabled={!cert}>
           <Share2 size={16} color="#fff" />
-          Share certificate
+          {t('Share certificate')}
         </Button>
       }
     >
@@ -72,27 +73,27 @@ export default function CertificateScreen() {
         <Skeleton style={{ height: 320, borderRadius: radius.xl }} />
       ) : (
         <Card style={styles.cert}>
-          <Text style={styles.brand}>VITALIS · FIRST AID TRAINING</Text>
-          <Text style={styles.title}>This certifies completion of</Text>
+          <Text style={styles.brand}>{t('VITALIS · FIRST AID TRAINING')}</Text>
+          <Text style={styles.title}>{t('This certifies completion of')}</Text>
           <Text style={styles.badge}>{cert.badgeLabel}</Text>
-          <Text style={styles.score}>Score {cert.score}%</Text>
+          <Text style={styles.score}>{t('Score {n}%', { n: cert.score })}</Text>
 
           {cert.qr ? <Image source={{ uri: cert.qr }} style={styles.qr} /> : null}
           <Text style={styles.verify}>{cert.verifyUrl}</Text>
 
           <View style={styles.metaRow}>
             <View style={styles.metaItem}>
-              <Text style={styles.metaLabel}>Issued</Text>
+              <Text style={styles.metaLabel}>{t('Issued')}</Text>
               <Text style={styles.metaValue}>{new Date(cert.issuedAt).toLocaleDateString()}</Text>
             </View>
             <View style={styles.metaItem}>
-              <Text style={styles.metaLabel}>Valid until</Text>
+              <Text style={styles.metaLabel}>{t('Valid until')}</Text>
               <Text style={styles.metaValue}>{new Date(cert.expiresAt).toLocaleDateString()}</Text>
             </View>
           </View>
 
           <Text style={styles.disclaimer}>
-            Based on Red Cross / ERC guidelines. Educational use only — not a substitute for in-person certified training.
+            {t('Based on Red Cross / ERC guidelines. Educational use only — not a substitute for in-person certified training.')}
           </Text>
         </Card>
       )}
@@ -113,7 +114,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.accent,
   },
-  brand: { color: colors.primary, fontSize: 11, fontWeight: '800', letterSpacing: 1.4 },
+  brand: { color: colors.primary, fontSize: 11, fontWeight: '800' },
   title: { color: colors.mutedForeground, fontSize: 13 },
   badge: { color: colors.foreground, fontSize: 24, fontWeight: '900', textAlign: 'center' },
   score: { color: colors.success, fontSize: 14, fontWeight: '700' },
@@ -121,7 +122,7 @@ const styles = StyleSheet.create({
   verify: { color: colors.primary, fontSize: 11, fontWeight: '600', textAlign: 'center' },
   metaRow: { flexDirection: 'row', gap: 24, marginTop: 6 },
   metaItem: { alignItems: 'center', gap: 4 },
-  metaLabel: { color: colors.mutedForeground, fontSize: 10, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase' },
+  metaLabel: { color: colors.mutedForeground, fontSize: 10, fontWeight: '700' },
   metaValue: { color: colors.foreground, fontSize: 13, fontWeight: '700' },
   disclaimer: { color: colors.mutedForeground, fontSize: 11, textAlign: 'center', lineHeight: 16, marginTop: 8 },
 });

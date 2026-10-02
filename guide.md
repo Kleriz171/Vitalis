@@ -1,3 +1,5 @@
+> **Note:** this walkthrough predates Vitalis v2 (the PWA in `apps/mobile` was removed and demo accounts changed). See the README for current setup.
+
 # Vitalis — First-Time User Guide
 
 Welcome. Vitalis is a real-time bio-logistics emergency platform with **three apps** sharing one backend:

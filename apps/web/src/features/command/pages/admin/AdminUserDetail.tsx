@@ -161,7 +161,7 @@ export const AdminUserDetail = () => {
                 {data.emergencies.map(e => (
                   <div key={e._id} className="border border-border rounded-lg px-4 py-3">
                     <div className="flex items-center justify-between gap-4">
-                      <div className="font-medium capitalize">{e.type.replace('_', ' ')} <span className="text-xs uppercase tracking-wide text-muted-foreground ml-2">P{e.priority}</span></div>
+                      <div className="font-medium capitalize">{e.type.replace('_', ' ')} <span className="text-xs text-muted-foreground ml-2">P{e.priority}</span></div>
                       <Badge variant={e.status === 'resolved' ? 'outline' : 'destructive'}>{e.status.replace('_', ' ')}</Badge>
                     </div>
                     {e.description ? <div className="text-xs text-muted-foreground mt-1">{e.description}</div> : null}
@@ -180,7 +180,7 @@ export const AdminUserDetail = () => {
 const Kpi = ({ label, value, accent }: { label: string; value: number | string; accent?: string }) => (
   <Card className="gap-0 py-0">
     <CardContent className="p-4">
-      <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="text-[11px] text-muted-foreground">{label}</div>
       <div className={`text-2xl font-bold mt-1 ${accent ?? 'text-foreground'}`}>{value}</div>
     </CardContent>
   </Card>
@@ -188,7 +188,7 @@ const Kpi = ({ label, value, accent }: { label: string; value: number | string; 
 
 const Field = ({ label, value }: { label: string; value: string }) => (
   <div>
-    <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</div>
+    <div className="text-[11px] text-muted-foreground">{label}</div>
     <div className="mt-0.5">{value}</div>
   </div>
 );

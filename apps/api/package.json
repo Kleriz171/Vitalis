@@ -6,7 +6,8 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
-    "seed": "tsx src/seeds/seed.ts"
+    "seed": "tsx src/seeds/seed.ts",
+    "check:security": "tsx scripts/security-check.ts"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -15,12 +16,10 @@
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "express-rate-limit": "^7.2.0",
-    "gridfs-stream": "^1.1.1",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.5.0",
-    "multer": "^1.4.4",
-    "multer-gridfs-storage": "^5.0.2",
+    "multer": "^2.4.0",
     "qrcode": "^1.5.3",
     "socket.io": "^4.7.5",
     "winston": "^3.13.0",

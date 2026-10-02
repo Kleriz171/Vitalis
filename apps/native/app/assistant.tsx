@@ -1,11 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useRouter } from 'expo-router';
-import { ArrowLeft, Bot, Send, Sparkles, User } from 'lucide-react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as Speech from 'expo-speech';
+import { speech, useSpeechEvent } from '@/lib/speech';
+import { ArrowLeft, Bot, Mic, Send, Sparkles, User } from 'lucide-react-native';
 import { AppScreen } from '@/components/AppScreen';
+import { toast } from 'sonner-native';
 import { Card } from '@/components/ui/Card';
 import { api } from '@/lib/api';
 import { colors, radius } from '@/lib/theme';
+import { apiError, lang, locale, t } from '@/lib/i18n';
+import { isEmergencyPhrase } from '@/lib/voicePhrases';
 
 interface Message {
   id: string;
@@ -14,10 +19,10 @@ interface Message {
 }
 
 const QUICK = [
-  'How does the SOS button work?',
-  'CPR basics',
-  'How do I update my Bio Passport?',
-  'When should I see a doctor?',
+  t('How does the SOS button work?'),
+  t('CPR basics'),
+  t('How do I update my Bio Passport?'),
+  t('When should I see a doctor?'),
 ];
 
 export default function Assistant() {
@@ -28,16 +33,65 @@ export default function Assistant() {
     {
       id: 'welcome',
       role: 'bot',
-      content: 'Hi — I can help with general wellness questions. For emergencies, use the SOS controls on your home screen.',
+      content: t('Hi — I can help with general wellness questions. For emergencies, use the SOS controls on your home screen.'),
     },
   ]);
+
+  // Voice: speak a question; an emergency phrase goes straight to the SOS countdown, never to the AI.
+  const [listening, setListening] = useState(false);
+  const [heard, setHeard] = useState('');
+  const canSpeak = useRef(false);
+  const triedEnglish = useRef(false);
+  const sosSent = useRef(false);
+  const canListen = !!speech?.isRecognitionAvailable();
+  const { listen: fromWakeWord } = useLocalSearchParams<{ listen?: string }>();
+
+  useEffect(() => {
+    // Speak replies only with a voice for the app language (no Albanian voice on most phones: text only).
+    Speech.getAvailableVoicesAsync()
+      .then(v => { canSpeak.current = v.some(x => x.language.toLowerCase().startsWith(lang)); })
+      .catch(() => {});
+    // Opened by "Hey Vitalis": listen straight away, once the wake-word listener has let go of the mic.
+    const timer = fromWakeWord === '1' && canListen ? setTimeout(() => void listen(), 500) : undefined;
+    return () => { clearTimeout(timer); Speech.stop(); speech?.abort(); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useSpeechEvent('start', () => setListening(true));
+  useSpeechEvent('end', () => { setListening(false); setHeard(''); });
+  useSpeechEvent('error', (e) => {
+    // iPhone has no Albanian recogniser: fall back to English once.
+    if (e.error === 'language-not-supported' && !triedEnglish.current) { triedEnglish.current = true; void listen('en-US'); }
+    else if (e.error !== 'no-speech' && e.error !== 'aborted') toast.error(t('Voice input is not available right now.'));
+  });
+  useSpeechEvent('result', (e) => {
+    const text = e.results[0]?.transcript ?? '';
+    setHeard(text);
+    // Only final text: an interim "help" may still become "help me with CPR".
+    if (!e.isFinal || !text.trim()) return;
+    if (isEmergencyPhrase(text)) {
+      if (sosSent.current) return;
+      sosSent.current = true;
+      speech?.abort();
+      router.push({ pathname: '/emergency', params: { start: '1', reason: 'voice' } } as never);
+    } else {
+      void send(text, true);
+    }
+  });
+
+  const listen = async (language = locale) => {
+    Speech.stop();
+    if (!speech) return;
+    const perm = await speech.requestPermissionsAsync();
+    if (!perm.granted) { toast.error(t('Allow the microphone to talk to Vitalis.')); return; }
+    speech.start({ lang: language, interimResults: true });
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
     return () => clearTimeout(timer);
   }, [messages.length]);
 
-  const send = async (raw?: string) => {
+  const send = async (raw?: string, spoken = false) => { // a spoken question gets a spoken reply
     const content = (raw ?? input).trim();
     if (!content) return;
 
@@ -47,11 +101,12 @@ export default function Assistant() {
     try {
       const { data } = await api.post<{ reply: string }>('/ai/chat', { message: content });
       setMessages((current) => [...current, { id: `b-${Date.now()}`, role: 'bot', content: data.reply }]);
+      if (spoken && canSpeak.current) Speech.speak(data.reply, { language: locale });
     } catch (e: any) {
       setMessages((current) => [...current, {
         id: `b-${Date.now()}`,
         role: 'bot',
-        content: e.response?.data?.error ?? 'I could not reach the assistant. Please try again.',
+        content: apiError(e, 'I could not reach the assistant. Please try again.'),
       }]);
     }
   };
@@ -60,9 +115,9 @@ export default function Assistant() {
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <AppScreen
         tone="success"
-        eyebrow="Wellness guidance"
-        title="Health assistant"
-        subtitle="A calmer space for quick health questions and everyday guidance."
+        eyebrow={t('Wellness guidance')}
+        title={t('Health assistant')}
+        subtitle={t('Health questions')}
         icon={<Sparkles size={24} color="#fff" />}
         scroll={false}
         bodyStyle={styles.screenBody}
@@ -73,12 +128,25 @@ export default function Assistant() {
         }
         footer={
           <>
+            {listening ? (
+              <Text style={styles.heard} accessibilityLiveRegion="polite">{heard || t('Listening…')}</Text>
+            ) : null}
             <View style={styles.composerRow}>
+              {canListen ? (
+                <Pressable
+                  onPress={() => (listening ? speech?.stop() : void listen())}
+                  style={[styles.sendButton, styles.micButton, listening && styles.micButtonOn]}
+                  accessibilityRole="button"
+                  accessibilityLabel={listening ? t('Stop listening') : t('Speak your question')}
+                >
+                  <Mic size={20} color={listening ? '#fff' : colors.success} />
+                </Pressable>
+              ) : null}
               <View style={styles.inputWrap}>
                 <TextInput
                   value={input}
                   onChangeText={setInput}
-                  placeholder="Ask a health question…"
+                  placeholder={t('Ask a health question…')}
                   placeholderTextColor="#94A3B8"
                   multiline
                   style={styles.input}
@@ -92,7 +160,7 @@ export default function Assistant() {
                 <Send size={20} color="#fff" />
               </Pressable>
             </View>
-            <Text style={styles.disclaimer}>Not a substitute for a real doctor or emergency service.</Text>
+            <Text style={styles.disclaimer}>{t('Not a substitute for a real doctor or emergency service.')}</Text>
           </>
         }
       >
@@ -119,7 +187,7 @@ export default function Assistant() {
 
           {messages.length === 1 ? (
             <Card style={styles.quickCard}>
-              <Text style={styles.quickTitle}>Try a quick question</Text>
+              <Text style={styles.quickTitle}>{t('Try a quick question')}</Text>
               <View style={styles.quickWrap}>
                 {QUICK.map((question) => (
                   <Pressable key={question} onPress={() => void send(question)} style={styles.quickPill}>
@@ -262,6 +330,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
+  },
+  micButton: {
+    backgroundColor: colors.successSoft,
+  },
+  micButtonOn: {
+    backgroundColor: colors.destructive,
+  },
+  heard: {
+    color: colors.mutedForeground,
+    fontSize: 13,
+    fontStyle: 'italic',
+    marginBottom: 8,
   },
   sendButtonDisabled: {
     opacity: 0.65,

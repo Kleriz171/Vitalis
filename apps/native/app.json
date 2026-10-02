@@ -7,28 +7,34 @@
     "icon": "./assets/images/icon.png",
     "scheme": "vitalis",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "dev.vitalis.native",
+      "bundleIdentifier": "dev.vitalis.app",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Vitalis uses your location to broadcast SOS emergencies to nearby responders.",
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true,
           "NSAllowsLocalNetworking": true
-        }
+        },
+        "NSSpeechRecognitionUsageDescription": "Vitalis turns what you say into text to answer you or start an SOS.",
+        "NSMicrophoneUsageDescription": "Vitalis uses the microphone when you talk to it and, if you turn on “Hey Vitalis”, to listen for it on your phone while the app is open."
       }
     },
     "android": {
-      "package": "dev.vitalis.native",
+      "package": "dev.vitalis.app",
       "adaptiveIcon": {
         "backgroundColor": "#F7F5F0",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "edgeToEdgeEnabled": true,
-      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "output": "static",
@@ -36,16 +42,58 @@
     },
     "plugins": [
       "expo-router",
-      ["expo-location", { "locationAlwaysAndWhenInUsePermission": "Vitalis uses your location to broadcast SOS emergencies to nearby responders." }],
-      ["expo-splash-screen", {
-        "image": "./assets/images/splash-icon.png",
-        "imageWidth": 200,
-        "resizeMode": "contain",
-        "backgroundColor": "#F7F5F0"
-      }]
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Vitalis uses your location to send your SOS and to show help nearby.",
+          "locationAlwaysAndWhenInUsePermission": "While you are on duty as a responder, Vitalis uses your location in the background so SOS calls near you can reach you, even with the app closed.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#F7F5F0"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#14A897"
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Vitalis uses the microphone when you talk to it and, if you turn on “Hey Vitalis”, to listen for it on your phone while the app is open.",
+          "speechRecognitionPermission": "Vitalis turns what you say into text to answer you or start an SOS."
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "extraMavenRepos": [
+              "https://jitpack.io"
+            ]
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "eca71c90-e81c-4b9f-928a-e0bcaa82b51a"
+      }
+    },
+    "owner": "alekssosa"
   }
 }

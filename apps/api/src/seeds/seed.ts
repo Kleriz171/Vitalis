@@ -14,6 +14,7 @@ import { SupplyRequest } from '../models/SupplyRequest';
 import { Course, Enrollment, Certification } from '../models/Training';
 import { Medication, Allergy, Vaccination, Appointment, Condition, Disability } from '../models/HealthRecord';
 import { Emergency } from '../models/Emergency';
+import { Aed } from '../models/Aed';
 import { DoctorApplication } from '../models/DoctorApplication';
 import { trainingCourses } from './trainingCourses';
 import { randomBytes } from 'crypto';
@@ -82,11 +83,14 @@ const jitter = (c: [number, number], r = 0.03): [number, number] =>
   [c[0] + (Math.random() - 0.5) * r, c[1] + (Math.random() - 0.5) * r];
 
 async function seed() {
+  // The seed wipes every collection and creates accounts with known passwords.
+  if (process.env.NODE_ENV === 'production') throw new Error('Refusing to seed a production database');
   await connectDB();
 
   logger.info('Clearing collections…');
   await Promise.all([
     Hospital.deleteMany({}),
+    Aed.deleteMany({}),
     BloodRequest.deleteMany({}),
     BloodInventory.deleteMany({}),
     Doctor.deleteMany({}),
@@ -341,7 +345,8 @@ async function seed() {
 
   logger.info('Seeding training courses…');
   const seededCourses = await Course.insertMany(trainingCourses);
-  const cprCourse = seededCourses.find((c) => c.slug === 'cpr-adult');
+  // Not CPR/AED: the demo citizen should be able to walk the train-to-respond path.
+  const demoCourse = seededCourses.find((c) => c.slug === 'recovery-position');
 
   logger.info('Seeding demo citizen Bio Passport…');
   await Medication.insertMany([
@@ -381,27 +386,48 @@ async function seed() {
     },
   ]);
 
-  if (cprCourse) {
-    logger.info('Seeding demo citizen CPR certification…');
+  if (demoCourse) {
+    logger.info('Seeding demo citizen certification…');
     await Enrollment.create({
       user: demoCitizen._id,
-      course: cprCourse._id,
-      completedLessonIds: cprCourse.lessons?.map((l: any) => l._id) ?? [],
+      course: demoCourse._id,
+      completedLessonIds: demoCourse.lessons?.map((l: any) => l._id) ?? [],
       lastScore: 88,
       attempts: 1,
       completedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
     });
     await Certification.create({
       user: demoCitizen._id,
-      course: cprCourse._id,
-      courseSlug: cprCourse.slug,
-      badgeLabel: cprCourse.badgeLabel,
+      course: demoCourse._id,
+      courseSlug: demoCourse.slug,
+      badgeLabel: demoCourse.badgeLabel,
       score: 88,
       issuedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
-      expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      expiresAt: new Date(Date.now() + (365 - 14) * 24 * 60 * 60 * 1000),
       shareToken: randomBytes(12).toString('hex'),
     });
   }
+
+  // DEMO DATA: plausible public spots in central Tirana, not a real AED registry.
+  logger.info('Seeding demo AED registry…');
+  const aedVerified = new Date();
+  await Aed.insertMany([
+    { name: 'Skanderbeg Square info point', placement: 'Inside the tourist info kiosk, right of the door', access: '24h', coords: [19.8186, 41.3279] },
+    { name: 'Tirana Central Bus Terminal', placement: 'Main hall, next to ticket window 3', access: '24h', coords: [19.7940, 41.3339] },
+    { name: 'Toptani Shopping Center', placement: 'Ground floor, by the security desk', access: 'business_hours', coords: [19.8207, 41.3265] },
+    { name: 'Air Albania Stadium', placement: 'Gate B first-aid room', access: 'restricted', coords: [19.8248, 41.3187] },
+    { name: 'Blloku pharmacy', placement: 'Behind the counter; ask staff', access: 'business_hours', coords: [19.8137, 41.3222] },
+    { name: 'University of Tirana rectorate', placement: 'Lobby, wall cabinet opposite the lifts', access: 'business_hours', coords: [19.8212, 41.3163] },
+    { name: 'Grand Park lake entrance', placement: 'Park ranger post', access: '24h', coords: [19.8173, 41.3129] },
+    { name: 'Tirana East Gate (TEG)', placement: 'Level 0, next to customer service', access: 'business_hours', coords: [19.8586, 41.2957] },
+  ].map(a => ({
+    name: a.name,
+    placement: a.placement,
+    access: a.access,
+    location: { type: 'Point', coordinates: a.coords },
+    padsExpireAt: new Date(Date.now() + 400 * 86400000),
+    verifiedAt: aedVerified,
+  })));
 
   logger.info('Seeding demo SOS history…');
   await Emergency.create({

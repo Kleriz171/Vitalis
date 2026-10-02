@@ -102,7 +102,7 @@ export const AdminUsers = () => {
               {users.map(u => (
                 <div key={u._id} className="flex items-center justify-between gap-4 border border-border rounded-lg px-4 py-3 hover:bg-muted/40 transition">
                   <Link to={`/command/admin/users/${u._id}`} className="flex-1 min-w-0">
-                    <div className="font-medium">{u.name} <span className="text-xs uppercase tracking-wide text-muted-foreground ml-2">{u.role}</span></div>
+                    <div className="font-medium">{u.name} <span className="text-xs text-muted-foreground ml-2">{u.role}</span></div>
                     <div className="text-xs text-muted-foreground">{u.email}</div>
                   </Link>
                   <div className="flex gap-2 shrink-0">

@@ -1,7 +1,7 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-  Activity, Plane, Boxes, BarChart3, LogOut, Heart, Users, Stethoscope,
+  Activity, Plane, Boxes, BarChart3, LogOut, Heart, Users, Stethoscope, Zap,
 } from 'lucide-react';
 import { ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -13,7 +13,8 @@ import {
 import { cn } from '../../lib/utils';
 
 const baseNav = [
-  { to: '/command', label: 'Logistics', icon: Activity, end: true },
+  { to: '/command', label: 'Live operations', icon: Activity, end: true },
+  { to: '/command/aeds', label: 'Defibrillators', icon: Zap },
   { to: '/command/drones', label: 'Drones', icon: Plane },
   { to: '/command/ledger', label: 'Ledger', icon: Boxes },
   { to: '/command/analytics', label: 'Analytics', icon: BarChart3 },
@@ -41,51 +42,32 @@ export const CommandShell = () => {
           <div className="w-9 h-9 rounded-xl bg-primary text-primary-foreground grid place-items-center shadow-sm">
             <Heart size={18} fill="currentColor" />
           </div>
-          <div>
-            <div className="font-extrabold tracking-wide text-sidebar-foreground">VITALIS</div>
-            <div className="text-[10px] text-muted-foreground uppercase tracking-widest -mt-0.5">Command</div>
+          <div className="leading-tight">
+            <div className="font-bold text-sidebar-foreground">Vitalis</div>
+            <div className="text-xs text-muted-foreground">Command</div>
           </div>
         </div>
 
         <nav className="flex flex-col gap-0.5 p-3">
-          {navItems.map(({ to, label, icon: Icon, end }, i) => (
-            <motion.div
+          {navItems.map(({ to, label, icon: Icon, end }) => (
+            <NavLink
               key={to}
-              initial={{ opacity: 0, x: -8 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.04 * i, duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+              to={to}
+              end={end}
+              className={({ isActive }) => cn(
+                'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                isActive
+                  ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                  : 'text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground',
+              )}
             >
-              <NavLink
-                to={to}
-                end={end}
-                className={({ isActive }) => cn(
-                  'group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors relative',
-                  isActive
-                    ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                    : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground'
-                )}
-              >
-                {({ isActive }) => (
-                  <>
-                    {isActive && (
-                      <motion.span
-                        layoutId="sidebar-active"
-                        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                        className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full"
-                      />
-                    )}
-                    <Icon
-                      size={16}
-                      className={cn(
-                        'transition-transform group-hover:scale-110',
-                        isActive ? 'text-primary' : '',
-                      )}
-                    />
-                    <span>{label}</span>
-                  </>
-                )}
-              </NavLink>
-            </motion.div>
+              {({ isActive }) => (
+                <>
+                  <Icon size={16} className={isActive ? 'text-primary' : ''} />
+                  <span>{label}</span>
+                </>
+              )}
+            </NavLink>
           ))}
         </nav>
 
@@ -100,7 +82,7 @@ export const CommandShell = () => {
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium truncate">{user?.name ?? 'Guest'}</div>
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{user?.role}</div>
+                  <div className="text-xs text-muted-foreground capitalize">{user?.role}</div>
                 </div>
               </button>
             </DropdownMenuTrigger>
@@ -117,10 +99,10 @@ export const CommandShell = () => {
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
           >
             <Outlet />
           </motion.div>

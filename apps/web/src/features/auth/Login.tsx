@@ -1,29 +1,23 @@
 import { useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Heart } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Heart } from 'lucide-react';
 import { api } from '../../api/client';
 import { setSession } from '../../store';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
-import { Card, CardContent } from '../../components/ui/card';
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { pushToast } from '../../components/toast/toast';
 
 const OPERATOR_ROLES = ['dispatcher', 'admin'];
-const DEMO_OPERATOR_ACCOUNTS = [
-  {
-    label: 'Dispatcher',
-    email: 'dispatcher@vitalis.com',
-    password: 'Dispatch1!',
-  },
-  {
-    label: 'Admin',
-    email: 'aleks@vitalis.com',
-    password: 'AlexNo11$',
-  },
-];
+// Seeded demo accounts, dev builds only. Vite drops this array from production bundles.
+const DEMO_OPERATOR_ACCOUNTS = import.meta.env.DEV
+  ? [
+      { label: 'Dispatcher', email: 'dispatcher@vitalis.com', password: 'Dispatch1!' },
+      { label: 'Admin', email: 'aleks@vitalis.com', password: 'AlexNo11$' },
+    ]
+  : [];
 
 export const Login = () => {
   const [email, setEmail] = useState('');
@@ -60,71 +54,67 @@ export const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
-        <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6">
-          <ArrowLeft size={16} /> Home
-        </Link>
-
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-11 h-11 rounded-2xl bg-primary text-primary-foreground grid place-items-center shadow-sm">
-            <Heart size={20} fill="currentColor" />
+    <div className="min-h-screen grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] bg-background">
+      <section className="hidden lg:flex flex-col justify-between p-12 bg-[hsl(193_47%_12%)] text-white">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary grid place-items-center">
+            <Heart size={18} fill="currentColor" />
           </div>
-          <div>
-            <h1 className="text-xl font-extrabold tracking-wide">VITALIS</h1>
-            <p className="text-xs text-muted-foreground">Operator portal access</p>
-          </div>
+          <span className="text-lg font-bold">Vitalis Command</span>
         </div>
+        <div className="max-w-md space-y-4">
+          <h1 className="text-4xl font-bold leading-tight text-balance">Every call, every responder, every defibrillator on one screen.</h1>
+          <p className="text-white/80 text-pretty">
+            Live SOS intake, responder tracking and patient handover for dispatch centres and hospital coordinators.
+          </p>
+        </div>
+        <p className="text-xs text-white/60">Authorised operators only.</p>
+      </section>
 
-        <Card className="shadow-sm">
-          <CardContent className="space-y-5">
-            <form onSubmit={submit} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} required />
-              </div>
+      <section className="flex items-center justify-center px-6 py-12">
+        <div className="w-full max-w-sm">
+          <div className="lg:hidden flex items-center gap-3 mb-8">
+            <div className="w-10 h-10 rounded-xl bg-primary text-primary-foreground grid place-items-center">
+              <Heart size={18} fill="currentColor" />
+            </div>
+            <span className="text-lg font-bold">Vitalis Command</span>
+          </div>
+          <h2 className="text-2xl font-bold tracking-tight">Sign in</h2>
+          <p className="text-sm text-muted-foreground mt-1 mb-8">Use your dispatcher or administrator account.</p>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="password">Password</Label>
-                <Input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} minLength={8} required />
-              </div>
+          <form onSubmit={submit} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} required autoFocus />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="password">Password</Label>
+              <Input id="password" type="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} minLength={8} required />
+            </div>
+            {err && <Alert variant="destructive"><AlertDescription>{err}</AlertDescription></Alert>}
+            <Button type="submit" size="lg" loading={loading} className="w-full">Sign in</Button>
+          </form>
 
-              {err && <Alert variant="destructive"><AlertDescription>{err}</AlertDescription></Alert>}
-
-              <Button type="submit" size="lg" loading={loading} className="w-full">
-                Sign in
-              </Button>
-            </form>
-
-            <div className="rounded-2xl border border-border bg-muted/40 p-4 space-y-3">
-              <div>
-                <p className="text-sm font-semibold text-foreground">Demo operator accounts</p>
-                <p className="text-xs text-muted-foreground">Use one of these seeded accounts to enter the command portal.</p>
-              </div>
-              <div className="space-y-2">
-                {DEMO_OPERATOR_ACCOUNTS.map((account) => (
+          {DEMO_OPERATOR_ACCOUNTS.length > 0 && (
+            <div className="mt-8 pt-6 border-t border-border">
+              <p className="text-sm font-medium">Demo accounts <span className="text-muted-foreground font-normal">(development only)</span></p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {DEMO_OPERATOR_ACCOUNTS.map(account => (
                   <button
                     key={account.email}
                     type="button"
-                    onClick={() => {
-                      setEmail(account.email);
-                      setPassword(account.password);
-                      setErr(null);
-                    }}
-                    className="w-full rounded-xl border border-border bg-card px-3 py-3 text-left transition hover:border-primary/40 hover:bg-primary/5"
+                    onClick={() => { setEmail(account.email); setPassword(account.password); setErr(null); }}
+                    className="rounded-lg border border-border bg-card px-3 py-2 text-left text-sm transition hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-sm font-semibold text-foreground">{account.label}</span>
-                      <span className="text-[11px] font-medium text-primary">Use account</span>
-                    </div>
-                    <div className="mt-1 text-xs text-muted-foreground">{account.email}</div>
+                    <div className="font-medium">{account.label}</div>
+                    <div className="text-xs text-muted-foreground truncate">{account.email}</div>
                   </button>
                 ))}
               </div>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          )}
+        </div>
+      </section>
     </div>
   );
 };

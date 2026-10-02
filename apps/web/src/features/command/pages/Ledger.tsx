@@ -98,17 +98,17 @@ export const Ledger = () => {
                       <div className="text-xs capitalize font-medium">
                         {b.payload?.action} · {b.payload?.entity}
                       </div>
-                      <div className="text-[10px] text-muted-foreground font-mono">
+                      <div className="text-xs text-muted-foreground font-mono">
                         {new Date(b.timestamp).toLocaleString()}
                       </div>
                     </div>
                   </div>
                   <Badge variant="outline" className="font-mono">nonce {b.nonce}</Badge>
                 </div>
-                <div className="font-mono text-[10px] text-muted-foreground break-all">
+                <div className="font-mono text-xs text-muted-foreground break-all">
                   <span className="opacity-60">hash:</span> {b.hash}
                 </div>
-                <div className="font-mono text-[10px] text-muted-foreground/70 break-all mt-1">
+                <div className="font-mono text-xs text-muted-foreground/70 break-all mt-1">
                   <span className="opacity-60">prev:</span> {b.prevHash}
                 </div>
               </div>

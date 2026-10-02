@@ -15,7 +15,10 @@ services:
       - MONGO_URI=mongodb://mongo:27017/vitalis
       - JWT_ACCESS=${JWT_ACCESS}
       - JWT_REFRESH=${JWT_REFRESH}
-      - CORS_ORIGIN=http://localhost:5173,http://localhost:5174
+      - CORS_ORIGIN=http://localhost:5173,http://localhost:5175
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - DRONE_BRIDGE_KEY=${DRONE_BRIDGE_KEY}
+      - PUBLIC_WEB_URL=${PUBLIC_WEB_URL}
     depends_on: [mongo]
 
   web:
@@ -26,15 +29,6 @@ services:
       - VITE_API_URL=http://localhost:4000/api
       - VITE_SOCKET_URL=http://localhost:4000
       - VITE_MAPBOX_TOKEN=${MAPBOX_TOKEN}
-    depends_on: [api]
-
-  mobile:
-    build: ./apps/mobile
-    restart: unless-stopped
-    ports: ['5174:5174']
-    environment:
-      - VITE_API_URL=http://localhost:4000/api
-      - VITE_SOCKET_URL=http://localhost:4000
     depends_on: [api]
 
 volumes:

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Award, Check, CircleHelp, ClipboardCheck, X } from 'lucide-react-native';
+import { ArrowLeft, Award, Check, X } from 'lucide-react-native';
 import { useDispatch } from 'react-redux';
 import { toast } from 'sonner-native';
 
@@ -11,8 +11,9 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { api } from '@/lib/api';
-import { upsertCertification, upsertEnrollment } from '@/lib/store';
+import { setSession, store, upsertCertification, upsertEnrollment } from '@/lib/store';
 import { colors, radius } from '@/lib/theme';
+import { apiError, t, tn } from '@/lib/i18n';
 
 interface Question {
   id: string;
@@ -32,7 +33,7 @@ interface CourseQuiz {
 interface ReviewEntry {
   questionId: string;
   correct: boolean;
-  correctIndex: number;
+  correctIndex?: number;
   explanation?: string;
 }
 
@@ -62,7 +63,7 @@ export default function Quiz() {
 
   if (!course) {
     return (
-      <AppScreen tone="primary" title="Loading quiz" action={<BackBtn />}>
+      <AppScreen tone="primary" title={t('Loading quiz')} action={<BackBtn />}>
         <Skeleton style={{ height: 150, borderRadius: radius.xl }} />
         <Skeleton style={{ height: 240, borderRadius: radius.xl }} />
       </AppScreen>
@@ -77,20 +78,29 @@ export default function Quiz() {
       const payload = {
         answers: course.quiz.map((q) => ({ questionId: q.id, choiceIndex: answers[q.id] })),
       };
-      const { data } = await api.post<QuizResult & { enrollment: any; certification: any }>(
+      const { data } = await api.post<QuizResult & { enrollment: any; certification: any; roleChanged?: boolean }>(
         `/training/enrollments/${course.id}/quiz`,
         payload
       );
       setResult(data);
       if (data.enrollment) dispatch(upsertEnrollment(data.enrollment));
+      if (data.roleChanged) {
+        // New role lives in the JWT; refresh so responder features unlock right away.
+        const refreshToken = store.getState().auth.refreshToken;
+        if (refreshToken) {
+          const { data: session } = await api.post('/auth/refresh', { refreshToken });
+          dispatch(setSession(session));
+        }
+        toast.success(t('You are now a Vitalis responder'), { description: t('Go on duty from the Responder inbox on Home.') });
+      }
       if (data.certification) {
         dispatch(upsertCertification(data.certification));
-        toast.success(`Earned ${course.badgeLabel}!`);
+        if (!data.roleChanged) toast.success(t('Earned {badge}!', { badge: course.badgeLabel }));
       } else {
-        toast(`Score ${data.score}%. Try again to pass.`);
+        toast(t('Score {n}%. Try again to pass.', { n: data.score }));
       }
     } catch (err: any) {
-      toast.error('Could not submit', { description: err.response?.data?.error ?? 'Try again.' });
+      toast.error(t('Could not submit'), { description: apiError(err, 'Try again.') });
     } finally {
       setSubmitting(false);
     }
@@ -100,22 +110,22 @@ export default function Quiz() {
     return (
       <AppScreen
         tone={result.passed ? 'success' : 'critical'}
-        eyebrow={result.passed ? 'Passed' : 'Try again'}
+        eyebrow={result.passed ? t('Passed') : t('Try again')}
         title={`${result.score}%`}
-        subtitle={result.passed ? `You earned ${course.badgeLabel}.` : `You need ${result.passingScore}% to pass.`}
+        subtitle={result.passed ? t('You earned {badge}.', { badge: course.badgeLabel }) : t('You need {n}% to pass.', { n: result.passingScore })}
         icon={<Award size={22} color="#fff" />}
         action={<BackBtn />}
         footer={
           <View style={styles.footerColumn}>
             {result.passed && result.certification ? (
               <Button onPress={() => router.replace({ pathname: '/training/certificate/[id]', params: { id: result.certification!.id } } as never)}>
-                View certificate
+                {t('View certificate')}
               </Button>
             ) : (
-              <Button onPress={() => { setResult(null); setAnswers({}); }}>Retry quiz</Button>
+              <Button onPress={() => { setResult(null); setAnswers({}); }}>{t('Retry quiz')}</Button>
             )}
             <Button variant="outline" onPress={() => router.replace({ pathname: '/training/[slug]', params: { slug: course.slug } } as never)}>
-              Back to course
+              {t('Back to course')}
             </Button>
           </View>
         }
@@ -133,8 +143,8 @@ export default function Quiz() {
                   Your answer: {q.choices[userAnswer]}
                 </Text>
               </View>
-              {!right ? (
-                <Text style={styles.reviewCorrect}>Correct: {q.choices[review?.correctIndex ?? 0]}</Text>
+              {!right && review?.correctIndex != null ? (
+                <Text style={styles.reviewCorrect}>{t('Correct: {answer}', { answer: q.choices[review.correctIndex] })}</Text>
               ) : null}
               {review?.explanation ? <Text style={styles.reviewExplain}>{review.explanation}</Text> : null}
             </Card>
@@ -148,25 +158,13 @@ export default function Quiz() {
     <AppScreen
       tone="primary"
       eyebrow={course.badgeLabel}
-      title="Final quiz"
-      subtitle={`Pass with ${course.passingScore}% or higher.`}
+      title={t('Final quiz')}
+      subtitle={`${tn(course.quiz.length, '1 question', '{n} questions')} · ${t('Pass with {n}% or higher.', { n: course.passingScore })}`}
       icon={<Award size={22} color="#fff" />}
       action={<BackBtn />}
-      headerContent={
-        <View style={styles.heroContent}>
-          <View style={styles.heroChip}>
-            <ClipboardCheck size={14} color="#fff" />
-            <Text style={styles.heroChipText}>{course.quiz.length} questions</Text>
-          </View>
-          <View style={styles.heroChip}>
-            <CircleHelp size={14} color="#fff" />
-            <Text style={styles.heroChipText}>One answer per question</Text>
-          </View>
-        </View>
-      }
       footer={
         <Button onPress={submit} loading={submitting} disabled={!allAnswered}>
-          {allAnswered ? 'Submit answers' : 'Answer every question'}
+          {allAnswered ? t('Submit answers') : t('Answer every question')}
         </Button>
       }
     >
@@ -174,7 +172,7 @@ export default function Quiz() {
         <Card key={q.id} style={styles.qCard}>
           <View style={styles.questionHeader}>
             <Badge variant="outline" style={styles.indexBadge} textStyle={styles.indexBadgeText}>
-              Question {idx + 1}
+              {t('Question {n}', { n: idx + 1 })}
             </Badge>
           </View>
           <Text style={styles.qPrompt}>{q.prompt}</Text>
@@ -216,21 +214,10 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.16)',
   },
-  heroContent: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  heroChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: radius.full,
-    backgroundColor: 'rgba(255,255,255,0.14)',
-  },
-  heroChipText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   qCard: { padding: 18, gap: 14, marginBottom: 12 },
   questionHeader: { flexDirection: 'row', justifyContent: 'flex-start' },
   indexBadge: { backgroundColor: colors.soft, borderColor: colors.border, paddingHorizontal: 10, paddingVertical: 6 },
-  indexBadgeText: { color: colors.primary, fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
+  indexBadgeText: { color: colors.primary, fontSize: 11, fontWeight: '800' },
   qPrompt: { color: colors.foreground, fontSize: 15, fontWeight: '700', lineHeight: 22 },
   choiceList: { gap: 10 },
   choice: {
