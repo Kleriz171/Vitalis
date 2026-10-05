@@ -20,6 +20,7 @@ import { toast } from 'sonner-native';
 import { api, PRIVACY_URL } from '@/lib/api';
 import { signOut } from '@/lib/session';
 import { AppScreen } from '@/components/AppScreen';
+import { WatchSection } from '@/components/WatchSection';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -792,6 +793,8 @@ export default function Profile() {
             </View>
             </View>
           </View>
+
+          <WatchSection open={open === 'watch'} onToggle={() => toggle('watch')} />
 
           {/* Your data: a copy of everything, or erase it (account.routes.ts on the API). */}
           <Section
