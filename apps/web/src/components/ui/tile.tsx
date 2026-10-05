@@ -2,12 +2,19 @@ import type { Icon } from '@phosphor-icons/react';
 import { cn } from '../../lib/utils';
 
 // Same idea as the phone app's row icons: a soft tinted square, the icon coloured by meaning.
+// Vitalis colours only: teal and deep green for everything, red strictly for SOS and danger.
+// (amber/blue/violet are kept as names so older call sites still compile; they map to greens.)
+const TEAL = 'bg-[hsl(173_55%_92%)] text-[hsl(175_77%_24%)]';
+const DEEP = 'bg-[hsl(175_77%_21%)] text-white';
+const MINT = 'bg-[hsl(160_40%_92%)] text-[hsl(173_79%_30%)]';
 const TONES = {
-  teal: 'bg-[hsl(173_55%_92%)] text-[hsl(175_77%_24%)]',
+  teal: TEAL,
+  deep: DEEP,
+  mint: MINT,
   sos: 'bg-[hsl(0_80%_95%)] text-[hsl(0_72%_48%)]',
-  amber: 'bg-[hsl(36_95%_92%)] text-[hsl(30_90%_38%)]',
-  blue: 'bg-[hsl(216_90%_95%)] text-[hsl(218_75%_48%)]',
-  violet: 'bg-[hsl(262_85%_95%)] text-[hsl(262_60%_52%)]',
+  amber: MINT,
+  blue: TEAL,
+  violet: DEEP,
   slate: 'bg-muted text-muted-foreground',
   // On the green band: translucent white, like the phone app's header tile.
   band: 'bg-white/[0.14] text-white',

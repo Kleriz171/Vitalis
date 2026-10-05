@@ -5,6 +5,7 @@ import { socket } from '../../../realtime/socket';
 import { Card } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
 import { Skeleton } from '../../../components/ui/skeleton';
+import { KPI } from '../../../components/widgets/KPI';
 import { Chip, Panel, Row } from '../../../components/ui/list';
 import { PageHeader } from '../../../components/layout/CommandShell';
 import { pushToast } from '../../../components/toast/toast';
@@ -81,7 +82,12 @@ export const Drones = () => {
   return (
     <>
       <PageHeader icon={Drone} title="Drones" subtitle="Autonomous dispatch and manual flight for connected drones" />
-      <div className="p-6 space-y-6">
+      <div className="p-6 space-y-5">
+        <div className="grid grid-cols-3 gap-4 stagger">
+          <KPI icon={Drone} iconTone="deep" label="Missions flown" value={missions.length} />
+          <KPI icon={CheckCircle} iconTone="teal" label="Delivered" value={missions.filter(m => m.status === 'delivered').length} />
+          <KPI icon={Warning} iconTone={missions.some(m => m.status === 'aborted') ? 'sos' : 'mint'} label="Aborted, usually by the pilot taking over" value={missions.filter(m => m.status === 'aborted').length} />
+        </div>
         {fleet === null ? (
           <Skeleton className="h-80 rounded-xl" />
         ) : fleet.length === 0 ? (

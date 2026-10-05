@@ -72,9 +72,13 @@ interface Props {
   onSelect?: (id: string) => void;
   /** Keep every active call in frame as calls come and go. */
   follow?: boolean;
+  /** Fly here, e.g. the defibrillator picked in a list. [lng, lat] */
+  focus?: [number, number] | null;
+  /** 'aeds': the defibrillator registry, so the call legend would only confuse. */
+  legend?: 'all' | 'aeds';
 }
 
-const MapView = ({ incidents, aeds = [], responders = [], selectedId, onSelect, follow = false }: Props) => {
+const MapView = ({ incidents, aeds = [], responders = [], selectedId, onSelect, follow = false, focus = null, legend = 'all' }: Props) => {
   const ref = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const incidentLayer = useRef<L.LayerGroup | null>(null);
@@ -132,6 +136,11 @@ const MapView = ({ incidents, aeds = [], responders = [], selectedId, onSelect, 
       map.current.fitBounds(b.pad(0.4), { maxZoom: 15 });
     }
   }, [located, selectedId, onSelect]);
+
+  useEffect(() => {
+    if (focus && map.current) map.current.flyTo([focus[1], focus[0]], 17, { duration: 0.8, easeLinearity: 0.15 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus?.[0], focus?.[1]]);
 
   // Follow: whenever calls come or go, frame them all again.
   useEffect(() => {
@@ -202,9 +211,11 @@ const MapView = ({ incidents, aeds = [], responders = [], selectedId, onSelect, 
         </div>
       )}
       <div className="absolute left-3 bottom-3 z-[402] flex flex-wrap gap-x-4 gap-y-1 rounded-lg bg-white/95 border border-border px-3 py-2 text-[12px] text-muted-foreground shadow-sm">
-        <span className="flex items-center gap-1.5"><i className="w-3 h-3 rounded-full bg-[#D92D2D] border-2 border-white shadow" />Priority 1</span>
-        <span className="flex items-center gap-1.5"><i className="w-3 h-3 rounded-full bg-[#E07A10] border-2 border-white shadow" />Priority 2</span>
-        <span className="flex items-center gap-1.5"><i className="w-3 h-3 rounded-full bg-[#14A897] border-2 border-white shadow" />Responder, 5-min reach</span>
+        {legend === 'all' && <>
+          <span className="flex items-center gap-1.5"><i className="w-3 h-3 rounded-full bg-[#D92D2D] border-2 border-white shadow" />Priority 1</span>
+          <span className="flex items-center gap-1.5"><i className="w-3 h-3 rounded-full bg-[#E07A10] border-2 border-white shadow" />Priority 2</span>
+          <span className="flex items-center gap-1.5"><i className="w-3 h-3 rounded-full bg-[#14A897] border-2 border-white shadow" />Responder, 5-min reach</span>
+        </>}
         <span className="flex items-center gap-1.5"><i className="w-3 h-3 rounded-[4px] bg-white border border-[#0C5D57]" />Defibrillator</span>
       </div>
     </div>

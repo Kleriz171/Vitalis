@@ -20,8 +20,10 @@ export const Panel = ({ title, aside, children, className }: { title?: ReactNode
 );
 
 export const Row = ({
-  icon, tone = 'teal', title, summary, meta, right, className,
+  icon, tone = 'teal', title, summary, meta, right, className, onClick, active,
 }: {
+  onClick?: () => void;
+  active?: boolean;
   icon: Icon;
   tone?: TileTone;
   title: ReactNode;
@@ -31,7 +33,13 @@ export const Row = ({
   right?: ReactNode;
   className?: string;
 }) => (
-  <div className={cn('flex items-center gap-4 px-5 py-3.5', className)}>
+  <div
+    className={cn('flex items-center gap-4 px-5 py-3.5 transition-colors', onClick && 'cursor-pointer hover:bg-muted/50', active && 'bg-accent/60 hover:bg-accent/60', className)}
+    onClick={onClick}
+    onKeyDown={onClick ? e => { if (e.key === 'Enter') onClick(); } : undefined}
+    tabIndex={onClick ? 0 : undefined}
+    role={onClick ? 'button' : undefined}
+  >
     <Tile icon={icon} tone={tone} />
     <div className="min-w-0 flex-1">
       <div className="font-bold truncate">{title}</div>
@@ -48,7 +56,7 @@ export const Chip = ({ children, tone = 'muted' }: { children: ReactNode; tone?:
     muted: 'bg-muted text-muted-foreground',
     teal: 'bg-[hsl(173_55%_92%)] text-[hsl(175_77%_24%)]',
     sos: 'bg-[hsl(0_80%_95%)] text-[hsl(0_72%_45%)]',
-    amber: 'bg-[hsl(36_95%_92%)] text-[hsl(30_90%_33%)]',
+    amber: 'bg-[hsl(160_40%_92%)] text-[hsl(173_79%_28%)]',
   }[tone])}>
     {children}
   </span>

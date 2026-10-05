@@ -1,7 +1,7 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-  Pulse, Lightning, Drone, Cube, ChartBar, SignOut, Heart, UsersThree, Stethoscope, type Icon,
+  Pulse, Lightning, Drone, SealCheck, ChartLineUp, SignOut, Heart, UsersThree, IdentificationCard, type Icon,
 } from '@phosphor-icons/react';
 import { Tile } from '../ui/tile';
 import { Digits } from '../ui/digits';
@@ -19,12 +19,12 @@ const baseNav: NavItem[] = [
   { to: '/command', label: 'Live operations', icon: Pulse, end: true },
   { to: '/command/aeds', label: 'Defibrillators', icon: Lightning },
   { to: '/command/drones', label: 'Drones', icon: Drone },
-  { to: '/command/ledger', label: 'Ledger', icon: Cube },
-  { to: '/command/analytics', label: 'Analytics', icon: ChartBar },
+  { to: '/command/ledger', label: 'Ledger', icon: SealCheck },
+  { to: '/command/analytics', label: 'Analytics', icon: ChartLineUp },
 ];
 const adminNav: NavItem[] = [
   { to: '/command/admin/users', label: 'Users', icon: UsersThree },
-  { to: '/command/admin/doctor-applications', label: 'Doctor review', icon: Stethoscope },
+  { to: '/command/admin/doctor-applications', label: 'Doctor review', icon: IdentificationCard },
 ];
 
 const ROLE_NAME: Record<string, string> = { eso: 'Emergency services operator', dispatcher: 'Emergency services operator', admin: 'Emergency services operator' };

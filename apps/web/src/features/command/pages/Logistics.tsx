@@ -1,4 +1,4 @@
-import { LockSimple, LockSimpleOpen, MagnifyingGlass, Ambulance, Bandaids, Certificate, Drop, FirstAid, Heartbeat, Hourglass, Lightning, Pill, Pulse, Siren, Timer, UsersThree, Warning, X, type Icon } from '@phosphor-icons/react';
+import { LockSimple, LockSimpleOpen, MagnifyingGlass, Ambulance, Bandaids, Certificate, Drop, FirstAid, Heartbeat, Hourglass, Lightning, Pill, Pulse, Siren, PersonSimpleRun, Timer, Warning, X, type Icon } from '@phosphor-icons/react';
 import { Tile, type TileTone } from '../../../components/ui/tile';
 import { Digits } from '../../../components/ui/digits';
 import { NotchedPanel } from '../../../components/widgets/NotchedPanel';
@@ -82,11 +82,11 @@ const STEPS = ['pending', 'assigned', 'en_route', 'on_scene'];
 // The phone app's habit: every kind of call has its own icon and tint.
 const TYPE_ICON: Record<string, [Icon, TileTone]> = {
   cardiac: [Heartbeat, 'sos'],
-  medical: [FirstAid, 'amber'],
-  trauma: [Bandaids, 'violet'],
+  medical: [FirstAid, 'teal'],
+  trauma: [Bandaids, 'teal'],
   blood_needed: [Drop, 'sos'],
-  rare_medicine: [Pill, 'blue'],
-  other: [Siren, 'slate'],
+  rare_medicine: [Pill, 'mint'],
+  other: [Siren, 'teal'],
 };
 const typeTile = (type: string) => TYPE_ICON[type] ?? TYPE_ICON.other;
 
@@ -278,10 +278,10 @@ export const Logistics = () => {
 
       <div className="px-6 pb-6 space-y-5">
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 stagger" style={{ ['--base' as string]: '60ms' }}>
-          <KPI icon={Siren} iconTone="sos" label="Active calls" value={kpis.active ?? '—'} />
-          <KPI icon={Hourglass} iconTone={kpis.pending ? 'sos' : 'amber'} label="Waiting for a responder" value={kpis.pending ?? '—'} tone={kpis.pending ? 'rose' : 'teal'} />
-          <KPI icon={UsersThree} iconTone="teal" label="Responders on duty" value={kpis.onDuty ?? '—'} />
-          <KPI icon={Timer} iconTone="blue" label="Median time to accept, 24 h" value={kpis.medianAcceptSeconds != null ? formatEta(kpis.medianAcceptSeconds) : '—'} />
+          <KPI icon={Siren} iconTone={kpis.active ? 'sos' : 'teal'} label="Active calls" value={kpis.active ?? '—'} />
+          <KPI icon={Hourglass} iconTone={kpis.pending ? 'sos' : 'teal'} label="Waiting for a responder" value={kpis.pending ?? '—'} tone={kpis.pending ? 'rose' : 'teal'} />
+          <KPI icon={PersonSimpleRun} iconTone="mint" label="Responders on duty" value={kpis.onDuty ?? '—'} />
+          <KPI icon={Timer} iconTone="deep" label="Median time to accept, 24 h" value={kpis.medianAcceptSeconds != null ? formatEta(kpis.medianAcceptSeconds) : '—'} />
         </div>
 
         <div className="grid xl:grid-cols-[minmax(0,1fr)_400px] gap-5 stagger" style={{ ['--base' as string]: '60ms' }}>
