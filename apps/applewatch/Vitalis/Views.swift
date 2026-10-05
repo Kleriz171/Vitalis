@@ -5,6 +5,17 @@ struct RootView: View {
     @EnvironmentObject var model: AppModel
 
     var body: some View {
+        ZStack {
+            // The phone app's deep-green screen colour, darkening toward the bottom.
+            LinearGradient(colors: [.vitalisGreen, .vitalisDeep], startPoint: .top, endPoint: .bottom).ignoresSafeArea()
+            screen
+                .id(model.screen)
+                .transition(.asymmetric(insertion: .opacity.combined(with: .scale(scale: 0.94)), removal: .opacity))
+        }
+        .animation(.easeOut(duration: 0.35), value: model.screen)
+    }
+
+    @ViewBuilder private var screen: some View {
         switch model.screen {
         case .pair: PairView()
         case .home: HomeView()
@@ -23,8 +34,9 @@ struct RootView: View {
 // round tinted icon tiles, teal for live and selected, red only for SOS.
 
 extension Color {
-    static let chip = Color(red: 0x10 / 255, green: 0x2E / 255, blue: 0x2B / 255)
-    static let chipPressed = Color(red: 0x16 / 255, green: 0x3D / 255, blue: 0x39 / 255)
+    // Cards are the phone app's off-white on the green screen.
+    static let chip = Color.paper
+    static let chipPressed = Color(red: 0xE6 / 255, green: 0xE2 / 255, blue: 0xD8 / 255)
     static let tealSoft = Color(red: 0x14 / 255, green: 0xA8 / 255, blue: 0x97 / 255).opacity(0.18)
     static let sosSoft = Color(red: 0xE1 / 255, green: 0x45 / 255, blue: 0x45 / 255).opacity(0.2)
 }
@@ -38,7 +50,7 @@ struct IconTile: View {
             .font(.system(size: 15, weight: .semibold))
             .foregroundStyle(tint)
             .frame(width: 32, height: 32)
-            .background(Circle().fill(tint.opacity(0.2)))
+            .background(Circle().fill(tint.opacity(0.14)))
     }
 }
 
@@ -53,8 +65,8 @@ struct ChipRow<Trailing: View>: View {
         HStack(spacing: 10) {
             IconTile(symbol: symbol, tint: tint)
             VStack(alignment: .leading, spacing: 1) {
-                Text(title).font(.system(size: 15, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.8)
-                if let subtitle { Text(subtitle).font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1) }
+                Text(title).font(.system(size: 15, weight: .semibold)).foregroundStyle(Color.ink).lineLimit(1).minimumScaleFactor(0.8)
+                if let subtitle { Text(subtitle).font(.system(size: 12)).foregroundStyle(Color.inkMuted).lineLimit(1) }
             }
             Spacer(minLength: 0)
             trailing()
@@ -91,6 +103,101 @@ struct SolidStyle: ButtonStyle {
     }
 }
 
+/// Items rise in one after another when a screen opens.
+struct Rise: ViewModifier {
+    let shown: Bool
+    let order: Int
+    func body(content: Content) -> some View {
+        content
+            .opacity(shown ? 1 : 0)
+            .offset(y: shown ? 0 : 14)
+            .animation(.easeOut(duration: 0.5).delay(Double(order) * 0.08), value: shown)
+    }
+}
+extension View { func rise(_ shown: Bool, _ order: Int) -> some View { modifier(Rise(shown: shown, order: order)) } }
+
+/// The heart card: the latest resting rate, a heart beating at that rate, and the last hours.
+struct HeartCard: View {
+    @Binding var on: Bool
+    let readings: [(at: Date, bpm: Int)]
+
+    var body: some View {
+        let last = readings.last
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .center, spacing: 8) {
+                BeatingHeart(bpm: on ? last?.bpm : nil)
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack(alignment: .firstTextBaseline, spacing: 3) {
+                        Text(on ? (last.map { "\($0.bpm)" } ?? "--") : "Off")
+                            .font(.system(size: 28, weight: .heavy, design: .rounded)).monospacedDigit()
+                            .contentTransition(.numericText())
+                        if on, last != nil { Text("bpm").font(.system(size: 12, weight: .semibold)).foregroundStyle(Color.inkMuted) }
+                    }
+                    .foregroundStyle(Color.ink)
+                    Text(on ? (last.map { String(localized: "Resting · \($0.at.formatted(.relative(presentation: .named)))") } ?? String(localized: "Waiting for a reading")) : String(localized: "Heart check is off"))
+                        .font(.system(size: 11)).foregroundStyle(Color.inkMuted).lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                Toggle("", isOn: $on).labelsHidden().tint(.vitalisTeal).fixedSize().scaleEffect(0.8)
+            }
+            if on, readings.count >= 2 { Sparkline(points: readings.map(\.bpm)).frame(height: 30) }
+        }
+        .padding(10)
+        .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Color.chip))
+    }
+}
+
+/// A heart that beats at the given rate (a calm idle pulse when there is none).
+struct BeatingHeart: View {
+    let bpm: Int?
+    var body: some View {
+        TimelineView(.animation) { ctx in
+            let period = 60.0 / Double(max(40, min(bpm ?? 60, 180)))
+            let t = ctx.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: period) / period
+            // Two quick beats per cycle, like a real pulse ("lub-dub").
+            let beat = max(0, sin(t * .pi * 2 * 2)) * (t < 0.5 ? 1 : 0.5)
+            Image(systemName: "heart.fill")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(bpm == nil ? Color.inkMuted : Color.sos)
+                .scaleEffect(1 + (bpm == nil ? 0 : beat * 0.18))
+                .frame(width: 34, height: 34)
+                .background(Circle().fill((bpm == nil ? Color.inkMuted : Color.sos).opacity(0.13)))
+        }
+    }
+}
+
+/// Resting heart rate over the last hours: a smooth teal line ending in a dot.
+struct Sparkline: View {
+    let points: [Int]
+    @State private var drawn: CGFloat = 0
+    var body: some View {
+        GeometryReader { g in
+            let lo = Double(points.min() ?? 0) - 3, hi = Double(points.max() ?? 1) + 3
+            let xy: [CGPoint] = points.enumerated().map { i, v in
+                CGPoint(x: g.size.width * CGFloat(i) / CGFloat(max(points.count - 1, 1)),
+                        y: g.size.height * (1 - CGFloat((Double(v) - lo) / max(hi - lo, 1))))
+            }
+            ZStack(alignment: .topLeading) {
+                Path { p in
+                    guard let first = xy.first else { return }
+                    p.move(to: first)
+                    for (a, b) in zip(xy, xy.dropFirst()) {
+                        let mid = CGPoint(x: (a.x + b.x) / 2, y: (a.y + b.y) / 2)
+                        p.addQuadCurve(to: mid, control: a)
+                    }
+                    if let last = xy.last { p.addLine(to: last) }
+                }
+                .trim(from: 0, to: drawn)
+                .stroke(Color.vitalisTeal, style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+                if let last = xy.last {
+                    Circle().fill(Color.vitalisTeal).frame(width: 7, height: 7).position(last).opacity(drawn)
+                }
+            }
+        }
+        .onAppear { withAnimation(.easeOut(duration: 0.9).delay(0.3)) { drawn = 1 } }
+    }
+}
+
 struct BrandMark: View {
     var body: some View {
         HStack(spacing: 6) {
@@ -113,11 +220,11 @@ struct PairView: View {
             BrandMark()
             Text(code.map { "\($0.prefix(3)) \($0.suffix(3))" } ?? "··· ···")
                 .font(.system(size: 36, weight: .heavy, design: .rounded)).monospacedDigit()
-                .foregroundStyle(Color.vitalisTeal)
+                .foregroundStyle(.white)
                 .contentTransition(.numericText())
                 .accessibilityLabel(code.map { $0.map(String.init).joined(separator: " ") } ?? "")
             Text(offline ? "No connection. Trying again…" : "Type this code in Vitalis on your phone: Profile → Watch.")
-                .font(.system(size: 13)).multilineTextAlignment(.center).foregroundStyle(.secondary)
+                .font(.system(size: 13)).multilineTextAlignment(.center).foregroundStyle(.white.opacity(0.75))
         }
         .padding(.horizontal, 8)
         .task { await pairLoop() }
@@ -156,33 +263,33 @@ struct HomeView: View {
     @EnvironmentObject var model: AppModel
     private var chevron: some View { Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary) }
     @State private var heartOn = Store.shared.heartOn
-    @State private var bpm: Int?
+    @State private var readings: [(at: Date, bpm: Int)] = []
+    @State private var shown = false
 
     var body: some View {
         ScrollView {
             VStack(spacing: 8) {
                 HoldSosButton { model.screen = .countdown }
                     .padding(.vertical, 6)
-                ChipRow(symbol: "heart.fill", tint: heartOn ? .vitalisTeal : .gray, title: "Heart check",
-                        subtitle: heartOn ? (bpm.map { "\($0) bpm" } ?? String(localized: "On")) : String(localized: "Off")) {
-                    Toggle("", isOn: $heartOn).labelsHidden().tint(.vitalisTeal).fixedSize().scaleEffect(0.85)
-                }
-                .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Color.chip))
+                    .rise(shown, 0)
+                HeartCard(on: $heartOn, readings: readings).rise(shown, 1)
                 Button { model.screen = .medical } label: {
                     ChipRow(symbol: "staroflife.fill", tint: .sos, title: "Medical ID", subtitle: Store.shared.medical.dropFirst().first) { chevron }
                 }
                 .buttonStyle(ChipStyle())
-                Call127Button()
+                .rise(shown, 2)
+                Call127Button().rise(shown, 3)
                 #if DEBUG
-                Button("Test: high heart rate") { Task { await Heart.shared.simulate(bpm: 172) } }
-                    .font(.system(size: 12)).foregroundStyle(.secondary).buttonStyle(.plain).padding(.top, 4)
+                Button("Test: high heart rate") { Task { await Heart.shared.simulate(bpm: 172); readings = await Heart.shared.recent() } }
+                    .font(.system(size: 12)).foregroundStyle(.white.opacity(0.7)).buttonStyle(.plain).padding(.top, 4)
                 #endif
                 if let name = Store.shared.name {
-                    Text(name).font(.system(size: 12)).foregroundStyle(.secondary).padding(.top, 2)
+                    Text(name).font(.system(size: 12)).foregroundStyle(.white.opacity(0.7)).padding(.top, 2).rise(shown, 4)
                 }
             }
             .padding(.horizontal, 2)
         }
+        .onAppear { shown = true }
         .onChange(of: heartOn) { _, on in
             Store.shared.heartOn = on
             if on { Task { _ = await Heart.shared.requestAccess(); Heart.shared.start() } } else { Heart.shared.stop() }
@@ -190,7 +297,7 @@ struct HomeView: View {
         .task {
             Locator.shared.requestPermission()
             if heartOn, await Heart.shared.requestAccess() { Heart.shared.start() }
-            bpm = await Heart.shared.latestBpm()
+            readings = await Heart.shared.recent()
             _ = await Locator.shared.locate() // keep a recent position for an SOS sent while closed
             // An SOS already running (from here or the phone)? Go straight to its status.
             do {
@@ -205,10 +312,15 @@ struct HomeView: View {
 struct HoldSosButton: View {
     let onSos: () -> Void
     @State private var progress: CGFloat = 0
+    @State private var breathe = false
+    @State private var ticker: Task<Void, Never>?
 
     var body: some View {
         ZStack {
-            Circle().fill(Color.sosSoft).frame(width: 118, height: 118)
+            Circle().fill(Color.sos.opacity(0.22)).frame(width: 118, height: 118)
+                .scaleEffect(breathe ? 1.04 : 0.92)
+                .opacity(breathe ? 0.6 : 1)
+                .animation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true), value: breathe)
             Circle().fill(LinearGradient(colors: [Color(red: 0.93, green: 0.33, blue: 0.33), .sos], startPoint: .top, endPoint: .bottom))
                 .frame(width: 98, height: 98)
                 .shadow(color: .sos.opacity(0.45), radius: 10)
@@ -223,8 +335,9 @@ struct HoldSosButton: View {
             .foregroundStyle(.white)
         }
         .frame(width: 120, height: 120)
-        .scaleEffect(progress > 0 ? 0.96 : 1)
+        .scaleEffect(progress > 0 ? 0.95 : 1)
         .animation(.easeOut(duration: 0.2), value: progress > 0)
+        .onAppear { breathe = true }
         .accessibilityLabel(Text("Hold for 3 seconds to send an SOS"))
         .onLongPressGesture(minimumDuration: 3, maximumDistance: 30) {
             WKInterfaceDevice.current().play(.start)
@@ -232,8 +345,11 @@ struct HoldSosButton: View {
         } onPressingChanged: { pressing in
             if pressing {
                 withAnimation(.linear(duration: 3)) { progress = 1 }
+                // A tick each second while the ring fills, so you feel it without looking.
+                ticker = Task { for _ in 0..<2 { try? await Task.sleep(for: .seconds(1)); if Task.isCancelled { return }; WKInterfaceDevice.current().play(.click) } }
             } else {
-                withAnimation(.easeOut(duration: 0.2)) { progress = 0 }
+                ticker?.cancel()
+                withAnimation(.easeOut(duration: 0.25)) { progress = 0 }
             }
         }
     }
@@ -383,9 +499,9 @@ struct StatusView: View {
                 .padding(.horizontal, 12)
                 .animation(.easeOut(duration: 0.4), value: step)
                 if let eta, eta > 0, step == 1 || step == 2 {
-                    Text("~\((eta + 59) / 60) min").font(.system(size: 30, weight: .heavy, design: .rounded)).foregroundStyle(Color.vitalisTeal)
+                    Text("~\((eta + 59) / 60) min").font(.system(size: 30, weight: .heavy, design: .rounded)).foregroundStyle(.white)
                 }
-                if let responder, step >= 1 { Text(responder).font(.system(size: 13)).foregroundStyle(.secondary) }
+                if let responder, step >= 1 { Text(responder).font(.system(size: 13)).foregroundStyle(.white.opacity(0.75)) }
                 if step == 0 {
                     Text("Stay where you are if it is safe.").font(.system(size: 12)).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 }
@@ -453,14 +569,14 @@ struct MedicalView: View {
                 ForEach(Array(lines.dropFirst().enumerated()), id: \.offset) { _, line in
                     let parts = line.split(separator: ":", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(parts.count == 2 ? parts[0] : "").font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)
-                        Text(parts.count == 2 ? parts[1] : line).font(.system(size: 14, weight: .medium))
+                        Text(parts.count == 2 ? parts[0] : "").font(.system(size: 11, weight: .semibold)).foregroundStyle(Color.inkMuted)
+                        Text(parts.count == 2 ? parts[1] : line).font(.system(size: 14, weight: .medium)).foregroundStyle(Color.ink)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(10)
                     .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.chip))
                 }
-                Button("Back") { model.screen = .home }.buttonStyle(SolidStyle(fill: .chip)).padding(.top, 4)
+                Button("Back") { model.screen = .home }.buttonStyle(SolidStyle(fill: .white.opacity(0.15))).padding(.top, 4)
             }
         }
         .task {

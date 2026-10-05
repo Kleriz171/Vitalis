@@ -45,6 +45,11 @@ final class Heart {
         health.disableAllBackgroundDelivery { _, _ in }
     }
 
+    /// Resting readings from the last hours, for the heart card's graph.
+    func recent(hours: Double = 6) async -> [(at: Date, bpm: Int)] {
+        await restingSamples(since: Date().addingTimeInterval(-hours * 3600))
+    }
+
     /// Latest resting reading, for the home screen.
     func latestBpm() async -> Int? {
         let samples = await restingSamples(since: Date().addingTimeInterval(-6 * 3600))

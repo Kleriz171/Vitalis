@@ -6,9 +6,13 @@ extension Color {
     static let vitalisTeal = Color(red: 0x14 / 255, green: 0xA8 / 255, blue: 0x97 / 255)
     static let vitalisGreen = Color(red: 0x0C / 255, green: 0x5D / 255, blue: 0x57 / 255)
     static let sos = Color(red: 0xE1 / 255, green: 0x45 / 255, blue: 0x45 / 255)
+    static let vitalisDeep = Color(red: 0x08 / 255, green: 0x45 / 255, blue: 0x40 / 255)
+    static let paper = Color(red: 0xF7 / 255, green: 0xF5 / 255, blue: 0xF0 / 255)
+    static let ink = Color(red: 0x13 / 255, green: 0x20 / 255, blue: 0x1F / 255)
+    static let inkMuted = Color(red: 0x55 / 255, green: 0x63 / 255, blue: 0x62 / 255)
 }
 
-enum Screen: Equatable {
+enum Screen: Hashable {
     case pair, home, countdown, areYouOk, sending(reason: String, bpm: Int?), status, medical, noLocation
 }
 
