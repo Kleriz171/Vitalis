@@ -6,7 +6,8 @@ import {
 import { Tile } from '../ui/tile';
 import { Digits } from '../ui/digits';
 import { ReactNode, useEffect, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
+import { BASE } from '../../lib/motion';
 import { RootState, logout } from '../../store';
 import { socket } from '../../realtime/socket';
 import { cn } from '../../lib/utils';
@@ -125,18 +126,26 @@ export const CommandShell = () => {
               to={to}
               end={end}
               className={({ isActive }) => cn(
-                'flex items-center gap-3 pl-2 pr-3 h-11 rounded-xl text-[14px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
+                'relative flex items-center gap-3 pl-2 pr-3 h-11 rounded-xl text-[14px] transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
                 isActive
-                  ? 'bg-white text-primary font-semibold shadow-[0_8px_20px_-10px_hsl(175_80%_5%/0.6)]'
+                  ? 'text-primary font-semibold'
                   : 'text-sidebar-foreground/85 hover:text-white hover:bg-white/[0.08]',
               )}
             >
               {({ isActive }) => (
                 <>
-                  <span className={cn('w-8 h-8 grid place-items-center rounded-[10px]', isActive ? 'bg-[hsl(173_55%_92%)] text-primary' : 'text-sidebar-foreground/85')}>
+                  {/* One white pill that slides to whichever section is open. */}
+                  {isActive && (
+                    <motion.span
+                      layoutId="nav-pill"
+                      transition={BASE}
+                      className="absolute inset-0 rounded-xl bg-white shadow-[0_8px_20px_-10px_hsl(175_80%_5%/0.6)]"
+                    />
+                  )}
+                  <span className={cn('relative w-8 h-8 grid place-items-center rounded-[10px] transition-colors duration-300', isActive ? 'bg-[hsl(173_55%_92%)] text-primary' : 'text-sidebar-foreground/85')}>
                     <I size={19} weight={isActive ? 'duotone' : 'regular'} />
                   </span>
-                  <span className="truncate">{label}</span>
+                  <span className="relative truncate">{label}</span>
                 </>
               )}
             </NavLink>
@@ -149,18 +158,16 @@ export const CommandShell = () => {
       </aside>
 
       <main className="min-w-0 min-h-0 overflow-auto bg-background">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={location.pathname}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="text-foreground"
-          >
-            <Outlet />
-          </motion.div>
-        </AnimatePresence>
+        {/* The new page rises in; the old one leaves at once, so there is never a blank gap. */}
+        <motion.div
+          key={location.pathname}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={BASE}
+          className="text-foreground"
+        >
+          <Outlet />
+        </motion.div>
       </main>
     </div>
   );

@@ -66,6 +66,9 @@ export default {
       fontFamily: {
         sans: ['Schibsted Grotesk Variable', 'system-ui', 'sans-serif'],
       },
+      // Every Tailwind transition eases out quickly instead of the default ease-in-out.
+      transitionTimingFunction: { DEFAULT: 'cubic-bezier(0.22, 1, 0.36, 1)' },
+      transitionDuration: { DEFAULT: '200ms' },
       keyframes: {
         'accordion-down': {
           from: { height: '0' },

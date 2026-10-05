@@ -1,4 +1,7 @@
+import { useEffect, useRef } from 'react';
+import { animate } from 'framer-motion';
 import type { Icon } from '@phosphor-icons/react';
+import { EASE } from '../../lib/motion';
 import { Tile, type TileTone } from '../ui/tile';
 import { cn } from '../../lib/utils';
 
@@ -23,10 +26,28 @@ export const KPI = ({ label, value, tone = 'teal', hint, icon, iconTone = 'teal'
     {icon && <Tile icon={icon} tone={iconTone} size="lg" round />}
     <div className="min-w-0">
       <div className={cn('num text-[28px] leading-none font-extrabold tracking-[-0.03em]', tone === 'rose' ? 'text-[hsl(var(--sos))]' : tone === 'amber' ? 'text-[hsl(var(--warn))]' : 'text-foreground')}>
-        {value}
+        {typeof value === 'number' ? <CountTo value={value} /> : value}
       </div>
       <div className="mt-1.5 text-[13px] text-muted-foreground truncate">{label}</div>
       {hint && <div className="text-xs text-muted-foreground">{hint}</div>}
     </div>
   </div>
 );
+
+/** Numbers glide to their new value instead of snapping. */
+const CountTo = ({ value }: { value: number }) => {
+  const ref = useRef<HTMLSpanElement>(null);
+  const from = useRef(value);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const controls = animate(from.current, value, {
+      duration: 0.6,
+      ease: EASE,
+      onUpdate: v => { el.textContent = String(Math.round(v)); },
+    });
+    from.current = value;
+    return () => controls.stop();
+  }, [value]);
+  return <span ref={ref}>{value}</span>;
+};

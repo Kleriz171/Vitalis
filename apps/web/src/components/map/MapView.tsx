@@ -85,7 +85,8 @@ const MapView = ({ incidents, aeds = [], responders = [], selectedId, onSelect, 
 
   useEffect(() => {
     if (!ref.current || map.current) return;
-    map.current = L.map(ref.current, { center: TIRANA, zoom: 13 });
+    // Fractional zoom and a gentler wheel step make zooming glide instead of jump.
+    map.current = L.map(ref.current, { center: TIRANA, zoom: 13, zoomSnap: 0.25, zoomDelta: 0.5, wheelPxPerZoomLevel: 110 });
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; OpenStreetMap contributors',
@@ -148,7 +149,7 @@ const MapView = ({ incidents, aeds = [], responders = [], selectedId, onSelect, 
       const p = m.latLngToContainerPoint([selectedPoint[1], selectedPoint[0]]);
       setTarget({ x: p.x, y: p.y });
     };
-    m.panTo([selectedPoint[1], selectedPoint[0]], { animate: true });
+    m.flyTo([selectedPoint[1], selectedPoint[0]], Math.max(m.getZoom(), 15), { duration: 0.7, easeLinearity: 0.15 });
     place();
     m.on('move zoom resize', place);
     return () => { m.off('move zoom resize', place); };

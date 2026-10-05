@@ -3,6 +3,8 @@ import { Tile, type TileTone } from '../../../components/ui/tile';
 import { Digits } from '../../../components/ui/digits';
 import { NotchedPanel } from '../../../components/widgets/NotchedPanel';
 import { Gauge } from '../../../components/widgets/Gauge';
+import { AnimatePresence, motion } from 'framer-motion';
+import { EASE, FAST as FAST_T } from '../../../lib/motion';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../../../api/client';
 import { socket } from '../../../realtime/socket';
@@ -271,13 +273,19 @@ export const Logistics = () => {
                   <p className="text-sm text-muted-foreground mt-1 text-pretty">{q ? `Nothing active matches “${query}”.` : 'A new SOS appears here and on the map the moment it is sent.'}</p>
                 </div>
               )}
+              <AnimatePresence initial={false}>
               {shownActive.map(e => {
                 const waited = secondsSince(e.createdAt);
                 const waiting = e.status === 'pending' && waited > ESCALATE_AFTER_S;
                 const step = STEPS.indexOf(e.status);
                 return (
-                  <button
+                  <motion.button
                     key={e._id}
+                    layout="position"
+                    initial={{ opacity: 0, y: -12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, x: 24, transition: FAST_T }}
+                    transition={{ duration: 0.36, ease: EASE }}
                     onClick={() => setSelectedId(e._id)}
                     className={cn(
                       'w-full text-left px-5 py-4 border-b border-border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
@@ -304,7 +312,7 @@ export const Logistics = () => {
                     {/* Progress: received, accepted, on the way, on scene. */}
                     <div className="mt-3 ml-[52px] grid grid-cols-4 gap-1" aria-hidden>
                       {STEPS.map((s, i) => (
-                        <span key={s} className={cn('h-1.5 rounded-full', i <= step ? (step === 0 ? 'bg-[hsl(var(--sos))]' : 'bg-[hsl(var(--teal))]') : 'bg-muted')} />
+                        <span key={s} className={cn('h-1.5 rounded-full transition-colors duration-500', i <= step ? (step === 0 ? 'bg-[hsl(var(--sos))]' : 'bg-[hsl(var(--teal))]') : 'bg-muted')} />
                       ))}
                     </div>
                     {e.type === 'cardiac' && (
@@ -318,9 +326,10 @@ export const Logistics = () => {
                         <Ambulance size={18} weight="fill" className="shrink-0" /> Nobody accepted for over a minute. Send an ambulance.
                       </div>
                     )}
-                  </button>
+                  </motion.button>
                 );
               })}
+              </AnimatePresence>
               {shownClosed.length > 0 && (
                 <div className="py-2">
                   <div className="px-5 pt-2 pb-1 text-[13px] font-semibold text-muted-foreground">Recently closed</div>
@@ -338,7 +347,9 @@ export const Logistics = () => {
         </div>
       </div>
 
-      {selected && <IncidentPanel incident={selected} onClose={() => setSelectedId(null)} onChanged={updateEmergency} />}
+      <AnimatePresence>
+        {selected && <IncidentPanel key="call-panel" incident={selected} onClose={() => setSelectedId(null)} onChanged={updateEmergency} />}
+      </AnimatePresence>
     </>
   );
 };
@@ -405,10 +416,14 @@ const IncidentPanel = ({ incident, onClose, onChanged }: { incident: Emergency; 
   const severe = p?.allergies.filter(a => a.severity === 'severe') ?? [];
 
   return (
-    <aside
+    <motion.aside
       role="dialog"
       aria-label="Call details"
-      className="fixed right-0 top-14 bottom-0 z-30 w-[min(460px,100vw)] bg-card border-l border-border shadow-[-24px_0_60px_-30px_hsl(176_40%_10%/0.35)] overflow-auto animate-in slide-in-from-right duration-200"
+      initial={{ x: '100%' }}
+      animate={{ x: 0 }}
+      exit={{ x: '100%' }}
+      transition={{ duration: 0.38, ease: EASE }}
+      className="fixed right-0 top-14 bottom-0 z-30 w-[min(460px,100vw)] bg-card border-l border-border shadow-[-24px_0_60px_-30px_hsl(176_40%_10%/0.35)] overflow-auto"
     >
       {/* Case header: the type, its case number and where it stands. */}
       <div className="sticky top-0 z-10 bg-card border-b border-border px-6 pt-5 pb-4">
@@ -428,7 +443,7 @@ const IncidentPanel = ({ incident, onClose, onChanged }: { incident: Emergency; 
         </div>
       </div>
 
-      <div className="px-6 py-6 space-y-7">
+      <motion.div key={incident._id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={FAST_T} className="px-6 py-6 space-y-7">
         {!h ? (
           <div className="space-y-3"><Skeleton className="h-24" /><Skeleton className="h-40" /></div>
         ) : (
@@ -504,7 +519,7 @@ const IncidentPanel = ({ incident, onClose, onChanged }: { incident: Emergency; 
             <Button className="flex-1 h-10 rounded-xl" variant="outline" disabled={busy} onClick={() => setStatus('cancelled')}>Cancel call</Button>
           </div>
         )}
-      </div>
-    </aside>
+      </motion.div>
+    </motion.aside>
   );
 };

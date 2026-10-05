@@ -5,6 +5,8 @@ import { Provider } from 'react-redux';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { store } from './store';
 import { App } from './App';
+import { MotionConfig } from 'framer-motion';
+import { BASE } from './lib/motion';
 import './styles/index.css';
 import './i18n';
 
@@ -15,7 +17,10 @@ createRoot(document.getElementById('root')!).render(
     <Provider store={store}>
       <QueryClientProvider client={qc}>
         <BrowserRouter>
-          <App />
+          {/* Honour the OS 'reduce motion' setting everywhere. */}
+          <MotionConfig reducedMotion="user" transition={BASE}>
+            <App />
+          </MotionConfig>
         </BrowserRouter>
       </QueryClientProvider>
     </Provider>
