@@ -1,7 +1,8 @@
-import { ArrowLeft, CalendarBlank, Certificate, Heart, IdentificationCard, Pill, Pulse, Stethoscope, Syringe, Warning } from '@phosphor-icons/react';
+import { Drop, Siren, User, ArrowLeft, CalendarBlank, Certificate, Heart, IdentificationCard, Pill, Pulse, Stethoscope, Syringe, Warning } from '@phosphor-icons/react';
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../../../../api/client';
+import { KPI } from '../../../../components/widgets/KPI';
 import { PageHeader } from '../../../../components/layout/CommandShell';
 import { Card, CardContent, CardHeader } from '../../../../components/ui/card';
 import { Badge } from '../../../../components/ui/badge';
@@ -57,19 +58,19 @@ export const AdminUserDetail = () => {
     <>
       <PageHeader icon={IdentificationCard}
         title={u.name}
-        subtitle={`${u.email} · ${u.role}`}
+        subtitle={`${u.email} · ${u.role === 'eso' ? 'Emergency services operator' : u.role.replace('_', ' ')}`}
         actions={
-          <Link to="/command/admin/users" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+          <Link to="/command/admin/users" className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-white/[0.12] text-white text-sm font-medium hover:bg-white/[0.2] transition-colors">
             <ArrowLeft size={14} /> Back to users
           </Link>
         }
       />
-      <div className="p-8 space-y-6">
-        <div className="grid md:grid-cols-4 gap-3">
-          <Kpi label="Blood type" value={u.bloodType ?? '—'} accent="text-rose-600" />
-          <Kpi label="Age" value={u.age != null ? `${u.age}` : '—'} />
-          <Kpi label="Active certs" value={activeCerts.length} accent="text-emerald-600" />
-          <Kpi label="SOS history" value={data.emergencies.length} accent="text-primary" />
+      <div className="p-6 space-y-5">
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 stagger">
+          <KPI icon={Drop} iconTone="sos" label="Blood type" value={u.bloodType ?? '—'} />
+          <KPI icon={User} iconTone="teal" label="Age" value={u.age != null ? `${u.age}` : '—'} />
+          <KPI icon={Certificate} iconTone="mint" label="Active certificates" value={activeCerts.length} />
+          <KPI icon={Siren} iconTone="deep" label="SOS calls sent" value={data.emergencies.length} />
         </div>
 
         <Card>
@@ -90,37 +91,37 @@ export const AdminUserDetail = () => {
         </Card>
 
         <div className="grid lg:grid-cols-2 gap-4">
-          <Section title="Medications" icon={<Pill size={16} />} empty={!data.medications.length}>
+          <Section title="Medications" icon={<Pill size={18} weight="duotone" />} empty={!data.medications.length}>
             {data.medications.map(m => (
               <Row key={m._id} title={m.name} subtitle={m.dosage || (m.isActive ? 'Active' : 'Ended')} />
             ))}
           </Section>
 
-          <Section title="Allergies" icon={<Warning size={16} />} empty={!data.allergies.length}>
+          <Section title="Allergies" icon={<Warning size={18} weight="duotone" />} empty={!data.allergies.length}>
             {data.allergies.map(a => (
               <Row key={a._id} title={a.allergen} badge={<Badge variant={a.severity === 'severe' ? 'destructive' : 'outline'}>{a.severity}</Badge>} />
             ))}
           </Section>
 
-          <Section title="Vaccinations" icon={<Syringe size={16} />} empty={!data.vaccinations.length}>
+          <Section title="Vaccinations" icon={<Syringe size={18} weight="duotone" />} empty={!data.vaccinations.length}>
             {data.vaccinations.map(v => (
               <Row key={v._id} title={v.name} subtitle={[v.provider, fmt(v.date)].filter(Boolean).join(' · ')} />
             ))}
           </Section>
 
-          <Section title="Conditions" icon={<Pulse size={16} />} empty={!data.conditions.length}>
+          <Section title="Conditions" icon={<Pulse size={18} weight="duotone" />} empty={!data.conditions.length}>
             {data.conditions.map(c => (
               <Row key={c._id} title={c.name} subtitle={c.notes} />
             ))}
           </Section>
 
-          <Section title="Appointments" icon={<CalendarBlank size={16} />} empty={!data.appointments.length}>
+          <Section title="Appointments" icon={<CalendarBlank size={18} weight="duotone" />} empty={!data.appointments.length}>
             {data.appointments.map(a => (
               <Row key={a._id} title={a.appointmentType} subtitle={`${fmt(a.scheduledAt)} · ${a.status}`} />
             ))}
           </Section>
 
-          <Section title="Disabilities" icon={<Stethoscope size={16} />} empty={!data.disabilities.length}>
+          <Section title="Disabilities" icon={<Stethoscope size={18} weight="duotone" />} empty={!data.disabilities.length}>
             {data.disabilities.map(d => (
               <Row key={d._id} title={d.name} subtitle={d.notes} />
             ))}
@@ -194,14 +195,15 @@ const Field = ({ label, value }: { label: string; value: string }) => (
 );
 
 const Section = ({ title, icon, empty, children }: { title: string; icon?: React.ReactNode; empty: boolean; children: React.ReactNode }) => (
-  <Card className="gap-0 py-0">
-    <CardHeader className="px-5 py-4 border-b">
-      <div className="font-semibold flex items-center gap-2">{icon}{title}</div>
-    </CardHeader>
-    <CardContent className="p-5 space-y-2">
+  <section className="rounded-[22px] border border-border bg-card shadow-[0_10px_24px_-14px_hsl(176_30%_10%/0.25)]">
+    <header className="flex items-center gap-3 px-5 pt-4 pb-3 border-b border-border">
+      <span className="w-8 h-8 rounded-[10px] grid place-items-center bg-[hsl(173_55%_92%)] text-[hsl(175_77%_24%)]">{icon}</span>
+      <h2 className="text-[15px] font-extrabold tracking-[-0.01em]">{title}</h2>
+    </header>
+    <div className="p-5 space-y-2">
       {empty ? <p className="text-sm text-muted-foreground">None on file.</p> : children}
-    </CardContent>
-  </Card>
+    </div>
+  </section>
 );
 
 const Row = ({ title, subtitle, badge }: { title: string; subtitle?: string; badge?: React.ReactNode }) => (
