@@ -5,7 +5,8 @@ import { NotchedPanel } from '../../../components/widgets/NotchedPanel';
 import { Gauge } from '../../../components/widgets/Gauge';
 import { AnimatePresence, motion } from 'framer-motion';
 import { EASE, FAST as FAST_T } from '../../../lib/motion';
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNow } from '../../../lib/useNow';
 import { api } from '../../../api/client';
 import { socket } from '../../../realtime/socket';
 import { Card } from '../../../components/ui/card';
@@ -69,7 +70,6 @@ interface Kpis {
 }
 
 const nameOf = (p: Person) => (p && typeof p === 'object' ? p.name : null);
-const secondsSince = (iso: string) => Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
 // mm:ss since the SOS, h:mm:ss past an hour.
 const clock = (s: number) => {
   const t = Math.floor(s);
@@ -98,16 +98,15 @@ export const StatusPill = ({ status }: { status: string }) => (
 
 /** The dashboard's big clock: Tirana time, with UTC and the link state under it. */
 const HeroClock = () => {
-  const [now, setNow] = useState(() => new Date());
+  const now = new Date(useNow());
   const [live, setLive] = useState(socket.connected);
   useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 1000);
     const up = () => setLive(true);
     const down = () => setLive(false);
     socket.on('connect', up);
     socket.on('disconnect', down);
     setLive(socket.connected);
-    return () => { clearInterval(t); socket.off('connect', up); socket.off('disconnect', down); };
+    return () => { socket.off('connect', up); socket.off('disconnect', down); };
   }, []);
   const fmt = (timeZone: string, seconds = true) => now.toLocaleTimeString('en-GB', { hourCycle: 'h23', timeZone, ...(seconds ? {} : { hour: '2-digit', minute: '2-digit' }) });
   return (
@@ -123,6 +122,66 @@ const HeroClock = () => {
   );
 };
 
+/**
+ * One call in the list. It keeps its own once-a-second timer (the shared useNow tick), so the
+ * page around it never re-renders just because a clock moved.
+ */
+const CallRow = memo(({ e, selected, onSelect, delay }: { e: Emergency; selected: boolean; onSelect: (id: string) => void; delay: number }) => {
+  const now = useNow();
+  const waited = Math.max(0, (now - new Date(e.createdAt).getTime()) / 1000);
+  const waiting = e.status === 'pending' && waited > ESCALATE_AFTER_S;
+  const step = STEPS.indexOf(e.status);
+  return (
+    <motion.button
+        layout="position"
+      initial={{ opacity: 0, y: -12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, x: 24, transition: FAST_T }}
+      transition={{ duration: 0.5, ease: EASE, delay }}
+      onClick={() => onSelect(e._id)}
+      className={cn(
+        'w-full text-left px-5 py-4 border-b border-border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+        selected ? 'bg-accent/70' : waiting ? 'bg-[hsl(var(--sos)/0.06)] hover:bg-[hsl(var(--sos)/0.1)]' : 'hover:bg-muted/60',
+      )}
+    >
+      <div className="flex items-center gap-3">
+        <Tile icon={typeTile(e.type)[0]} tone={typeTile(e.type)[1]} size="md" />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="font-bold truncate">{TYPE_LABEL[e.type] ?? 'Emergency'}</span>
+            <span className={cn('num text-[11px] font-bold rounded-md px-1.5 py-px', e.priority === 1 ? 'bg-[hsl(var(--sos))] text-white' : e.priority === 2 ? 'bg-[hsl(var(--warn)/0.15)] text-amber-800' : 'bg-muted text-muted-foreground')}>
+              P{e.priority}
+            </span>
+          </div>
+          <div className="text-[13px] text-muted-foreground truncate">
+            {STATUS_LABEL[e.status] ?? e.status}{nameOf(e.responder) ? ` · ${nameOf(e.responder)}` : ''}
+          </div>
+        </div>
+        <span title="Time since the SOS">
+          <Digits value={clock(waited)} className={cn('text-[17px] font-extrabold tracking-[-0.02em]', waiting ? 'text-[hsl(var(--sos))]' : 'text-foreground')} />
+        </span>
+      </div>
+      {/* Progress: received, accepted, on the way, on scene. */}
+      <div className="mt-3 ml-[52px] grid grid-cols-4 gap-1" aria-hidden>
+        {STEPS.map((s, i) => (
+          <span key={s} className={cn('h-1.5 rounded-full transition-colors duration-500', i <= step ? (step === 0 ? 'bg-[hsl(var(--sos))]' : 'bg-[hsl(var(--teal))]') : 'bg-muted')} />
+        ))}
+      </div>
+      {e.type === 'cardiac' && (
+        <div className="mt-2 ml-[52px] flex items-center gap-1.5 text-[13px] text-muted-foreground">
+          <Lightning size={14} weight="duotone" className={e.aedRunner ? 'text-[hsl(var(--teal))]' : ''} />
+          {e.aedStatus === 'delivered' ? 'Defibrillator at the patient' : e.aedStatus === 'has_aed' ? 'Defibrillator on the way' : e.aedRunner ? 'Runner fetching a defibrillator' : 'No defibrillator runner yet'}
+        </div>
+      )}
+      {waiting && (
+        <div className="mt-3 ml-[52px] flex items-start gap-2 rounded-lg bg-[hsl(var(--sos))] text-white px-3 py-2 text-[13px] font-semibold">
+          <Ambulance size={18} weight="fill" className="shrink-0" /> Nobody accepted for over a minute. Send an ambulance.
+        </div>
+      )}
+    </motion.button>
+  );
+});
+
 export const Logistics = () => {
   const [emergencies, setEmergencies] = useState<Emergency[]>([]);
   const [aeds, setAeds] = useState<MapAed[]>([]);
@@ -132,7 +191,13 @@ export const Logistics = () => {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [follow, setFollow] = useState(false);
-  const [, tick] = useState(0);
+  // Calls already there when the page opens enter one after another; later ones just slide in.
+  const firstReveal = useRef(true);
+  useEffect(() => {
+    if (loading) return;
+    const t = setTimeout(() => { firstReveal.current = false; }, 1500);
+    return () => clearTimeout(t);
+  }, [loading]);
 
   const loadKpis = useCallback(() => api.get('/analytics/kpis').then(r => setKpis(r.data)).catch(() => {}), []);
 
@@ -164,13 +229,10 @@ export const Logistics = () => {
     api.get('/aeds').then(r => setAeds(r.data)).catch(() => {});
     void loadKpis();
     const kpiTimer = setInterval(loadKpis, 15_000);
-    // Re-render every second: the call timers tick and escalations appear without new events.
-    const ticker = setInterval(() => tick(t => t + 1), 1000);
     return () => {
       socket.off('dashboard:emergency', onEmergency);
       socket.off('responder:location', onLocation);
       clearInterval(kpiTimer);
-      clearInterval(ticker);
     };
   }, [loadKpis]);
 
@@ -215,14 +277,14 @@ export const Logistics = () => {
       </header>
 
       <div className="px-6 pb-6 space-y-5">
-        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 stagger" style={{ ['--base' as string]: '60ms' }}>
           <KPI icon={Siren} iconTone="sos" label="Active calls" value={kpis.active ?? '—'} />
           <KPI icon={Hourglass} iconTone={kpis.pending ? 'sos' : 'amber'} label="Waiting for a responder" value={kpis.pending ?? '—'} tone={kpis.pending ? 'rose' : 'teal'} />
           <KPI icon={UsersThree} iconTone="teal" label="Responders on duty" value={kpis.onDuty ?? '—'} />
           <KPI icon={Timer} iconTone="blue" label="Median time to accept, 24 h" value={kpis.medianAcceptSeconds != null ? formatEta(kpis.medianAcceptSeconds) : '—'} />
         </div>
 
-        <div className="grid xl:grid-cols-[minmax(0,1fr)_400px] gap-5">
+        <div className="grid xl:grid-cols-[minmax(0,1fr)_400px] gap-5 stagger" style={{ ['--base' as string]: '60ms' }}>
           <NotchedPanel
             className="h-[min(70vh,760px)]"
             notchWidth={124}
@@ -273,62 +335,10 @@ export const Logistics = () => {
                   <p className="text-sm text-muted-foreground mt-1 text-pretty">{q ? `Nothing active matches “${query}”.` : 'A new SOS appears here and on the map the moment it is sent.'}</p>
                 </div>
               )}
-              <AnimatePresence initial={false}>
-              {shownActive.map(e => {
-                const waited = secondsSince(e.createdAt);
-                const waiting = e.status === 'pending' && waited > ESCALATE_AFTER_S;
-                const step = STEPS.indexOf(e.status);
-                return (
-                  <motion.button
-                    key={e._id}
-                    layout="position"
-                    initial={{ opacity: 0, y: -12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, x: 24, transition: FAST_T }}
-                    transition={{ duration: 0.36, ease: EASE }}
-                    onClick={() => setSelectedId(e._id)}
-                    className={cn(
-                      'w-full text-left px-5 py-4 border-b border-border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
-                      selectedId === e._id ? 'bg-accent/70' : waiting ? 'bg-[hsl(var(--sos)/0.06)] hover:bg-[hsl(var(--sos)/0.1)]' : 'hover:bg-muted/60',
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Tile icon={typeTile(e.type)[0]} tone={typeTile(e.type)[1]} size="md" />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold truncate">{TYPE_LABEL[e.type] ?? 'Emergency'}</span>
-                          <span className={cn('num text-[11px] font-bold rounded-md px-1.5 py-px', e.priority === 1 ? 'bg-[hsl(var(--sos))] text-white' : e.priority === 2 ? 'bg-[hsl(var(--warn)/0.15)] text-amber-800' : 'bg-muted text-muted-foreground')}>
-                            P{e.priority}
-                          </span>
-                        </div>
-                        <div className="text-[13px] text-muted-foreground truncate">
-                          {STATUS_LABEL[e.status] ?? e.status}{nameOf(e.responder) ? ` · ${nameOf(e.responder)}` : ''}
-                        </div>
-                      </div>
-                      <span title="Time since the SOS">
-                        <Digits value={clock(waited)} className={cn('text-[17px] font-extrabold tracking-[-0.02em]', waiting ? 'text-[hsl(var(--sos))]' : 'text-foreground')} />
-                      </span>
-                    </div>
-                    {/* Progress: received, accepted, on the way, on scene. */}
-                    <div className="mt-3 ml-[52px] grid grid-cols-4 gap-1" aria-hidden>
-                      {STEPS.map((s, i) => (
-                        <span key={s} className={cn('h-1.5 rounded-full transition-colors duration-500', i <= step ? (step === 0 ? 'bg-[hsl(var(--sos))]' : 'bg-[hsl(var(--teal))]') : 'bg-muted')} />
-                      ))}
-                    </div>
-                    {e.type === 'cardiac' && (
-                      <div className="mt-2 ml-[52px] flex items-center gap-1.5 text-[13px] text-muted-foreground">
-                        <Lightning size={14} weight="duotone" className={e.aedRunner ? 'text-[hsl(var(--teal))]' : ''} />
-                        {e.aedStatus === 'delivered' ? 'Defibrillator at the patient' : e.aedStatus === 'has_aed' ? 'Defibrillator on the way' : e.aedRunner ? 'Runner fetching a defibrillator' : 'No defibrillator runner yet'}
-                      </div>
-                    )}
-                    {waiting && (
-                      <div className="mt-3 ml-[52px] flex items-start gap-2 rounded-lg bg-[hsl(var(--sos))] text-white px-3 py-2 text-[13px] font-semibold">
-                        <Ambulance size={18} weight="fill" className="shrink-0" /> Nobody accepted for over a minute. Send an ambulance.
-                      </div>
-                    )}
-                  </motion.button>
-                );
-              })}
+              <AnimatePresence>
+              {shownActive.map((e, i) => (
+                <CallRow key={e._id} e={e} selected={selectedId === e._id} onSelect={setSelectedId} delay={firstReveal.current ? 0.42 + Math.min(i, 8) * 0.06 : 0} />
+              ))}
               </AnimatePresence>
               {shownClosed.length > 0 && (
                 <div className="py-2">

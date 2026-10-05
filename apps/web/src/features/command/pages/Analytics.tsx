@@ -56,7 +56,7 @@ export const Analytics = () => {
     <>
       <PageHeader icon={ChartBar} title="Analytics" subtitle="Operational KPIs and trends" />
       <div className="p-6 space-y-4">
-        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 stagger">
           <KPI label="Total incidents" value={kpis?.total ?? 0} />
           <KPI label="Active now" value={kpis?.active ?? 0} tone={kpis?.active ? 'rose' : 'teal'} />
           <KPI label="Resolved in 24 h" value={kpis?.resolvedToday ?? 0} />

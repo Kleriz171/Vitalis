@@ -41,10 +41,15 @@ export const NotchedPanel = ({ notchWidth, notchHeight, radius = 22, notch, chil
 
   return (
     <div ref={ref} className={`relative ${className}`}>
-      <div className="absolute inset-0 drop-shadow-[0_10px_24px_hsl(176_30%_10%/0.10)]">
-        <div className="absolute inset-0 bg-card" style={d ? { clipPath: `path('${d}')` } : { borderRadius: r }}>
-          {children}
-        </div>
+      {/* The shadow is a static shape drawn underneath, not a filter over the live map
+          (a filter there would repaint on every map frame). */}
+      {d && (
+        <svg className="pointer-events-none absolute inset-0 w-full h-full overflow-visible" aria-hidden>
+          <path d={d} fill="hsl(var(--card))" style={{ filter: 'drop-shadow(0 10px 24px hsl(176 30% 10% / 0.10))' }} />
+        </svg>
+      )}
+      <div className="absolute inset-0 bg-card [will-change:transform]" style={d ? { clipPath: `path('${d}')` } : { borderRadius: r }}>
+        {children}
       </div>
       {d && (
         <svg className="pointer-events-none absolute inset-0 w-full h-full z-[450]" aria-hidden>

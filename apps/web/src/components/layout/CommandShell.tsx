@@ -5,6 +5,7 @@ import {
 } from '@phosphor-icons/react';
 import { Tile } from '../ui/tile';
 import { Digits } from '../ui/digits';
+import { useNow } from '../../lib/useNow';
 import { ReactNode, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { BASE } from '../../lib/motion';
@@ -46,11 +47,7 @@ const useLive = () => {
 };
 
 const Clock = () => {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(t);
-  }, []);
+  const now = new Date(useNow());
   return (
     <div className="hidden lg:flex items-baseline gap-2 text-sm">
       <Digits value={time(now, 'Europe/Tirane')} className="text-[15px] font-medium text-white" />
@@ -158,16 +155,10 @@ export const CommandShell = () => {
       </aside>
 
       <main className="min-w-0 min-h-0 overflow-auto bg-background">
-        {/* The new page rises in; the old one leaves at once, so there is never a blank gap. */}
-        <motion.div
-          key={location.pathname}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={BASE}
-          className="text-foreground"
-        >
+        {/* Each page builds itself in (index.css: entrance choreography); keyed so it replays per visit. */}
+        <div key={location.pathname} className="text-foreground">
           <Outlet />
-        </motion.div>
+        </div>
       </main>
     </div>
   );

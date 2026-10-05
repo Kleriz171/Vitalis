@@ -15,7 +15,7 @@ export const Panel = ({ title, aside, children, className }: { title?: ReactNode
         {aside}
       </div>
     )}
-    <div className="divide-y divide-border">{children}</div>
+    <div className="divide-y divide-border stagger" style={{ ['--base' as string]: '180ms' }}>{children}</div>
   </section>
 );
 

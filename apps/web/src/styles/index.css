@@ -69,7 +69,6 @@
   /* The green frame's faint street-map texture (an abstract of central Tirana's ring and axes). */
   .frame-texture {
     background-color: hsl(var(--sidebar-background));
-    background-attachment: fixed;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='640' viewBox='0 0 640 640' fill='none' stroke='%23ffffff' stroke-opacity='0.06' stroke-width='1.2'%3E%3Ccircle cx='320' cy='320' r='120'/%3E%3Ccircle cx='320' cy='320' r='210'/%3E%3Cpath d='M320 0v640M0 320h640M60 40l520 560M600 60L40 580M0 180c160 40 280 20 640 120M0 470c200-60 380-20 640-90'/%3E%3C/svg%3E");
     background-size: 640px 640px;
   }
@@ -107,6 +106,42 @@
     animation: pin-pulse 1.8s cubic-bezier(0.16, 1, 0.3, 1) infinite;
     z-index: -1;
   }
+}
+
+/*
+ * Entrance choreography: every page builds itself in order instead of appearing at once.
+ * Only opacity and transform animate (the cheap, compositor-only properties), with one curve.
+ * The band's parts first, then each block below it, then the items inside a .stagger group.
+ */
+:root { --ease-out: cubic-bezier(0.22, 1, 0.36, 1); }
+@keyframes rise { from { opacity: 0; transform: translate3d(0, 16px, 0); } }
+@keyframes rise-side { from { opacity: 0; transform: translate3d(22px, 0, 0); } }
+.rise, .page-band > *, .page-band + * > *, .stagger > * {
+  animation: rise 0.7s var(--ease-out) both;
+  animation-delay: var(--d, 0ms);
+}
+.rise-side { animation: rise-side 0.7s var(--ease-out) both; animation-delay: var(--d, 0ms); }
+.page-band > *:nth-child(2) { --d: 70ms; }
+.page-band > *:nth-child(3) { --d: 140ms; }
+.page-band > *:nth-child(4) { --d: 200ms; }
+.page-band + * > *:nth-child(1) { --d: 160ms; }
+.page-band + * > *:nth-child(2) { --d: 300ms; }
+.page-band + * > *:nth-child(3) { --d: 420ms; }
+.page-band + * > *:nth-child(n+4) { --d: 520ms; }
+/* Items in a group follow each other 60 ms apart, after the group's own --base. */
+.stagger > *:nth-child(1) { --d: calc(var(--base, 0ms) + 0ms); }
+.stagger > *:nth-child(2) { --d: calc(var(--base, 0ms) + 60ms); }
+.stagger > *:nth-child(3) { --d: calc(var(--base, 0ms) + 120ms); }
+.stagger > *:nth-child(4) { --d: calc(var(--base, 0ms) + 180ms); }
+.stagger > *:nth-child(5) { --d: calc(var(--base, 0ms) + 240ms); }
+.stagger > *:nth-child(6) { --d: calc(var(--base, 0ms) + 290ms); }
+.stagger > *:nth-child(7) { --d: calc(var(--base, 0ms) + 340ms); }
+.stagger > *:nth-child(8) { --d: calc(var(--base, 0ms) + 380ms); }
+.stagger > *:nth-child(9) { --d: calc(var(--base, 0ms) + 420ms); }
+.stagger > *:nth-child(10) { --d: calc(var(--base, 0ms) + 450ms); }
+.stagger > *:nth-child(n+11) { --d: calc(var(--base, 0ms) + 480ms); }
+@media (prefers-reduced-motion: reduce) {
+  .rise, .rise-side, .page-band > *, .page-band + * > *, .stagger > * { animation: none; }
 }
 
 @keyframes pin-pulse {
