@@ -2,7 +2,8 @@
  * Screenshot a screen of the web build, signed in.  Needs Metro (8081) and the API (4000) running.
  *   node scripts/shot.mjs /profile profile 1600          → .expo/shots/profile.png (390 wide, 1600 tall)
  *   CLICK="Ilaçet" node scripts/shot.mjs /profile open   → taps the element with that exact text first
- * Env: EMAIL/PASS (default demo account), APP, API, WAIT (ms), GEO="lat,lng" (fake location).
+ * Env: EMAIL/PASS (default demo account), APP, API, WAIT (ms), GEO="lat,lng" (fake location),
+ *      WIDTH (desktop width, e.g. 1440 for the web console).
  */
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -33,7 +34,7 @@ if (process.env.GEO) {
   await send('Browser.grantPermissions', { permissions: ['geolocation'] });
   await send('Emulation.setGeolocationOverride', { latitude, longitude, accuracy: 20 });
 }
-await send('Emulation.setDeviceMetricsOverride', { width: 390, height: Number(height), deviceScaleFactor: 2, mobile: true });
+await send('Emulation.setDeviceMetricsOverride', { width: Number(process.env.WIDTH ?? 390), height: Number(height), deviceScaleFactor: process.env.WIDTH ? 1 : 2, mobile: !process.env.WIDTH });
 if (process.env.EMAIL !== '') {
   const login = await (await fetch(`${API}/auth/login`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },

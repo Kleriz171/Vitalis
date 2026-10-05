@@ -3,106 +3,148 @@ import { useDispatch, useSelector } from 'react-redux';
 import {
   Activity, Plane, Boxes, BarChart3, LogOut, Heart, Users, Stethoscope, Zap,
 } from 'lucide-react';
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { RootState, logout } from '../../store';
-import { Avatar, AvatarFallback } from '../ui/avatar';
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from '../ui/dropdown-menu';
+import { socket } from '../../realtime/socket';
 import { cn } from '../../lib/utils';
 
-const baseNav = [
+type NavItem = { to: string; label: string; icon: typeof Activity; end?: boolean };
+
+const baseNav: NavItem[] = [
   { to: '/command', label: 'Live operations', icon: Activity, end: true },
   { to: '/command/aeds', label: 'Defibrillators', icon: Zap },
   { to: '/command/drones', label: 'Drones', icon: Plane },
   { to: '/command/ledger', label: 'Ledger', icon: Boxes },
   { to: '/command/analytics', label: 'Analytics', icon: BarChart3 },
 ];
+const adminNav: NavItem[] = [
+  { to: '/command/admin/users', label: 'Users', icon: Users },
+  { to: '/command/admin/doctor-applications', label: 'Doctor review', icon: Stethoscope },
+];
+
+const time = (d: Date, timeZone?: string) => d.toLocaleTimeString('en-GB', { hourCycle: 'h23', timeZone });
+
+/** Socket link state, for the status light in the top bar. */
+const useLive = () => {
+  const [live, setLive] = useState(socket.connected);
+  useEffect(() => {
+    const up = () => setLive(true);
+    const down = () => setLive(false);
+    socket.on('connect', up);
+    socket.on('disconnect', down);
+    // The socket often connects before this mounts; read its state now so the light is not stale.
+    setLive(socket.connected);
+    return () => { socket.off('connect', up); socket.off('disconnect', down); };
+  }, []);
+  return live;
+};
+
+const Clocks = () => {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <div className="hidden lg:flex items-center gap-5 font-mono text-xs">
+      <span><span className="text-muted-foreground mr-2">TIRANA</span><span className="tabular-nums text-foreground">{time(now, 'Europe/Tirane')}</span></span>
+      <span><span className="text-muted-foreground mr-2">UTC</span><span className="tabular-nums text-foreground/80">{time(now, 'UTC')}</span></span>
+    </div>
+  );
+};
 
 export const CommandShell = () => {
   const user = useSelector((s: RootState) => s.auth.user);
-  const navItems = user?.role === 'admin'
-    ? [
-        ...baseNav,
-        { to: '/command/admin/users', label: 'Users', icon: Users },
-        { to: '/command/admin/doctor-applications', label: 'Doctor apps', icon: Stethoscope },
-      ]
-    : baseNav;
+  const items = user?.role === 'admin' ? [...baseNav, ...adminNav] : baseNav;
   const dispatch = useDispatch();
   const nav = useNavigate();
   const location = useLocation();
+  const live = useLive();
+  const current = [...items].reverse().find(i => (i.end ? location.pathname === i.to : location.pathname.startsWith(i.to)));
 
   const signOut = () => { dispatch(logout()); nav('/login'); };
 
   return (
-    <div className="min-h-screen flex bg-background">
-      <aside className="w-60 shrink-0 border-r border-sidebar-border bg-sidebar flex flex-col">
-        <div className="flex items-center gap-3 px-5 h-16 border-b border-sidebar-border">
-          <div className="w-9 h-9 rounded-xl bg-primary text-primary-foreground grid place-items-center shadow-sm">
-            <Heart size={18} fill="currentColor" />
+    <div className="h-screen grid grid-rows-[48px_1fr] grid-cols-[224px_1fr] scanlines">
+      {/* Top bar: who and where you are, link state, time. */}
+      <header className="col-span-2 flex items-center gap-4 px-4 border-b border-border bg-sidebar/90 backdrop-blur">
+        <div className="flex items-center gap-2.5 w-[200px]">
+          <div className="w-7 h-7 rounded-sm border border-primary/60 bg-primary/10 grid place-items-center text-primary shadow-[0_0_14px_hsl(var(--glow)/0.45)]">
+            <Heart size={14} fill="currentColor" />
           </div>
-          <div className="leading-tight">
-            <div className="font-bold text-sidebar-foreground">Vitalis</div>
-            <div className="text-xs text-muted-foreground">Command</div>
+          <div className="font-mono text-[13px] tracking-[0.22em] leading-none">
+            <span className="text-foreground font-semibold">VITALIS</span>
+            <span className="text-primary"> / </span>
+            <span className="text-muted-foreground">COMMAND</span>
           </div>
         </div>
+        <div className="h-5 w-px bg-border" />
+        <div className="hud-label text-foreground/80">{current?.label ?? ''}</div>
 
-        <nav className="flex flex-col gap-0.5 p-3">
-          {navItems.map(({ to, label, icon: Icon, end }) => (
+        <div className="ml-auto flex items-center gap-5">
+          <div className="flex items-center gap-2 font-mono text-xs" aria-live="polite">
+            <span className={cn('relative w-2 h-2 rounded-full', live ? 'bg-primary shadow-[0_0_10px_hsl(var(--glow))]' : 'bg-[hsl(var(--warn))] animate-blink')} />
+            <span className={live ? 'text-primary' : 'text-[hsl(var(--warn))]'}>{live ? 'LIVE' : 'RECONNECTING'}</span>
+          </div>
+          <Clocks />
+          <div className="h-5 w-px bg-border" />
+          <div className="text-right leading-tight">
+            <div className="text-sm font-medium">{user?.name ?? 'Operator'}</div>
+            <div className="hud-label !text-[10px]">{user?.role ?? ''}</div>
+          </div>
+          <button
+            onClick={signOut}
+            className="w-8 h-8 grid place-items-center rounded-sm border border-border text-muted-foreground hover:text-destructive hover:border-destructive/60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label="Sign out"
+            title="Sign out"
+          >
+            <LogOut size={15} />
+          </button>
+        </div>
+      </header>
+
+      {/* Navigation rail. */}
+      <aside className="border-r border-sidebar-border bg-sidebar/80 backdrop-blur flex flex-col min-h-0">
+        <div className="hud-label px-5 pt-5 pb-2">Sections</div>
+        <nav className="flex flex-col px-2 gap-0.5">
+          {items.map(({ to, label, icon: Icon, end }, i) => (
             <NavLink
               key={to}
               to={to}
               end={end}
               className={({ isActive }) => cn(
-                'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                'group relative flex items-center gap-3 pl-4 pr-3 h-10 rounded-sm text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                 isActive
-                  ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                  : 'text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground',
+                  ? 'bg-gradient-to-r from-primary/15 to-transparent text-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
               )}
             >
               {({ isActive }) => (
                 <>
+                  {isActive && <span className="absolute left-0 top-2 bottom-2 w-[2px] bg-primary shadow-[0_0_10px_hsl(var(--glow))]" />}
+                  <span className={cn('font-mono text-[10px] tabular-nums w-4', isActive ? 'text-primary' : 'text-muted-foreground/60')}>{String(i + 1).padStart(2, '0')}</span>
                   <Icon size={16} className={isActive ? 'text-primary' : ''} />
-                  <span>{label}</span>
+                  <span className="truncate">{label}</span>
                 </>
               )}
             </NavLink>
           ))}
         </nav>
-
-        <div className="mt-auto p-3 border-t border-sidebar-border">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-3 w-full p-2 rounded-lg hover:bg-sidebar-accent/50 transition text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                <Avatar className="h-9 w-9">
-                  <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-                    {(user?.name ?? '?').slice(0, 1).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">{user?.name ?? 'Guest'}</div>
-                  <div className="text-xs text-muted-foreground capitalize">{user?.role}</div>
-                </div>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem onClick={signOut} className="text-destructive focus:text-destructive cursor-pointer">
-                <LogOut size={14} /> Sign out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <div className="mt-auto px-5 py-4 border-t border-sidebar-border font-mono text-[10px] leading-relaxed text-muted-foreground/70 tracking-wider">
+          <div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-primary/70" /> ENCRYPTED LINK</div>
+          <div>41.33°N 19.82°E · TIRANA</div>
         </div>
       </aside>
 
-      <main className="flex-1 min-w-0">
+      <main className="min-w-0 min-h-0 overflow-auto">
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
+            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
           >
             <Outlet />
           </motion.div>
@@ -112,25 +154,15 @@ export const CommandShell = () => {
   );
 };
 
+/** Page title row: a mono section tag above a plain-language title. */
 export const PageHeader = ({ title, subtitle, actions }: { title: string; subtitle?: string; actions?: ReactNode }) => (
-  <header className="flex items-end justify-between gap-4 px-6 md:px-8 pt-6 pb-4 border-b border-border bg-card/40 backdrop-blur-sm">
-    <motion.div
-      initial={{ opacity: 0, y: -6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-    >
-      <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
-      {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
-    </motion.div>
-    {actions && (
-      <motion.div
-        initial={{ opacity: 0, y: -6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.05, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        className="flex items-center gap-2"
-      >
-        {actions}
-      </motion.div>
-    )}
+  <header className="flex items-end justify-between gap-4 px-6 pt-6 pb-4">
+    <div>
+      <div className="hud-label flex items-center gap-2">
+        <span className="inline-block w-3 h-px bg-primary" /> {subtitle ?? 'Vitalis command'}
+      </div>
+      <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight">{title}</h1>
+    </div>
+    {actions && <div className="flex items-center gap-2">{actions}</div>}
   </header>
 );

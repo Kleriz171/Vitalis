@@ -14,7 +14,9 @@ interface TimePoint { date: string; count: number; resolved: number; }
 interface Performance { total: number; resolved: number; resolutionRate: number; avgEtaSeconds: number; }
 interface TopCaller { userId: string; name: string; email: string; count: number; }
 
-const TYPE_COLORS = ['#0d9488', '#0ea5e9', '#f97316', '#a855f7', '#ef4444', '#22c55e'];
+const TYPE_COLORS = ['#21d1b8', '#5aa9ff', '#ff9f2e', '#b18cff', '#ff4d4d', '#7be495'];
+// Chart tooltips in the console's dark panel style.
+const TOOLTIP = { fontSize: 12, borderRadius: 4, background: 'hsl(190 40% 8%)', border: '1px solid hsl(182 32% 16%)', color: 'hsl(172 30% 90%)' };
 
 const fmtEta = (s: number) => {
   if (!s) return '—';
@@ -54,8 +56,8 @@ export const Analytics = () => {
       <div className="p-6 space-y-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Kpi label="Total incidents" value={kpis?.total ?? 0} />
-          <Kpi label="Active now" value={kpis?.active ?? 0} accent="text-rose-600" />
-          <Kpi label="Resolved 24h" value={kpis?.resolvedToday ?? 0} accent="text-emerald-600" />
+          <Kpi label="Active now" value={kpis?.active ?? 0} accent="text-rose-400" />
+          <Kpi label="Resolved 24h" value={kpis?.resolvedToday ?? 0} accent="text-emerald-400" />
           <Kpi label="Resolution rate" value={`${perf?.resolutionRate ?? 0}%`} accent="text-primary" />
         </div>
 
@@ -68,16 +70,16 @@ export const Analytics = () => {
             <CardContent className="p-4 h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={series} margin={{ top: 10, right: 24, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(182 32% 16%)" />
                   <XAxis dataKey="date" tickFormatter={fmtShortDate} fontSize={11} />
                   <YAxis allowDecimals={false} fontSize={11} />
                   <Tooltip
                     labelFormatter={(v) => fmtShortDate(String(v))}
-                    contentStyle={{ fontSize: 12, borderRadius: 8 }}
+                    contentStyle={TOOLTIP}
                   />
                   <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Line type="monotone" dataKey="count" name="Triggered" stroke="#0d9488" strokeWidth={2} dot={{ r: 3 }} />
-                  <Line type="monotone" dataKey="resolved" name="Resolved" stroke="#22c55e" strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="count" name="Triggered" stroke="#21d1b8" strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="resolved" name="Resolved" stroke="#7be495" strokeWidth={2} dot={{ r: 3 }} />
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>
@@ -106,7 +108,7 @@ export const Analytics = () => {
                         <Cell key={i} fill={TYPE_COLORS[i % TYPE_COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                    <Tooltip contentStyle={TOOLTIP} />
                     <Legend wrapperStyle={{ fontSize: 11 }} iconSize={8} />
                   </PieChart>
                 </ResponsiveContainer>
@@ -131,7 +133,7 @@ export const Analytics = () => {
               <div>
                 <div className="text-[11px] text-muted-foreground">Resolved / Total</div>
                 <div className="text-3xl font-bold mt-1">
-                  <span className="text-emerald-600">{perf?.resolved ?? 0}</span>
+                  <span className="text-emerald-400">{perf?.resolved ?? 0}</span>
                   <span className="text-muted-foreground"> / {perf?.total ?? 0}</span>
                 </div>
               </div>
@@ -150,10 +152,10 @@ export const Analytics = () => {
               {top.length ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={top} layout="vertical" margin={{ top: 8, right: 24, left: 8, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(182 32% 16%)" horizontal={false} />
                     <XAxis type="number" allowDecimals={false} fontSize={11} />
                     <YAxis type="category" dataKey="name" width={120} fontSize={11} />
-                    <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                    <Tooltip contentStyle={TOOLTIP} />
                     <Bar dataKey="count" name="Incidents" fill="#0d9488" radius={[0, 6, 6, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -171,8 +173,8 @@ export const Analytics = () => {
 const Kpi = ({ label, value, accent }: { label: string; value: number | string; accent?: string }) => (
   <Card className="gap-0 py-0">
     <CardContent className="p-4">
-      <div className="text-[11px] text-muted-foreground">{label}</div>
-      <div className={`text-2xl font-bold mt-1 ${accent ?? 'text-foreground'}`}>{value}</div>
+      <div className="hud-label">{label}</div>
+      <div className={`hud-num text-[32px] leading-none font-medium mt-2 ${accent ?? 'text-foreground'}`}>{value}</div>
     </CardContent>
   </Card>
 );

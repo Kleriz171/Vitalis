@@ -66,9 +66,9 @@ export const AdminUserDetail = () => {
       />
       <div className="p-8 space-y-6">
         <div className="grid md:grid-cols-4 gap-3">
-          <Kpi label="Blood type" value={u.bloodType ?? '—'} accent="text-rose-600" />
+          <Kpi label="Blood type" value={u.bloodType ?? '—'} accent="text-rose-400" />
           <Kpi label="Age" value={u.age != null ? `${u.age}` : '—'} />
-          <Kpi label="Active certs" value={activeCerts.length} accent="text-emerald-600" />
+          <Kpi label="Active certs" value={activeCerts.length} accent="text-emerald-400" />
           <Kpi label="SOS history" value={data.emergencies.length} accent="text-primary" />
         </div>
 

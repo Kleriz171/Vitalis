@@ -14,7 +14,7 @@ function Card({ className, tone: _tone, glow: _glow, ...props }: CardProps) {
     <div
       data-slot="card"
       className={cn(
-        "bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm",
+        "hud-panel text-card-foreground flex flex-col gap-6 rounded-md border py-6 shadow-[0_0_0_1px_hsl(var(--glow)/0.03),0_12px_40px_-20px_hsl(0_0%_0%/0.8)]",
         className
       )}
       {...props}

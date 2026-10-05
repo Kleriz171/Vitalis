@@ -29,10 +29,10 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const STATUS_TONE: Record<string, string> = {
-  pending: 'bg-red-50 text-red-700 ring-red-200',
-  assigned: 'bg-amber-50 text-amber-800 ring-amber-200',
-  en_route: 'bg-sky-50 text-sky-800 ring-sky-200',
-  on_scene: 'bg-emerald-50 text-emerald-800 ring-emerald-200',
+  pending: 'bg-red-500/10 text-red-300 ring-red-500/30',
+  assigned: 'bg-amber-500/10 text-amber-300 ring-amber-500/30',
+  en_route: 'bg-sky-500/10 text-sky-300 ring-sky-500/30',
+  on_scene: 'bg-emerald-500/10 text-emerald-300 ring-emerald-500/30',
   resolved: 'bg-muted text-muted-foreground ring-border',
   cancelled: 'bg-muted text-muted-foreground ring-border',
 };
@@ -79,7 +79,6 @@ export const Logistics = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [, tick] = useState(0);
-  const [live, setLive] = useState(socket.connected);
 
   const loadKpis = useCallback(() => api.get('/analytics/kpis').then(r => setKpis(r.data)).catch(() => {}), []);
 
@@ -105,10 +104,6 @@ export const Logistics = () => {
     const onLocation = (p: { userId: string; coordinates: [number, number] }) =>
       setResponders(prev => ({ ...prev, [p.userId]: p }));
 
-    const onUp = () => setLive(true);
-    const onDown = () => setLive(false);
-    socket.on('connect', onUp);
-    socket.on('disconnect', onDown);
     socket.on('dashboard:emergency', onEmergency);
     socket.on('responder:location', onLocation);
     api.get('/emergencies').then(r => setEmergencies(r.data)).catch(() => {}).finally(() => setLoading(false));
@@ -118,8 +113,6 @@ export const Logistics = () => {
     // Re-render every 10 s so "waiting 1 min" escalations appear without new events.
     const clock = setInterval(() => tick(t => t + 1), 10_000);
     return () => {
-      socket.off('connect', onUp);
-      socket.off('disconnect', onDown);
       socket.off('dashboard:emergency', onEmergency);
       socket.off('responder:location', onLocation);
       clearInterval(kpiTimer);
@@ -143,12 +136,6 @@ export const Logistics = () => {
       <PageHeader
         title="Live operations"
         subtitle="SOS calls, responders and defibrillators in real time"
-        actions={
-          <div className="flex items-center gap-2 text-sm text-muted-foreground" aria-live="polite">
-            <span className={cn('w-2 h-2 rounded-full', live ? 'bg-emerald-500' : 'bg-amber-500')} />
-            {live ? 'Live' : 'Connecting…'}
-          </div>
-        }
       />
 
       <div className="p-6 space-y-4">
@@ -173,9 +160,9 @@ export const Logistics = () => {
           </Card>
 
           <Card className="flex flex-col h-[min(68vh,720px)] gap-0 py-0 overflow-hidden">
-            <div className="px-4 py-3 border-b border-border flex items-baseline justify-between">
-              <h2 className="font-semibold">Active calls</h2>
-              <span className="text-sm text-muted-foreground tabular-nums">{active.length}</span>
+            <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+              <h2 className="hud-label !text-foreground">Active calls</h2>
+              <span className={cn('hud-num text-sm px-1.5 rounded-sm', active.length ? 'text-[hsl(var(--danger))] bg-red-500/10' : 'text-muted-foreground')}>{String(active.length).padStart(2, '0')}</span>
             </div>
             <div className="flex-1 overflow-auto p-2 space-y-1.5">
               {loading && Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-lg" />)}
@@ -197,7 +184,7 @@ export const Logistics = () => {
                     )}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className={cn('font-medium', e.priority === 1 && 'text-red-700')}>{TYPE_LABEL[e.type] ?? 'Emergency'}</span>
+                      <span className={cn('font-medium', e.priority === 1 && 'text-red-300')}>{TYPE_LABEL[e.type] ?? 'Emergency'}</span>
                       <span className="text-xs text-muted-foreground tabular-nums">{timeAgo(e.createdAt)}</span>
                     </div>
                     <div className="mt-1.5 flex items-center gap-2 flex-wrap">
@@ -206,12 +193,12 @@ export const Logistics = () => {
                     </div>
                     {e.type === 'cardiac' && (
                       <div className="mt-1.5 flex items-center gap-1.5 text-sm text-muted-foreground">
-                        <Zap size={14} className={e.aedRunner ? 'text-green-700' : 'text-muted-foreground'} />
+                        <Zap size={14} className={e.aedRunner ? 'text-green-300' : 'text-muted-foreground'} />
                         {e.aedStatus === 'delivered' ? 'AED at patient' : e.aedStatus === 'has_aed' ? 'AED on the way' : e.aedRunner ? 'Runner fetching AED' : 'No AED runner yet'}
                       </div>
                     )}
                     {waiting && (
-                      <div className="mt-2 flex items-center gap-1.5 text-sm font-medium text-red-700">
+                      <div className="mt-2 flex items-center gap-1.5 text-sm font-medium text-red-300">
                         <AlertTriangle size={14} /> No responder after 1 min. Dispatch an ambulance.
                       </div>
                     )}
@@ -306,13 +293,13 @@ const IncidentPanel = ({ incident, onClose, onChanged }: { incident: Emergency; 
     <aside
       role="dialog"
       aria-label="Call details"
-      className="fixed right-0 top-0 bottom-0 z-30 w-[min(440px,100vw)] bg-card border-l border-border shadow-xl overflow-auto animate-in slide-in-from-right duration-200"
+      className="fixed right-0 top-12 bottom-0 z-30 w-[min(440px,100vw)] bg-card border-l border-border shadow-xl overflow-auto animate-in slide-in-from-right duration-200"
     >
       <div className="sticky top-0 bg-card/95 backdrop-blur border-b border-border px-6 py-4 flex items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold">{TYPE_LABEL[incident.type] ?? 'Emergency'}</h2>
           <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
-            <StatusPill status={incident.status} /> <span className="tabular-nums">#{shortId(incident._id)}</span>
+            <StatusPill status={incident.status} /> <span className="hud-num">#{shortId(incident._id)}</span>
           </div>
         </div>
         <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close details"><X size={18} /></Button>
@@ -324,13 +311,13 @@ const IncidentPanel = ({ incident, onClose, onChanged }: { incident: Emergency; 
         ) : (
           <>
             <section>
-              <h3 className="text-sm font-medium text-muted-foreground">Patient</h3>
+              <h3 className="hud-label">Patient</h3>
               <p className="mt-1 text-xl font-semibold">{p?.name ?? 'Unknown'}</p>
               <p className="text-sm text-muted-foreground">
                 {[p?.age != null ? `${p.age} years` : null, p?.bloodType ? `Blood ${p.bloodType}` : null].filter(Boolean).join(' · ') || 'No profile details'}
               </p>
               {severe.length > 0 && (
-                <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm font-semibold text-red-800">
+                <p className="mt-3 rounded-md bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-300">
                   Severe allergy: {severe.map(a => a.allergen).join(', ')}
                 </p>
               )}
@@ -343,14 +330,14 @@ const IncidentPanel = ({ incident, onClose, onChanged }: { incident: Emergency; 
             </section>
 
             {incident.callerCertifications && incident.callerCertifications.length > 0 && (
-              <section className="flex items-start gap-2 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+              <section className="flex items-start gap-2 rounded-md bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
                 <Award size={16} className="mt-0.5 shrink-0" />
                 Caller holds {incident.callerCertifications.map(c => c.badgeLabel).join(', ')}. They may start care before help arrives.
               </section>
             )}
 
             <section>
-              <h3 className="text-sm font-medium text-muted-foreground">Responders</h3>
+              <h3 className="hud-label">Responders</h3>
               <ul className="mt-2 space-y-1.5 text-sm">
                 <li>{h.responder ? <><span className="font-medium">{h.responder.name}</span> · <span className="capitalize">{h.responder.role.replace('_', ' ')}</span></> : 'No responder yet'}</li>
                 {incident.type === 'cardiac' && (
@@ -362,18 +349,18 @@ const IncidentPanel = ({ incident, onClose, onChanged }: { incident: Emergency; 
             <section className="grid grid-cols-3 gap-2">
               {[['To accept', h.metrics.secondsToAssign], ['To scene', h.metrics.secondsToScene], ['To AED', h.metrics.secondsToAed]].map(([label, v]) => (
                 <div key={label as string} className="rounded-lg border border-border p-3">
-                  <div className="text-lg font-semibold tabular-nums">{v != null ? formatEta(v as number) : '—'}</div>
-                  <div className="text-xs text-muted-foreground">{label}</div>
+                  <div className="hud-num text-lg">{v != null ? formatEta(v as number) : '—'}</div>
+                  <div className="hud-label !text-[10px] mt-1">{label}</div>
                 </div>
               ))}
             </section>
 
             <section>
-              <h3 className="text-sm font-medium text-muted-foreground">Timeline</h3>
+              <h3 className="hud-label">Timeline</h3>
               <ol className="mt-2 space-y-2">
                 {h.timeline.map((t, i) => (
                   <li key={i} className="grid grid-cols-[70px_1fr] gap-3 text-sm">
-                    <span className="text-muted-foreground tabular-nums">{new Date(t.at).toLocaleTimeString([], { hourCycle: 'h23' })}</span>
+                    <span className="hud-num text-primary/80">{new Date(t.at).toLocaleTimeString([], { hourCycle: 'h23' })}</span>
                     <span>{STEP[t.status] ?? t.status}{t.by ? ` · ${t.by}` : ''}</span>
                   </li>
                 ))}

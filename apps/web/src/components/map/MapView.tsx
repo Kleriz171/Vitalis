@@ -34,19 +34,21 @@ export const TYPE_LABEL: Record<string, string> = {
   other: 'Emergency',
 };
 
-const priorityColor = (p: number) => (p === 1 ? '#dc2626' : p === 2 ? '#ea580c' : p === 3 ? '#ca8a04' : '#0284c7');
+// Night-map palette: red for the most urgent, amber next, cool blue for the rest.
+const priorityColor = (p: number) => (p === 1 ? '#ff4d4d' : p === 2 ? '#ff9f2e' : p === 3 ? '#f5c542' : '#5aa9ff');
+const TEAL = '#21d1b8';
 
 // Popups take a DOM node, not an HTML string: AED names come from the public.
 const popup = (title: string, sub?: string) => {
   const el = document.createElement('div');
-  el.style.cssText = 'font: 13px/1.4 system-ui, sans-serif; min-width: 140px';
+  el.style.cssText = "font: 13px/1.4 'Inter Variable', system-ui, sans-serif; min-width: 140px";
   const t = document.createElement('div');
   t.style.fontWeight = '600';
   t.textContent = title;
   el.appendChild(t);
   if (sub) {
     const s = document.createElement('div');
-    s.style.color = '#475569';
+    s.style.color = 'hsl(182 12% 62%)';
     s.textContent = sub;
     el.appendChild(s);
   }
@@ -58,7 +60,7 @@ const aedIcon = (verified: boolean) =>
     className: '',
     iconSize: [22, 22],
     iconAnchor: [11, 11],
-    html: `<div style="width:22px;height:22px;border-radius:6px;display:grid;place-items:center;background:${verified ? '#15803d' : '#64748b'};color:#fff;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3)"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>`,
+    html: `<div style="width:22px;height:22px;border-radius:4px;display:grid;place-items:center;background:rgba(5,16,15,.85);color:${verified ? TEAL : '#7f9896'};border:1.5px solid ${verified ? TEAL : '#7f9896'};box-shadow:0 0 10px ${verified ? 'rgba(33,209,184,.45)' : 'transparent'}"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>`,
   });
 
 interface Props {
@@ -102,12 +104,17 @@ const MapView = ({ incidents, aeds = [], responders = [], selectedId, onSelect }
     for (const e of located) {
       const [lng, lat] = e.location!.coordinates;
       const selected = e._id === selectedId;
-      const m = L.circleMarker([lat, lng], {
-        radius: selected ? 13 : 10,
-        fillColor: priorityColor(e.priority),
-        color: selected ? '#0f172a' : '#fff',
-        weight: selected ? 3 : 2,
-        fillOpacity: 0.95,
+      const color = priorityColor(e.priority);
+      const size = selected ? 20 : 16;
+      // Calls still waiting for a responder pulse (sonar); the selected one gets a target ring.
+      const m = L.marker([lat, lng], {
+        icon: L.divIcon({
+          className: '',
+          iconSize: [size, size],
+          iconAnchor: [size / 2, size / 2],
+          html: `<div class="${e.status === 'pending' ? 'sonar' : ''}" style="width:${size}px;height:${size}px;border-radius:9999px;background:${color};color:${color};border:2px solid rgba(5,16,15,.9);box-shadow:0 0 14px ${color}${selected ? `,0 0 0 4px rgba(5,16,15,.9),0 0 0 6px ${TEAL}` : ''}"></div>`,
+        }),
+        zIndexOffset: selected ? 1000 : e.priority === 1 ? 500 : 0,
       });
       m.bindTooltip(popup(TYPE_LABEL[e.type] ?? 'Emergency', e.status.replace('_', ' ')), { direction: 'top', offset: [0, -8] });
       if (onSelect) m.on('click', () => onSelect(e._id));
@@ -145,20 +152,23 @@ const MapView = ({ incidents, aeds = [], responders = [], selectedId, onSelect }
     for (const r of responders) {
       layer.addLayer(
         L.circleMarker([r.coordinates[1], r.coordinates[0]], {
-          radius: 7, fillColor: '#0d9488', color: '#fff', weight: 2, fillOpacity: 1,
+          radius: 6, fillColor: TEAL, color: '#05100f', weight: 2, fillOpacity: 1, className: 'drop-shadow-[0_0_6px_#21d1b8]',
         }).bindTooltip(popup('Responder', 'Live position'), { direction: 'top' }),
       );
     }
   }, [responders]);
 
   return (
-    <div className="relative w-full h-full min-h-[420px] rounded-xl overflow-hidden">
+    <div className="map-night relative w-full h-full min-h-[420px] rounded-sm overflow-hidden">
       <div ref={ref} className="absolute inset-0" />
-      <div className="absolute left-3 bottom-3 z-[400] flex flex-wrap gap-x-4 gap-y-1 rounded-lg bg-card/95 border border-border px-3 py-2 text-xs shadow-sm">
-        <span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-full bg-red-600" />Priority 1</span>
-        <span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-full bg-orange-600" />Priority 2</span>
-        <span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-full bg-teal-600" />Responder</span>
-        <span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-sm bg-green-700" />AED</span>
+      {/* Edge vignette so the map sinks into the panel. */}
+      <div className="pointer-events-none absolute inset-0 z-[401] shadow-[inset_0_0_80px_20px_hsl(var(--background))]" />
+      <div className="absolute left-3 bottom-3 z-[402] flex flex-wrap gap-x-4 gap-y-1 rounded-sm bg-background/85 backdrop-blur border border-border px-3 py-2 font-mono text-[11px] tracking-wide text-muted-foreground">
+        <span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-full bg-[#ff4d4d] shadow-[0_0_8px_#ff4d4d]" />Priority 1</span>
+        <span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-full bg-[#ff9f2e]" />Priority 2+</span>
+        <span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-full bg-[#21d1b8] shadow-[0_0_8px_#21d1b8]" />Responder</span>
+        <span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-[2px] border border-[#21d1b8]" />AED</span>
+        <span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-full border-2 border-[#ff4d4d]/70" />Pulsing: no responder yet</span>
       </div>
     </div>
   );
