@@ -67,6 +67,20 @@ brew install ffmpeg            # optional: live camera in the console
 
 The Tello has no GPS, so autonomous routes are measured moves from the take-off spot (`forward 200`, `cw 90`, …). Manual flight uses W A S D and the arrow keys in the console. Safety rules run on the bridge itself: no take-off under 30% battery, land if the API link drops, hover when you let go of the controls, land after 60 s without input.
 
+## Watch app (Wear OS)
+
+`apps/watch` is a small standalone Wear OS app (Kotlin, Compose for Wear OS): hold-to-SOS with a 3-second cancel, the SOS's live status (responder, arrival time, cancel), Call 127, the Medical ID from the Bio Passport, and a background heart check. A resting heart rate that stays at 150+ or at 40 or below (35 or below asleep) for about 4 minutes asks "Are you OK?"; no answer in 30 s sends a priority-1 SOS. Exercise and readings without skin contact never count. These limits are a starting point and still need medical review.
+
+Pairing: the watch shows a 6-digit code, and you type it in the phone app under Profile → Watch. The watch then holds a key that can only send and cancel its SOS, read its status and read the Medical ID (`/api/watch`).
+
+```bash
+cd apps/watch
+./gradlew testDebugUnitTest assembleDebug -PapiUrl=http://10.0.2.2:4000/api   # emulator → API on this Mac
+adb install -r -g app/build/outputs/apk/debug/app-debug.apk
+```
+
+Needs JDK 17 or 21 and the Android SDK (`local.properties` → `sdk.dir`). Set `-PapiUrl=https://<api>/api` for real watches.
+
 ## Desktop app
 
 `apps/web/src-tauri` wraps the console as an installable app. Install Rust once (`curl https://sh.rustup.rs -sSf | sh`), then:
