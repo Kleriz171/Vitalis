@@ -18,8 +18,8 @@ const ICON = { sm: 17, md: 21, lg: 25 } as const;
 
 export type TileTone = keyof typeof TONES;
 
-export const Tile = ({ icon: I, tone = 'teal', size = 'md', className }: { icon: Icon; tone?: TileTone; size?: keyof typeof SIZES; className?: string }) => (
-  <span className={cn('shrink-0 grid place-items-center', SIZES[size], TONES[tone], className)} aria-hidden>
+export const Tile = ({ icon: I, tone = 'teal', size = 'md', round = false, className }: { icon: Icon; tone?: TileTone; size?: keyof typeof SIZES; round?: boolean; className?: string }) => (
+  <span className={cn('shrink-0 grid place-items-center', SIZES[size], round && '!rounded-full', TONES[tone], className)} aria-hidden>
     <I size={ICON[size]} weight="duotone" />
   </span>
 );

@@ -49,7 +49,7 @@ await sleep(Number(process.env.WAIT ?? 7000));
 if (process.env.CLICK) {
   // Prefer real controls (tabs, buttons) over plain text with the same words.
   const text = JSON.stringify(process.env.CLICK);
-  await send('Runtime.evaluate', { expression: `([...document.querySelectorAll('[role=tab],[role=button],[role=link]')].find((e) => e.textContent.trim() === ${text}) ?? [...document.querySelectorAll('div,span')].find((e) => e.textContent.trim() === ${text}))?.click()` });
+  await send('Runtime.evaluate', { expression: `([...document.querySelectorAll('button,[role=tab],[role=button],[role=link]')].find((e) => e.textContent.trim() === ${text}) ?? [...document.querySelectorAll('div,span')].find((e) => e.textContent.trim() === ${text}))?.click()` });
   await sleep(1500);
 }
 if (process.env.SCROLL) {

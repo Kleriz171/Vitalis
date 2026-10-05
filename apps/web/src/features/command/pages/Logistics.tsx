@@ -1,12 +1,14 @@
-import { Ambulance, Bandaids, Certificate, Drop, FirstAid, Heartbeat, Hourglass, Lightning, Pill, Pulse, Siren, Timer, UsersThree, Warning, X, type Icon } from '@phosphor-icons/react';
+import { LockSimple, LockSimpleOpen, MagnifyingGlass, Ambulance, Bandaids, Certificate, Drop, FirstAid, Heartbeat, Hourglass, Lightning, Pill, Pulse, Siren, Timer, UsersThree, Warning, X, type Icon } from '@phosphor-icons/react';
 import { Tile, type TileTone } from '../../../components/ui/tile';
+import { Digits } from '../../../components/ui/digits';
+import { NotchedPanel } from '../../../components/widgets/NotchedPanel';
+import { Gauge } from '../../../components/widgets/Gauge';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../../../api/client';
 import { socket } from '../../../realtime/socket';
 import { Card } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
 import { Skeleton } from '../../../components/ui/skeleton';
-import { PageHeader } from '../../../components/layout/CommandShell';
 import { KPI } from '../../../components/widgets/KPI';
 import { pushToast } from '../../../components/toast/toast';
 import { timeAgo, shortId, formatEta } from '../../../lib/format';
@@ -61,6 +63,7 @@ interface Kpis {
   pending?: number;
   onDuty?: number;
   medianAcceptSeconds?: number | null;
+  acceptedUnderMinutePct?: number | null;
 }
 
 const nameOf = (p: Person) => (p && typeof p === 'object' ? p.name : null);
@@ -91,6 +94,33 @@ export const StatusPill = ({ status }: { status: string }) => (
   </span>
 );
 
+/** The dashboard's big clock: Tirana time, with UTC and the link state under it. */
+const HeroClock = () => {
+  const [now, setNow] = useState(() => new Date());
+  const [live, setLive] = useState(socket.connected);
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    const up = () => setLive(true);
+    const down = () => setLive(false);
+    socket.on('connect', up);
+    socket.on('disconnect', down);
+    setLive(socket.connected);
+    return () => { clearInterval(t); socket.off('connect', up); socket.off('disconnect', down); };
+  }, []);
+  const fmt = (timeZone: string, seconds = true) => now.toLocaleTimeString('en-GB', { hourCycle: 'h23', timeZone, ...(seconds ? {} : { hour: '2-digit', minute: '2-digit' }) });
+  return (
+    <div className="shrink-0">
+      <div className="flex items-center gap-3">
+        <Digits value={fmt('Europe/Tirane')} className="text-[44px] leading-none font-extrabold tracking-[-0.03em] text-white" />
+        <span className={cn('w-3 h-3 rounded-full', live ? 'bg-[hsl(173_79%_55%)] animate-live shadow-[0_0_0_4px_hsl(173_79%_55%/0.2)]' : 'bg-[hsl(var(--warn))]')} />
+      </div>
+      <div className="mt-1.5 text-[13px] text-white/70">
+        Tirana · <Digits value={fmt('UTC', false)} /> UTC · <span className={live ? 'text-[hsl(173_79%_65%)] font-semibold' : 'text-[hsl(var(--warn))] font-semibold'}>{live ? 'Live' : 'Reconnecting'}</span>
+      </div>
+    </div>
+  );
+};
+
 export const Logistics = () => {
   const [emergencies, setEmergencies] = useState<Emergency[]>([]);
   const [aeds, setAeds] = useState<MapAed[]>([]);
@@ -98,6 +128,8 @@ export const Logistics = () => {
   const [kpis, setKpis] = useState<Kpis>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState('');
+  const [follow, setFollow] = useState(false);
   const [, tick] = useState(0);
 
   const loadKpis = useCallback(() => api.get('/analytics/kpis').then(r => setKpis(r.data)).catch(() => {}), []);
@@ -151,16 +183,37 @@ export const Logistics = () => {
 
   const updateEmergency = (e: Emergency) => setEmergencies(prev => prev.map(x => (x._id === e._id ? { ...x, ...e, responder: x.responder, aedRunner: x.aedRunner } : x)));
 
+  // Filter calls by what an operator would type: type, status, case number or responder.
+  const q = query.trim().toLowerCase();
+  const matches = (e: Emergency) => !q || [TYPE_LABEL[e.type], STATUS_LABEL[e.status], shortId(e._id), nameOf(e.responder) ?? '']
+    .some(v => (v ?? '').toLowerCase().includes(q));
+  const shownActive = active.filter(matches);
+  const shownClosed = closed.filter(matches);
+
   return (
     <>
-      <PageHeader icon={Pulse}
-        title="Live operations"
-        subtitle="SOS calls, responders and defibrillators in real time"
-      />
+      {/* The band: a big live clock beside the title, search on the right. */}
+      <header className="page-band frame-texture flex items-center gap-8 px-6 pt-6 pb-[4.75rem]">
+        <HeroClock />
+        <div className="h-14 w-px bg-white/15" />
+        <div className="min-w-0">
+          <h1 className="text-[30px] leading-[1.05] font-extrabold tracking-[-0.03em] text-white">Live operations</h1>
+          <p className="mt-1 text-[14px] text-white/75">SOS calls, responders and defibrillators in real time</p>
+        </div>
+        <label className="relative z-10 ml-auto w-[min(340px,30vw)]">
+          <span className="sr-only">Search calls</span>
+          <MagnifyingGlass size={18} weight="bold" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/60" />
+          <input
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search calls, case numbers, responders"
+            className="w-full h-11 rounded-full bg-white/[0.12] pl-10 pr-4 text-[14px] text-white placeholder:text-white/55 outline-none border border-white/10 focus:bg-white/[0.18] focus:border-white/30 transition-colors"
+          />
+        </label>
+      </header>
 
       <div className="px-6 pb-6 space-y-5">
-        {/* Situation strip: four readings in one panel. */}
-        <div className="grid grid-cols-2 xl:grid-cols-4 rounded-2xl border border-border bg-card">
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
           <KPI icon={Siren} iconTone="sos" label="Active calls" value={kpis.active ?? '—'} />
           <KPI icon={Hourglass} iconTone={kpis.pending ? 'sos' : 'amber'} label="Waiting for a responder" value={kpis.pending ?? '—'} tone={kpis.pending ? 'rose' : 'teal'} />
           <KPI icon={UsersThree} iconTone="teal" label="Responders on duty" value={kpis.onDuty ?? '—'} />
@@ -168,35 +221,57 @@ export const Logistics = () => {
         </div>
 
         <div className="grid xl:grid-cols-[minmax(0,1fr)_400px] gap-5">
-          <div className="h-[min(70vh,760px)] rounded-2xl border border-border bg-card overflow-hidden">
+          <NotchedPanel
+            className="h-[min(70vh,760px)]"
+            notchWidth={124}
+            notchHeight={260}
+            notch={<>
+              <button
+                onClick={() => setFollow(f => !f)}
+                aria-pressed={follow}
+                title={follow ? 'Following: every active call stays in view' : 'Follow: keep every active call in view'}
+                className={cn(
+                  'w-[84px] h-[84px] rounded-full grid place-items-center content-center gap-1 text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  follow
+                    ? 'bg-primary text-primary-foreground shadow-[0_10px_22px_-8px_hsl(175_77%_21%/0.7)]'
+                    : 'bg-card text-foreground shadow-[0_8px_20px_-8px_hsl(176_30%_10%/0.25),inset_0_0_0_1px_hsl(var(--border))] hover:bg-accent/50',
+                )}
+              >
+                {follow ? <LockSimple size={22} weight="fill" /> : <LockSimpleOpen size={22} weight="duotone" />}
+                {follow ? 'Following' : 'Follow'}
+              </button>
+              <Gauge value={kpis.acceptedUnderMinutePct ?? null} label="accepted in 1 min" />
+            </>}
+          >
             <Suspense fallback={<Skeleton className="w-full h-full" />}>
               <MapView
-                incidents={active}
+                incidents={shownActive}
                 aeds={aeds}
                 responders={Object.values(responders)}
                 selectedId={selectedId}
                 onSelect={setSelectedId}
+                follow={follow}
               />
             </Suspense>
-          </div>
+          </NotchedPanel>
 
-          <section className="flex flex-col h-[min(70vh,760px)] rounded-2xl border border-border bg-card overflow-hidden" aria-label="Calls">
-            <div className="px-5 h-14 shrink-0 border-b border-border flex items-center justify-between">
+          <section className="flex flex-col h-[min(70vh,760px)] rounded-[22px] border border-border bg-card overflow-hidden shadow-[0_10px_24px_-14px_hsl(176_30%_10%/0.25)]" aria-label="Calls">
+            <div className="px-5 h-14 shrink-0 bg-muted/60 border-b border-border flex items-center justify-between">
               <h2 className="text-[16px] font-extrabold tracking-[-0.01em]">Calls</h2>
-              <span className={cn('num text-[13px] font-semibold rounded-full px-2.5 py-0.5', active.length ? 'bg-[hsl(var(--sos))] text-white' : 'bg-muted text-muted-foreground')}>
+              <span className={cn('num text-[13px] font-semibold rounded-full px-2.5 py-0.5', active.length ? 'bg-[hsl(var(--sos))] text-white' : 'bg-[hsl(173_55%_92%)] text-primary')}>
                 {active.length} active
               </span>
             </div>
             <div className="flex-1 overflow-auto">
               {loading && <div className="p-3 space-y-2">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}</div>}
-              {!loading && active.length === 0 && (
-                <div className="px-6 py-12 text-center">
-                  <Tile icon={Pulse} tone="teal" size="lg" className="mx-auto" />
-                  <p className="mt-3 font-medium">All quiet</p>
-                  <p className="text-sm text-muted-foreground mt-1 text-pretty">A new SOS appears here and on the map the moment it is sent.</p>
+              {!loading && shownActive.length === 0 && (
+                <div className="px-6 py-10 text-center border-b border-border">
+                  <Tile icon={q ? MagnifyingGlass : Pulse} tone="teal" size="lg" round className="mx-auto" />
+                  <p className="mt-3 font-bold">{q ? 'No calls match' : 'All quiet'}</p>
+                  <p className="text-sm text-muted-foreground mt-1 text-pretty">{q ? `Nothing active matches “${query}”.` : 'A new SOS appears here and on the map the moment it is sent.'}</p>
                 </div>
               )}
-              {active.map(e => {
+              {shownActive.map(e => {
                 const waited = secondsSince(e.createdAt);
                 const waiting = e.status === 'pending' && waited > ESCALATE_AFTER_S;
                 const step = STEPS.indexOf(e.status);
@@ -222,8 +297,8 @@ export const Logistics = () => {
                           {STATUS_LABEL[e.status] ?? e.status}{nameOf(e.responder) ? ` · ${nameOf(e.responder)}` : ''}
                         </div>
                       </div>
-                      <span className={cn('num text-[17px] font-extrabold tracking-[-0.02em]', waiting ? 'text-[hsl(var(--sos))]' : 'text-foreground')} title="Time since the SOS">
-                        {clock(waited)}
+                      <span title="Time since the SOS">
+                        <Digits value={clock(waited)} className={cn('text-[17px] font-extrabold tracking-[-0.02em]', waiting ? 'text-[hsl(var(--sos))]' : 'text-foreground')} />
                       </span>
                     </div>
                     {/* Progress: received, accepted, on the way, on scene. */}
@@ -246,18 +321,17 @@ export const Logistics = () => {
                   </button>
                 );
               })}
-              {closed.length > 0 && (
-                <details className="px-3 py-2">
-                  <summary className="px-2 py-1.5 text-sm text-muted-foreground cursor-pointer select-none">Recently closed ({closed.length})</summary>
-                  <div className="space-y-1 mt-1">
-                    {closed.map(e => (
-                      <button key={e._id} onClick={() => setSelectedId(e._id)} className="w-full text-left px-3 py-2 rounded-md hover:bg-muted/50 flex justify-between text-sm">
-                        <span>{TYPE_LABEL[e.type] ?? 'Emergency'} · {STATUS_LABEL[e.status]}</span>
-                        <span className="text-muted-foreground tabular-nums">{timeAgo(e.createdAt)}</span>
-                      </button>
-                    ))}
-                  </div>
-                </details>
+              {shownClosed.length > 0 && (
+                <div className="py-2">
+                  <div className="px-5 pt-2 pb-1 text-[13px] font-semibold text-muted-foreground">Recently closed</div>
+                  {shownClosed.map(e => (
+                    <button key={e._id} onClick={() => setSelectedId(e._id)} className="w-full text-left px-5 py-2 hover:bg-muted/60 flex items-center gap-3 text-[14px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
+                      <span className={cn('w-2 h-2 rounded-full shrink-0', e.status === 'resolved' ? 'bg-[hsl(var(--teal))]' : 'bg-muted-foreground/40')} />
+                      <span className="truncate"><span className="code text-muted-foreground">#{shortId(e._id)}</span> · {TYPE_LABEL[e.type] ?? 'Emergency'} · {STATUS_LABEL[e.status]}</span>
+                      <Digits value={new Date(e.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} className="ml-auto text-muted-foreground shrink-0" />
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
           </section>
@@ -415,7 +489,7 @@ const IncidentPanel = ({ incident, onClose, onChanged }: { incident: Emergency; 
                       <span className={cn('mt-1.5 w-2.5 h-2.5 rounded-full border-2 border-card', i === h.timeline.length - 1 ? 'bg-[hsl(var(--teal))]' : 'bg-primary/40')} />
                       {i < h.timeline.length - 1 && <span className="absolute top-4 bottom-[-6px] w-px bg-border" />}
                     </span>
-                    <span className="num text-muted-foreground">{new Date(t.at).toLocaleTimeString([], { hourCycle: 'h23' })}</span>
+                    <Digits value={new Date(t.at).toLocaleTimeString('en-GB', { hourCycle: 'h23' })} className="text-muted-foreground" />
                     <span>{STEP[t.status] ?? t.status}{t.by ? <span className="text-muted-foreground"> · {t.by}</span> : null}</span>
                   </li>
                 ))}

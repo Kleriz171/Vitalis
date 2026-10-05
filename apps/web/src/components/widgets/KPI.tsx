@@ -14,12 +14,13 @@ interface KPIProps {
 }
 
 /**
- * One reading in a situation strip (a row of these sits in one panel, divided by hairlines).
+ * One reading. A row of these sits in a grid.
  * Colour only when the value needs attention.
  */
 export const KPI = ({ label, value, tone = 'teal', hint, icon, iconTone = 'teal' }: KPIProps) => (
-  <div className="flex items-center gap-4 px-5 py-4 border-l border-border first:border-l-0 min-w-0">
-    {icon && <Tile icon={icon} tone={iconTone} size="lg" />}
+  // A raised reading card: round icon, big number, plain label.
+  <div className="flex items-center gap-4 rounded-2xl bg-card border border-border px-5 py-4 min-w-0 shadow-[0_10px_24px_-14px_hsl(176_30%_10%/0.25)]">
+    {icon && <Tile icon={icon} tone={iconTone} size="lg" round />}
     <div className="min-w-0">
       <div className={cn('num text-[28px] leading-none font-extrabold tracking-[-0.03em]', tone === 'rose' ? 'text-[hsl(var(--sos))]' : tone === 'amber' ? 'text-[hsl(var(--warn))]' : 'text-foreground')}>
         {value}

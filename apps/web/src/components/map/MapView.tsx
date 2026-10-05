@@ -70,9 +70,11 @@ interface Props {
   responders?: MapResponder[];
   selectedId?: string | null;
   onSelect?: (id: string) => void;
+  /** Keep every active call in frame as calls come and go. */
+  follow?: boolean;
 }
 
-const MapView = ({ incidents, aeds = [], responders = [], selectedId, onSelect }: Props) => {
+const MapView = ({ incidents, aeds = [], responders = [], selectedId, onSelect, follow = false }: Props) => {
   const ref = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const incidentLayer = useRef<L.LayerGroup | null>(null);
@@ -122,13 +124,20 @@ const MapView = ({ incidents, aeds = [], responders = [], selectedId, onSelect }
       if (onSelect) m.on('click', () => onSelect(e._id));
       layer.addLayer(m);
     }
-    // Frame the incidents once; after that the operator controls the viewport.
+    // Frame the incidents once; after that the operator steers (or Follow does).
     if (!fitted.current && located.length && map.current) {
       fitted.current = true;
       const b = L.latLngBounds(located.map(e => [e.location!.coordinates[1], e.location!.coordinates[0]] as [number, number]));
       map.current.fitBounds(b.pad(0.4), { maxZoom: 15 });
     }
   }, [located, selectedId, onSelect]);
+
+  // Follow: whenever calls come or go, frame them all again.
+  useEffect(() => {
+    if (!follow || !located.length || !map.current) return;
+    const b = L.latLngBounds(located.map(e => [e.location!.coordinates[1], e.location!.coordinates[0]] as [number, number]));
+    map.current.flyToBounds(b.pad(0.4), { maxZoom: 15, duration: 0.6 });
+  }, [follow, located]);
 
   const selectedPoint = located.find(x => x._id === selectedId)?.location!.coordinates ?? null;
 
@@ -186,7 +195,7 @@ const MapView = ({ incidents, aeds = [], responders = [], selectedId, onSelect }
         </div>
       )}
       {selectedPoint && (
-        <div className="absolute right-3 top-3 z-[402] rounded-lg bg-white/95 border border-border px-3 py-2 shadow-sm">
+        <div className="absolute left-14 top-3 z-[402] rounded-lg bg-white/95 border border-border px-3 py-2 shadow-sm">
           <div className="text-[11px] text-muted-foreground">Selected call</div>
           <div className="code text-[13px] font-medium text-foreground">{selectedPoint[1].toFixed(5)}° N, {selectedPoint[0].toFixed(5)}° E</div>
         </div>

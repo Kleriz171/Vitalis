@@ -28,7 +28,9 @@ r.get('/kpis', async (_req, res, next) => {
       .filter((x): x is number => x != null)
       .sort((a, b) => a - b);
     const medianAcceptSeconds = waits.length ? Math.round(waits[Math.floor(waits.length / 2)]) : null;
-    res.json({ total, active, pending, resolvedToday, onDuty, medianAcceptSeconds, byType });
+    // Share of accepted calls (24 h) that a responder took within a minute: the dispatch target.
+    const acceptedUnderMinutePct = waits.length ? Math.round((100 * waits.filter(w => w <= 60).length) / waits.length) : null;
+    res.json({ total, active, pending, resolvedToday, onDuty, medianAcceptSeconds, acceptedUnderMinutePct, acceptedCount: waits.length, byType });
   } catch (e) { next(e); }
 });
 

@@ -4,6 +4,7 @@ import {
   Pulse, Lightning, Drone, Cube, ChartBar, SignOut, Heart, UsersThree, Stethoscope, type Icon,
 } from '@phosphor-icons/react';
 import { Tile } from '../ui/tile';
+import { Digits } from '../ui/digits';
 import { ReactNode, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { RootState, logout } from '../../store';
@@ -49,9 +50,9 @@ const Clock = () => {
   }, []);
   return (
     <div className="hidden lg:flex items-baseline gap-2 text-sm">
-      <span className="num text-[15px] font-medium text-white">{time(now, 'Europe/Tirane')}</span>
+      <Digits value={time(now, 'Europe/Tirane')} className="text-[15px] font-medium text-white" />
       <span className="text-sidebar-foreground/60">Tirana</span>
-      <span className="num text-sidebar-foreground/60 ml-2">{time(now, 'UTC').slice(0, 5)} UTC</span>
+      <span className="text-sidebar-foreground/60 ml-2"><Digits value={time(now, 'UTC').slice(0, 5)} /> UTC</span>
     </div>
   );
 };
@@ -80,6 +81,8 @@ export const CommandShell = () => {
       </div>
 
       <header className="flex items-center gap-6 pr-5">
+        {/* The dashboard has its own large clock and link light; other pages get the small ones. */}
+        {location.pathname !== '/command' && <>
         <div
           className={cn(
             'flex items-center gap-2 rounded-full pl-2.5 pr-3 h-7 text-[13px] font-medium',
@@ -91,6 +94,7 @@ export const CommandShell = () => {
           {live ? 'Live' : 'Reconnecting'}
         </div>
         <Clock />
+        </>}
         <div className="ml-auto flex items-center gap-3">
           <div className="text-right leading-tight">
             <div className="text-sm font-medium text-white">{user?.name ?? 'Operator'}</div>
