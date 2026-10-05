@@ -13,6 +13,9 @@ async function main() {
   // Email and phone are unique only where present (partial indexes). Replaces the old strict
   // email index on existing databases; a no-op once they match.
   await User.syncIndexes();
+  // Dispatcher and admin became one role, the emergency services operator. A no-op once done.
+  const merged = await User.updateMany({ role: { $in: ['dispatcher', 'admin'] } }, { $set: { role: 'eso' } });
+  if (merged.modifiedCount) logger.info(`${merged.modifiedCount} dispatcher/admin accounts are now operators (eso)`);
   const app = buildApp();
   const server = http.createServer(app);
   initSocket(server);

@@ -122,7 +122,7 @@ export default function SignIn() {
 
   const emailSignIn = () => run(async () => {
     const { data } = await api.post('/auth/login', { email: email.trim(), password });
-    if (data.user.role === 'admin' || data.user.role === 'dispatcher') {
+    if (['eso', 'admin', 'dispatcher'].includes(data.user.role)) {
       toast.error(t('This account is for the Vitalis desktop console.'));
       return;
     }

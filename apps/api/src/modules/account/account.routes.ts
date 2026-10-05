@@ -69,7 +69,7 @@ r.delete('/', validate(z.object({ confirm: z.literal('DELETE') }).strict()), asy
     const user = await User.findById(id).select('role phone').lean();
     if (!user) return res.status(404).json({ error: 'Account not found' });
     // Staff accounts are removed by an admin, so a console never loses its last operator by accident.
-    if (['dispatcher', 'admin'].includes(user.role)) return res.status(403).json({ error: 'Staff accounts are removed by an administrator.' });
+    if (user.role === 'eso') return res.status(403).json({ error: 'Operator accounts are removed by another operator in the console.' });
     const busy = await Emergency.exists({
       status: { $in: ACTIVE },
       $or: [{ citizen: id, silent: { $ne: true } }, { responder: id }, { aedRunner: id }],

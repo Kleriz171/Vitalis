@@ -41,7 +41,7 @@ const createRequestSchema = z.object({
 });
 
 r.post('/requests',
-  allow('doctor', 'nurse', 'dispatcher', 'admin'),
+  allow('doctor', 'nurse', 'eso'),
   validate(createRequestSchema),
   async (req: AuthReq, res, next) => {
     try {

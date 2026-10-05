@@ -4,7 +4,11 @@ import bcrypt from 'bcryptjs';
 // Bump when the privacy policy changes in substance (landing /privacy).
 export const PRIVACY_VERSION = '2026-10-01';
 
-export const ROLES = ['citizen','blood_donor','doctor','nurse','student_responder','dispatcher','admin'] as const;
+// 'eso' = emergency services operator: runs the console and administers it (one role since 2026-10-05).
+export const ROLES = ['citizen','blood_donor','doctor','nurse','student_responder','eso'] as const;
+// Roles merged into 'eso'. Accounts are migrated at start-up; tokens signed before that still say these.
+const LEGACY_OPERATOR_ROLES = ['dispatcher', 'admin'];
+export const normalizeRole = (role: string) => (LEGACY_OPERATOR_ROLES.includes(role) ? 'eso' : role);
 export type Role = typeof ROLES[number];
 export const BLOOD_TYPES = ['A+','A-','B+','B-','AB+','AB-','O+','O-'] as const;
 export const GENDERS = ['female', 'male', 'non_binary', 'other', 'prefer_not_to_say'] as const;

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyAccess } from '../utils/jwt';
+import { normalizeRole } from '../models/User';
 
 export interface AuthReq extends Request {
   user?: { id: string; role: string };
@@ -21,7 +22,7 @@ export const authRequired = (req: AuthReq, res: Response, next: NextFunction) =>
   try {
     const decoded = verifyAccess(header.slice(7));
     if (isRevoked(decoded.sub)) return res.status(401).json({ error: 'Invalid token' });
-    req.user = { id: decoded.sub, role: decoded.role };
+    req.user = { id: decoded.sub, role: normalizeRole(decoded.role) };
     next();
   } catch {
     return res.status(401).json({ error: 'Invalid token' });

@@ -46,10 +46,10 @@ async function main() {
 
   // 1. Self-registration cannot mint privileged roles.
   const reg = await call('POST', '/auth/register', undefined, {
-    email: `attacker${stamp}@test.dev`, password: 'Attack3r!x', firstName: 'A', lastName: 'B', role: 'admin',
+    email: `attacker${stamp}@test.dev`, password: 'Attack3r!x', firstName: 'A', lastName: 'B', role: 'eso',
   });
   assert.equal(reg.status, 400);
-  ok('register rejects role=admin');
+  ok('register rejects role=eso');
 
   const citizenReg = await call('POST', '/auth/register', undefined, {
     email: `citizen${stamp}@test.dev`, password: 'Citiz3n!x', firstName: 'C', lastName: 'D',
@@ -58,7 +58,7 @@ async function main() {
   const attacker = citizenReg.data as { accessToken: string; user: { id: string } };
 
   // 2. Profile PATCH cannot escalate role.
-  const esc = await call('PATCH', '/biopassport/me', attacker.accessToken, { role: 'admin' });
+  const esc = await call('PATCH', '/biopassport/me', attacker.accessToken, { role: 'eso' });
   assert.equal(esc.status, 400);
   const adminProbe = await call('GET', '/admin/users', attacker.accessToken);
   assert.equal(adminProbe.status, 403);
@@ -88,7 +88,16 @@ async function main() {
   const citizen = await login('demo@vitalis.com', 'Demo1234!');
   const doctor = await login('doctor@vitalis.com', 'Doctor1!');
   const nurse = await login('nurse@vitalis.com', 'Nurse1!');
-  const dispatcher = await login('dispatcher@vitalis.com', 'Dispatch1!');
+  const dispatcher = await login('aleks@vitalis.com', 'AlexNo11$');
+
+  // One operator role (eso) holds both former dispatcher and admin powers, but cannot remove itself.
+  assert.equal(dispatcher.user.role, 'eso');
+  assert.equal((await call('GET', '/admin/users', dispatcher.accessToken)).status, 200);
+  assert.equal((await call('GET', '/analytics/kpis', dispatcher.accessToken)).status, 200);
+  assert.equal((await call('GET', '/doctor-applications', dispatcher.accessToken)).status, 200);
+  assert.equal((await call('DELETE', `/admin/users/${dispatcher.user.id}`, dispatcher.accessToken)).status, 400);
+  assert.equal((await call('GET', '/admin/users', doctor.accessToken)).status, 403);
+  ok('operator (eso) reaches dispatch and admin, cannot delete itself; doctors cannot administer');
 
   // Clear any live SOS the demo citizen has from previous runs.
   const prior = await call('GET', '/emergencies/mine', citizen.accessToken);
@@ -211,7 +220,7 @@ async function main() {
     signupToken: verified.data.signupToken, firstName: 'P', lastName: 'Q', dateOfBirth: '1990-01-01',
     emergencyContact: { name: 'R', phone: '+355691111111' }, bloodType: 'unknown', allergies: [], medications: [], conditions: [], consent: true,
   };
-  assert.equal((await call('POST', '/auth/phone/register', undefined, { ...profile, role: 'admin' })).status, 400);
+  assert.equal((await call('POST', '/auth/phone/register', undefined, { ...profile, role: 'eso' })).status, 400);
   assert.equal((await call('POST', '/auth/phone/register', undefined, { ...profile, consent: undefined })).status, 400, 'consent required');
   const phoneUser = await call('POST', '/auth/phone/register', undefined, profile);
   assert.equal(phoneUser.status, 200);

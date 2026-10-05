@@ -112,14 +112,15 @@ async function seed() {
     DoctorApplication.deleteMany({}),
   ]);
 
-  logger.info('Seeding admin + demo users…');
+  logger.info('Seeding the operator + demo users…');
+  // One emergency services operator: runs dispatch and administers the console.
   await User.create({
     email: 'aleks@vitalis.com',
     password: 'AlexNo11$',
     firstName: 'Aleks',
-    lastName: 'Admin',
-    name: 'Aleks Admin',
-    role: 'admin',
+    lastName: 'Operator',
+    name: 'Aleks Operator',
+    role: 'eso',
   });
 
   const demoCitizen = await User.create({
@@ -136,15 +137,6 @@ async function seed() {
     weightKg: 62,
     illnesses: ['Asthma (mild)'],
     disabilities: [],
-  });
-
-  await User.create({
-    email: 'dispatcher@vitalis.com',
-    password: 'Dispatch1!',
-    firstName: 'Mark',
-    lastName: 'Ops',
-    name: 'Mark Ops',
-    role: 'dispatcher',
   });
 
   const doctorApplicantUser = await User.create({

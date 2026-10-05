@@ -2,6 +2,7 @@ import { Server, Socket } from 'socket.io';
 import http from 'http';
 import { env } from '../config/env';
 import { verifyAccess } from '../utils/jwt';
+import { normalizeRole } from '../models/User';
 import { isRevoked } from '../middleware/auth';
 import { logger } from '../config/logger';
 import { Emergency } from '../models/Emergency';
@@ -11,7 +12,7 @@ import { registerDrones, registerOperatorDroneControls } from './drones';
 let io: Server;
 
 export const RESPONDER_ROLES = ['doctor', 'nurse', 'student_responder', 'blood_donor'];
-export const OPERATOR_ROLES = ['dispatcher', 'admin'];
+export const OPERATOR_ROLES = ['eso'];
 
 type SocketUser = { id: string; role: string };
 const userOf = (socket: Socket) => (socket.data as { user: SocketUser }).user;
@@ -53,7 +54,7 @@ export const initSocket = (server: http.Server) => {
       if (!token) return next(new Error('no token'));
       const decoded = verifyAccess(token);
       if (isRevoked(decoded.sub)) return next(new Error('auth failed'));
-      (socket.data as any).user = { id: decoded.sub, role: decoded.role };
+      (socket.data as any).user = { id: decoded.sub, role: normalizeRole(decoded.role) };
       (socket.data as any).responding = new Set<string>();
       next();
     } catch {

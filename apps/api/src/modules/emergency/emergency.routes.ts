@@ -39,5 +39,5 @@ r.post('/:id/accept', allow(...RESPONDERS), emergencyController.accept);
 r.patch('/:id/status', validate(statusSchema), emergencyController.updateStatus);
 r.patch('/:id/aed', allow(...RESPONDERS), validate(aedStatusSchema), emergencyController.aedStatus);
 r.get('/:id/handover', emergencyController.handover);
-r.get('/', allow('dispatcher', 'admin', ...RESPONDERS), emergencyController.list);
+r.get('/', allow('eso', ...RESPONDERS), emergencyController.list);
 export default r;

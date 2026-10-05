@@ -36,7 +36,7 @@ async function main() {
     signupToken: signup, firstName: 'Check', lastName: 'In', dateOfBirth: '1990-01-01',
     emergencyContact: { name: 'Contact', phone: '+355691112233' }, bloodType: 'unknown', allergies: [], medications: [], conditions: [], consent: true,
   })).data.accessToken as string;
-  const dispatcher = (await call('POST', '/auth/login', undefined, { email: 'dispatcher@vitalis.com', password: 'Dispatch1!' })).data.accessToken as string;
+  const dispatcher = (await call('POST', '/auth/login', undefined, { email: 'aleks@vitalis.com', password: 'AlexNo11$' })).data.accessToken as string;
   const incidents = async () => (await call('GET', '/emergencies', dispatcher)).data as any[];
 
   assert.equal((await call('POST', '/checkin', me, { minutes: 30 })).status, 409, 'no PINs yet');

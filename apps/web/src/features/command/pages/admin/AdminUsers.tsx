@@ -1,4 +1,4 @@
-import { FirstAidKit, Headset, ShieldStar, Stethoscope, User, UsersThree, type Icon } from '@phosphor-icons/react';
+import { FirstAidKit, Headset, Stethoscope, User, UsersThree, type Icon } from '@phosphor-icons/react';
 import type { TileTone } from '../../../../components/ui/tile';
 import { Chip, Panel, Row } from '../../../../components/ui/list';
 import { useEffect, useState } from 'react';
@@ -9,6 +9,8 @@ import { Button } from '../../../../components/ui/button';
 import { Input } from '../../../../components/ui/input';
 import { Label } from '../../../../components/ui/label';
 import { pushToast } from '../../../../components/toast/toast';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../../../store';
 
 interface AdminUser {
   _id: string;
@@ -19,8 +21,7 @@ interface AdminUser {
 }
 
 const ROLE_TILE: Record<string, [Icon, TileTone]> = {
-  admin: [ShieldStar, 'violet'],
-  dispatcher: [Headset, 'teal'],
+  eso: [Headset, 'teal'],
   doctor: [Stethoscope, 'blue'],
   nurse: [FirstAidKit, 'blue'],
   student_responder: [FirstAidKit, 'amber'],
@@ -28,6 +29,7 @@ const ROLE_TILE: Record<string, [Icon, TileTone]> = {
 };
 
 export const AdminUsers = () => {
+  const me = useSelector((s: RootState) => s.auth.user);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState('');
@@ -49,16 +51,16 @@ export const AdminUsers = () => {
 
   useEffect(() => { void load(); }, []);
 
-  const createDispatcher = async (e: React.FormEvent) => {
+  const createOperator = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreating(true);
     try {
-      await api.post('/admin/dispatchers', { email, password, firstName, lastName });
-      pushToast({ tone: 'success', title: 'Dispatcher created', body: email });
+      await api.post('/admin/operators', { email, password, firstName, lastName });
+      pushToast({ tone: 'success', title: 'Operator created', body: email });
       setEmail(''); setPassword(''); setFirstName(''); setLastName('');
       await load();
     } catch (err: any) {
-      pushToast({ tone: 'error', title: 'Create failed', body: err.response?.data?.error ?? 'Could not create dispatcher' });
+      pushToast({ tone: 'error', title: 'Create failed', body: err.response?.data?.error ?? 'Could not create the operator' });
     } finally {
       setCreating(false);
     }
@@ -76,11 +78,11 @@ export const AdminUsers = () => {
 
   return (
     <>
-      <PageHeader icon={UsersThree} title="User management" subtitle="Create dispatcher accounts and manage existing users." />
+      <PageHeader icon={UsersThree} title="User management" subtitle="Add emergency services operators and manage every account." />
       <div className="p-6 space-y-5">
-        <Panel title="New dispatcher account">
+        <Panel title="New operator account">
           <div className="p-5">
-            <form onSubmit={createDispatcher} className="grid grid-cols-2 gap-4">
+            <form onSubmit={createOperator} className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="fn">First name</Label>
                 <Input id="fn" value={firstName} onChange={e => setFirstName(e.target.value)} required />
@@ -98,7 +100,7 @@ export const AdminUsers = () => {
                 <Input id="pw" type="password" minLength={8} value={password} onChange={e => setPassword(e.target.value)} required />
               </div>
               <div className="col-span-2">
-                <Button type="submit" loading={creating} className="rounded-lg">Create dispatcher</Button>
+                <Button type="submit" loading={creating} className="rounded-lg">Create operator</Button>
               </div>
             </form>
           </div>
@@ -115,9 +117,9 @@ export const AdminUsers = () => {
                 title={<Link to={`/command/admin/users/${u._id}`} className="hover:underline underline-offset-2">{u.name}</Link>}
                 summary={u.email}
                 right={<>
-                  <Chip tone={u.role === 'admin' || u.role === 'dispatcher' ? 'teal' : 'muted'}><span className="capitalize">{u.role.replace('_', ' ')}</span></Chip>
+                  <Chip tone={u.role === 'eso' ? 'teal' : 'muted'}>{u.role === 'eso' ? 'ESO' : <span className="capitalize">{u.role.replace('_', ' ')}</span>}</Chip>
                   <Link to={`/command/admin/users/${u._id}`}><Button variant="outline" size="sm" className="rounded-lg">View</Button></Link>
-                  {u.role !== 'admin' ? <Button variant="ghost" size="sm" className="rounded-lg text-muted-foreground hover:text-destructive" onClick={() => remove(u._id)}>Remove</Button> : null}
+                  {u._id !== me?.id ? <Button variant="ghost" size="sm" className="rounded-lg text-muted-foreground hover:text-destructive" onClick={() => remove(u._id)}>Remove</Button> : null}
                 </>}
               />
             );

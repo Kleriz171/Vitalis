@@ -25,6 +25,8 @@ const adminNav: NavItem[] = [
   { to: '/command/admin/doctor-applications', label: 'Doctor review', icon: Stethoscope },
 ];
 
+const ROLE_NAME: Record<string, string> = { eso: 'Emergency services operator', dispatcher: 'Emergency services operator', admin: 'Emergency services operator' };
+
 const time = (d: Date, timeZone?: string) => d.toLocaleTimeString('en-GB', { hourCycle: 'h23', timeZone });
 
 /** Socket link state, for the status light in the top bar. */
@@ -59,7 +61,8 @@ const Clock = () => {
 
 export const CommandShell = () => {
   const user = useSelector((s: RootState) => s.auth.user);
-  const items = user?.role === 'admin' ? [...baseNav, ...adminNav] : baseNav;
+  // One operator role does everything: dispatch and administration.
+  const items = [...baseNav, ...adminNav];
   const dispatch = useDispatch();
   const nav = useNavigate();
   const location = useLocation();
@@ -98,7 +101,7 @@ export const CommandShell = () => {
         <div className="ml-auto flex items-center gap-3">
           <div className="text-right leading-tight">
             <div className="text-sm font-medium text-white">{user?.name ?? 'Operator'}</div>
-            <div className="text-[12px] text-sidebar-foreground/65 capitalize">{user?.role ?? ''}</div>
+            <div className="text-[12px] text-sidebar-foreground/65">{ROLE_NAME[user?.role ?? ''] ?? user?.role ?? ''}</div>
           </div>
           <div className="w-8 h-8 rounded-full bg-white/10 grid place-items-center text-sm font-semibold text-white">
             {(user?.name ?? '?').slice(0, 1).toUpperCase()}

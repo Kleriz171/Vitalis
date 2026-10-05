@@ -10,7 +10,7 @@ import { DRONE_ID, ROUTES, fleetSnapshot, isOnline, isValidStep, sendToBridge } 
 import { blockchainService } from '../blockchain/blockchain.service';
 
 const r = Router();
-r.use(authRequired, allow('dispatcher', 'admin'));
+r.use(authRequired, allow('eso'));
 
 r.get('/fleet', (_req, res) => res.json(fleetSnapshot()));
 

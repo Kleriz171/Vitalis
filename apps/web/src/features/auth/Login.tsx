@@ -11,12 +11,12 @@ import { Alert, AlertDescription } from '../../components/ui/alert';
 import { pushToast } from '../../components/toast/toast';
 import { ConvergeMap } from '../../components/widgets/ConvergeMap';
 
-const OPERATOR_ROLES = ['dispatcher', 'admin'];
+// The console is for emergency services operators ('eso'); older sessions may still say dispatcher/admin.
+const OPERATOR_ROLES = ['eso', 'dispatcher', 'admin'];
 // Seeded demo accounts, dev builds only. Vite drops this array from production bundles.
 const DEMO_OPERATOR_ACCOUNTS = import.meta.env.DEV
   ? [
-      { label: 'Dispatcher', email: 'dispatcher@vitalis.com', password: 'Dispatch1!' },
-      { label: 'Admin', email: 'aleks@vitalis.com', password: 'AlexNo11$' },
+      { label: 'Emergency services operator', email: 'aleks@vitalis.com', password: 'AlexNo11$' },
     ]
   : [];
 
@@ -44,7 +44,7 @@ export const Login = () => {
 
       dispatch(setSession(data));
       pushToast({ tone: 'success', title: 'Welcome back', body: data.user.email });
-      nav(data.user.role === 'admin' ? '/command/admin/users' : '/command');
+      nav('/command');
     } catch (e: any) {
       const msg = e.response?.data?.error ?? 'Sign in failed';
       setErr(msg);
@@ -70,7 +70,7 @@ export const Login = () => {
         <div className="w-full max-w-[400px] rounded-[20px] bg-background p-8 shadow-[0_30px_80px_-30px_hsl(176_60%_6%/0.6)]">
           <div className="lg:hidden mb-6"><Brand dark /></div>
           <h2 className="text-[26px] font-extrabold tracking-[-0.025em]">Sign in</h2>
-          <p className="text-[14px] text-muted-foreground mt-1 mb-7">Use your dispatcher or administrator account.</p>
+          <p className="text-[14px] text-muted-foreground mt-1 mb-7">Use your emergency services operator (ESO) account.</p>
 
           <form onSubmit={submit} className="space-y-4">
             <div className="space-y-1.5">
@@ -89,8 +89,8 @@ export const Login = () => {
 
           {DEMO_OPERATOR_ACCOUNTS.length > 0 && (
             <div className="mt-7 pt-6 border-t border-border">
-              <p className="text-[13px] text-muted-foreground">Demo accounts, development only</p>
-              <div className="mt-2.5 grid grid-cols-2 gap-2">
+              <p className="text-[13px] text-muted-foreground">Demo account, development only</p>
+              <div className="mt-2.5 grid gap-2">
                 {DEMO_OPERATOR_ACCOUNTS.map(account => (
                   <button
                     key={account.email}

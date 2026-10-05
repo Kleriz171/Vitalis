@@ -59,7 +59,7 @@ async function main() {
   assert.equal((await call('DELETE', '/account', me, {})).status, 400, 'needs confirm');
   assert.equal((await call('DELETE', '/account', me, { confirm: 'DELETE' })).status, 409, 'blocked during an SOS');
   assert.equal((await call('PATCH', `/emergencies/${sos.data.emergency._id}/status`, me, { status: 'cancelled' })).status, 200);
-  const dispatcher = (await call('POST', '/auth/login', undefined, { email: 'dispatcher@vitalis.com', password: 'Dispatch1!' })).data.accessToken;
+  const dispatcher = (await call('POST', '/auth/login', undefined, { email: 'aleks@vitalis.com', password: 'AlexNo11$' })).data.accessToken;
   assert.equal((await call('DELETE', '/account', dispatcher, { confirm: 'DELETE' })).status, 403, 'staff removed by admin');
   ok('erase needs the word DELETE, waits for an active SOS, never removes staff');
 

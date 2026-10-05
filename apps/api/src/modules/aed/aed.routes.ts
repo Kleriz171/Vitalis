@@ -59,7 +59,7 @@ r.post('/', validate(createSchema), async (req: AuthReq, res, next) => {
   } catch (e) { next(e); }
 });
 
-r.post('/:id/verify', allow('dispatcher', 'admin'), async (req: AuthReq, res, next) => {
+r.post('/:id/verify', allow('eso'), async (req: AuthReq, res, next) => {
   try {
     const a = await Aed.findByIdAndUpdate(
       req.params.id,
@@ -71,7 +71,7 @@ r.post('/:id/verify', allow('dispatcher', 'admin'), async (req: AuthReq, res, ne
   } catch (e) { next(e); }
 });
 
-r.delete('/:id', allow('dispatcher', 'admin'), async (req, res, next) => {
+r.delete('/:id', allow('eso'), async (req, res, next) => {
   try {
     const a = await Aed.findByIdAndDelete(req.params.id);
     if (!a) return res.status(404).json({ error: 'Not found' });

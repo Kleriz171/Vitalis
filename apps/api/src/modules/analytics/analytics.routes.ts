@@ -5,7 +5,7 @@ import { authRequired } from '../../middleware/auth';
 import { allow } from '../../middleware/rbac';
 
 const r = Router();
-r.use(authRequired, allow('dispatcher','admin'));
+r.use(authRequired, allow('eso'));
 
 r.get('/kpis', async (_req, res, next) => {
   try {

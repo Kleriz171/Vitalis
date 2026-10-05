@@ -34,7 +34,7 @@ const until = <T>(s: Socket, event: string, pred: (p: T) => boolean, ms = 20_000
 const ok = (m: string) => console.log(`  ✓ ${m}`);
 
 async function main() {
-  const disp = await login('dispatcher@vitalis.com', 'Dispatch1!');
+  const disp = await login('aleks@vitalis.com', 'AlexNo11$');
   const citizen = await login('demo@vitalis.com', 'Demo1234!');
 
   // Bridges need the shared key.

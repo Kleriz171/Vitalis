@@ -105,7 +105,7 @@ r.get('/mine', async (req: AuthReq, res, next) => {
 });
 
 // Admin lists all applications
-r.get('/', allow('admin'), async (req, res, next) => {
+r.get('/', allow('eso'), async (req, res, next) => {
   try {
     const { status } = req.query;
     const filter: Record<string, unknown> = {};
@@ -116,7 +116,7 @@ r.get('/', allow('admin'), async (req, res, next) => {
 });
 
 // Admin downloads the certificate PDF
-r.get('/:id/certificate', allow('admin'), async (req, res, next) => {
+r.get('/:id/certificate', allow('eso'), async (req, res, next) => {
   try {
     const app = await DoctorApplication.findById(req.params.id);
     if (!app) return res.status(404).json({ error: 'Not found' });
@@ -131,7 +131,7 @@ r.get('/:id/certificate', allow('admin'), async (req, res, next) => {
 });
 
 // Admin approves -> creates a Doctor record
-r.post('/:id/approve', allow('admin'), async (req: AuthReq, res, next) => {
+r.post('/:id/approve', allow('eso'), async (req: AuthReq, res, next) => {
   try {
     // Atomic pending → approved so a double click can't create two doctors.
     const app = await DoctorApplication.findOneAndUpdate(
@@ -157,7 +157,7 @@ r.post('/:id/approve', allow('admin'), async (req: AuthReq, res, next) => {
 });
 
 // Admin rejects
-r.post('/:id/reject', allow('admin'), async (req: AuthReq, res, next) => {
+r.post('/:id/reject', allow('eso'), async (req: AuthReq, res, next) => {
   try {
     const reason = String(req.body?.reason ?? '').trim().slice(0, 500) || 'No reason provided';
     const app = await DoctorApplication.findOneAndUpdate(

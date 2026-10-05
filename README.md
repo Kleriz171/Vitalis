@@ -49,8 +49,7 @@ On a physical phone set `EXPO_PUBLIC_API_URL=http://<your-laptop-LAN-ip>:4000/ap
 | `demo@vitalis.com` | `Demo1234!` | citizen (mobile) |
 | `doctor@vitalis.com` | `Doctor1!` | doctor (mobile, responder inbox) |
 | `nurse@vitalis.com` | `Nurse1!` | nurse (mobile, responder inbox) |
-| `dispatcher@vitalis.com` | `Dispatch1!` | dispatcher (console) |
-| `aleks@vitalis.com` | see seed | admin (console) |
+| `aleks@vitalis.com` | see seed | emergency services operator (ESO): runs the console and administers it |
 
 Change these before any real deployment. The console only shows demo-account shortcuts in development builds.
 
