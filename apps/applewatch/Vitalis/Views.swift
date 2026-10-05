@@ -123,27 +123,28 @@ struct HeartCard: View {
 
     var body: some View {
         let last = readings.last
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .center, spacing: 8) {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .center, spacing: 7) {
                 BeatingHeart(bpm: on ? last?.bpm : nil)
                 VStack(alignment: .leading, spacing: 0) {
                     HStack(alignment: .firstTextBaseline, spacing: 3) {
                         Text(on ? (last.map { "\($0.bpm)" } ?? "--") : "Off")
-                            .font(.system(size: 28, weight: .heavy, design: .rounded)).monospacedDigit()
+                            .font(.system(size: 22, weight: .heavy, design: .rounded)).monospacedDigit()
                             .contentTransition(.numericText())
                         if on, last != nil { Text("bpm").font(.system(size: 12, weight: .semibold)).foregroundStyle(Color.inkMuted) }
                     }
                     .foregroundStyle(Color.ink)
-                    Text(on ? (last.map { String(localized: "Resting · \($0.at.formatted(.relative(presentation: .named)))") } ?? String(localized: "Waiting for a reading")) : String(localized: "Heart check is off"))
-                        .font(.system(size: 11)).foregroundStyle(Color.inkMuted).lineLimit(1)
+                    Text(on ? (last.map { $0.at.formatted(.relative(presentation: .named, unitsStyle: .abbreviated)) } ?? String(localized: "Waiting")) : String(localized: "Heart check is off"))
+                        .font(.system(size: 10)).foregroundStyle(Color.inkMuted).lineLimit(1)
                 }
                 Spacer(minLength: 0)
                 Toggle("", isOn: $on).labelsHidden().tint(.vitalisTeal).fixedSize().scaleEffect(0.8)
             }
-            if on, readings.count >= 2 { Sparkline(points: readings.map(\.bpm)).frame(height: 30) }
+            if on, readings.count >= 2 { Sparkline(points: readings.map(\.bpm)).frame(height: 16) }
         }
-        .padding(10)
-        .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Color.chip))
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Color.chip))
     }
 }
 
@@ -157,10 +158,10 @@ struct BeatingHeart: View {
             // Two quick beats per cycle, like a real pulse ("lub-dub").
             let beat = max(0, sin(t * .pi * 2 * 2)) * (t < 0.5 ? 1 : 0.5)
             Image(systemName: "heart.fill")
-                .font(.system(size: 18, weight: .bold))
+                .font(.system(size: 14, weight: .bold))
                 .foregroundStyle(bpm == nil ? Color.inkMuted : Color.sos)
                 .scaleEffect(1 + (bpm == nil ? 0 : beat * 0.18))
-                .frame(width: 34, height: 34)
+                .frame(width: 28, height: 28)
                 .background(Circle().fill((bpm == nil ? Color.inkMuted : Color.sos).opacity(0.13)))
         }
     }
