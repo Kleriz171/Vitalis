@@ -29,6 +29,7 @@ import aedRoutes from './modules/aed/aed.routes';
 import pushRoutes from './modules/push/push.routes';
 import trackRoutes from './modules/track/track.routes';
 import accountRoutes from './modules/account/account.routes';
+import watchRoutes from './modules/watch/watch.routes';
 import mongoose from 'mongoose';
 
 export function buildApp() {
@@ -73,6 +74,7 @@ export function buildApp() {
   app.use('/api/sms', strict(60), smsRoutes); // Twilio webhook; signature-checked
   app.use('/api/account', strict(10), accountRoutes); // export / erase your own data
   app.use('/api/track', strict(60), trackRoutes); // public live link for the emergency contact
+  app.use('/api/watch', strict(30), watchRoutes); // paired watches; pairing codes expire in 10 min
   app.use('/api/medicine', medicineRoutes);
   app.use('/api/biopassport', bioRoutes);
   app.use('/api/drones', droneRoutes);

@@ -10,6 +10,7 @@ import { Emergency } from '../../models/Emergency';
 import { Allergy, Appointment, Condition, Disability, Medication, Vaccination } from '../../models/HealthRecord';
 import { Certification, Enrollment } from '../../models/Training';
 import { CheckIn } from '../../models/CheckIn';
+import { WatchDevice } from '../../models/WatchDevice';
 import { CommunityPost } from '../../models/CommunityPost';
 import { SupplyInquiry, SupplyRequest } from '../../models/SupplyRequest';
 import { BloodRequest } from '../../models/BloodRequest';
@@ -82,6 +83,7 @@ r.delete('/', validate(z.object({ confirm: z.literal('DELETE') }).strict()), asy
     await Promise.all([
       ...Object.values(HEALTH).map(M => (M as any).deleteMany({ user: id })),
       CheckIn.deleteMany({ user: id }),
+      WatchDevice.deleteMany({ user: id }),
       Certification.deleteMany({ user: id }),
       Enrollment.deleteMany({ user: id }),
       CommunityPost.deleteMany({ author: id }),

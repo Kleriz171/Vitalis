@@ -27,7 +27,8 @@
     "check:voice": "npx tsx apps/native/scripts/voice-check.ts",
     "check:eta": "npx tsx apps/api/scripts/eta-check.ts",
     "check:track": "npx tsx apps/api/scripts/track-check.ts",
-    "check:account": "npx tsx apps/api/scripts/account-check.ts"
+    "check:account": "npx tsx apps/api/scripts/account-check.ts",
+    "check:watch": "npx tsx apps/api/scripts/watch-check.ts"
   },
   "overrides": {
     "react": "19.2.3",

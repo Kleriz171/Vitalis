@@ -81,7 +81,7 @@ export const toResponderView = (e: any) => ({
 });
 
 export const emergencyService = {
-  async create(citizenId: string, body: { type: string; priority?: number; description?: string; coordinates: [number, number] }) {
+  async create(citizenId: string, body: { type: string; priority?: number; description?: string; coordinates: [number, number]; metadata?: { fromWearable: boolean; deviceId: string } }) {
     // One live SOS per person: repeated taps return the open incident instead of spamming responders.
     const existing = await Emergency.findOne({
       citizen: citizenId,
@@ -99,6 +99,7 @@ export const emergencyService = {
       priority: body.priority ?? 3,
       description: body.description,
       location: { type: 'Point', coordinates: body.coordinates },
+      metadata: body.metadata,
       timeline: [{ status: 'pending', by: citizenId }],
     });
     await blockchainService.append({
