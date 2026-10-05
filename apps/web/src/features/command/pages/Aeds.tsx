@@ -114,13 +114,13 @@ export const Aeds = () => {
                     </a>
                   </td>
                   <td className="px-4 py-3">{ACCESS[a.access]}</td>
-                  <td className={cn('px-4 py-3 tabular-nums', soon(a.padsExpireAt) && 'text-red-300 font-medium')}>
+                  <td className={cn('px-4 py-3 tabular-nums', soon(a.padsExpireAt) && 'text-red-700 font-medium')}>
                     {a.padsExpireAt ? new Date(a.padsExpireAt).toLocaleDateString() : 'Unknown'}
                   </td>
                   <td className="px-4 py-3">
                     {a.verified
-                      ? <span className="inline-flex items-center gap-1 text-emerald-300"><ShieldCheck size={14} /> Verified</span>
-                      : <span className="text-amber-300">Unverified</span>}
+                      ? <span className="inline-flex items-center gap-1 text-emerald-700"><ShieldCheck size={14} /> Verified</span>
+                      : <span className="text-amber-700">Unverified</span>}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-2">

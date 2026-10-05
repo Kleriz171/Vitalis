@@ -1,17 +1,6 @@
-import { Card } from '../ui/card';
 import { cn } from '../../lib/utils';
 
 type Tone = 'teal' | 'blue' | 'emerald' | 'rose' | 'amber' | 'violet';
-
-// Colour is reserved for values that need attention; everything else stays neutral.
-const toneText: Record<Tone, string> = {
-  teal: 'text-foreground',
-  blue: 'text-foreground',
-  emerald: 'text-foreground',
-  rose: 'text-[hsl(var(--danger))] glow-danger',
-  amber: 'text-[hsl(var(--warn))]',
-  violet: 'text-foreground',
-};
 
 interface KPIProps {
   label: string;
@@ -20,11 +9,16 @@ interface KPIProps {
   hint?: string;
 }
 
-/** A readout: small mono label, large mono number. */
+/**
+ * One reading in a situation strip (a row of these sits in one panel, divided by hairlines).
+ * Colour only when the value needs attention.
+ */
 export const KPI = ({ label, value, tone = 'teal', hint }: KPIProps) => (
-  <Card className="px-5 py-4 gap-1.5">
-    <div className="hud-label">{label}</div>
-    <div className={cn('hud-num text-[32px] leading-none font-medium tracking-tight', toneText[tone])}>{value}</div>
+  <div className="px-6 py-4 first:pl-6 border-l border-border first:border-l-0 min-w-0">
+    <div className={cn('num text-[30px] leading-none font-semibold tracking-[-0.02em]', tone === 'rose' ? 'text-[hsl(var(--sos))]' : tone === 'amber' ? 'text-[hsl(var(--warn))]' : 'text-foreground')}>
+      {value}
+    </div>
+    <div className="mt-2 text-[13px] text-muted-foreground truncate">{label}</div>
     {hint && <div className="text-xs text-muted-foreground">{hint}</div>}
-  </Card>
+  </div>
 );

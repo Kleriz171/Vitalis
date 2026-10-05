@@ -7,6 +7,7 @@ import {
 } from 'recharts';
 import { api } from '../../../api/client';
 import { Card, CardHeader, CardContent } from '../../../components/ui/card';
+import { KPI } from '../../../components/widgets/KPI';
 import { PageHeader } from '../../../components/layout/CommandShell';
 
 interface Kpis { total: number; active: number; resolvedToday: number; byType: { _id: string; count: number }[]; }
@@ -14,9 +15,9 @@ interface TimePoint { date: string; count: number; resolved: number; }
 interface Performance { total: number; resolved: number; resolutionRate: number; avgEtaSeconds: number; }
 interface TopCaller { userId: string; name: string; email: string; count: number; }
 
-const TYPE_COLORS = ['#21d1b8', '#5aa9ff', '#ff9f2e', '#b18cff', '#ff4d4d', '#7be495'];
+const TYPE_COLORS = ['#0C5D57', '#14A897', '#E07A10', '#7C8DB5', '#D92D2D', '#9BC9A7'];
 // Chart tooltips in the console's dark panel style.
-const TOOLTIP = { fontSize: 12, borderRadius: 4, background: 'hsl(190 40% 8%)', border: '1px solid hsl(182 32% 16%)', color: 'hsl(172 30% 90%)' };
+const TOOLTIP = { fontSize: 12, borderRadius: 10, background: '#fff', border: '1px solid hsl(40 14% 85%)', color: 'hsl(176 25% 10%)' };
 
 const fmtEta = (s: number) => {
   if (!s) return '—';
@@ -54,11 +55,11 @@ export const Analytics = () => {
     <>
       <PageHeader title="Analytics" subtitle="Operational KPIs and trends" />
       <div className="p-6 space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Kpi label="Total incidents" value={kpis?.total ?? 0} />
-          <Kpi label="Active now" value={kpis?.active ?? 0} accent="text-rose-400" />
-          <Kpi label="Resolved 24h" value={kpis?.resolvedToday ?? 0} accent="text-emerald-400" />
-          <Kpi label="Resolution rate" value={`${perf?.resolutionRate ?? 0}%`} accent="text-primary" />
+        <div className="grid grid-cols-2 md:grid-cols-4 rounded-2xl border border-border bg-card">
+          <KPI label="Total incidents" value={kpis?.total ?? 0} />
+          <KPI label="Active now" value={kpis?.active ?? 0} tone={kpis?.active ? 'rose' : 'teal'} />
+          <KPI label="Resolved in 24 h" value={kpis?.resolvedToday ?? 0} />
+          <KPI label="Resolution rate" value={`${perf?.resolutionRate ?? 0}%`} />
         </div>
 
         <div className="grid lg:grid-cols-3 gap-4">
@@ -70,7 +71,7 @@ export const Analytics = () => {
             <CardContent className="p-4 h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={series} margin={{ top: 10, right: 24, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(182 32% 16%)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(40 14% 87%)" />
                   <XAxis dataKey="date" tickFormatter={fmtShortDate} fontSize={11} />
                   <YAxis allowDecimals={false} fontSize={11} />
                   <Tooltip
@@ -78,8 +79,8 @@ export const Analytics = () => {
                     contentStyle={TOOLTIP}
                   />
                   <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Line type="monotone" dataKey="count" name="Triggered" stroke="#21d1b8" strokeWidth={2} dot={{ r: 3 }} />
-                  <Line type="monotone" dataKey="resolved" name="Resolved" stroke="#7be495" strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="count" name="Triggered" stroke="#0C5D57" strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="resolved" name="Resolved" stroke="#14A897" strokeWidth={2} dot={{ r: 3 }} />
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>
@@ -133,7 +134,7 @@ export const Analytics = () => {
               <div>
                 <div className="text-[11px] text-muted-foreground">Resolved / Total</div>
                 <div className="text-3xl font-bold mt-1">
-                  <span className="text-emerald-400">{perf?.resolved ?? 0}</span>
+                  <span className="text-emerald-600">{perf?.resolved ?? 0}</span>
                   <span className="text-muted-foreground"> / {perf?.total ?? 0}</span>
                 </div>
               </div>
@@ -152,7 +153,7 @@ export const Analytics = () => {
               {top.length ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={top} layout="vertical" margin={{ top: 8, right: 24, left: 8, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(182 32% 16%)" horizontal={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(40 14% 87%)" horizontal={false} />
                     <XAxis type="number" allowDecimals={false} fontSize={11} />
                     <YAxis type="category" dataKey="name" width={120} fontSize={11} />
                     <Tooltip contentStyle={TOOLTIP} />
@@ -169,12 +170,3 @@ export const Analytics = () => {
     </>
   );
 };
-
-const Kpi = ({ label, value, accent }: { label: string; value: number | string; accent?: string }) => (
-  <Card className="gap-0 py-0">
-    <CardContent className="p-4">
-      <div className="hud-label">{label}</div>
-      <div className={`hud-num text-[32px] leading-none font-medium mt-2 ${accent ?? 'text-foreground'}`}>{value}</div>
-    </CardContent>
-  </Card>
-);

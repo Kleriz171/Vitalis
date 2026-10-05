@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -34,9 +34,10 @@ export const TYPE_LABEL: Record<string, string> = {
   other: 'Emergency',
 };
 
-// Night-map palette: red for the most urgent, amber next, cool blue for the rest.
-const priorityColor = (p: number) => (p === 1 ? '#ff4d4d' : p === 2 ? '#ff9f2e' : p === 3 ? '#f5c542' : '#5aa9ff');
-const TEAL = '#21d1b8';
+// Red for the most urgent, amber next, slate for the rest. Teal is Vitalis: responders, AEDs.
+const priorityColor = (p: number) => (p === 1 ? '#D92D2D' : p === 2 ? '#E07A10' : '#5B6B69');
+const TEAL = '#14A897';
+const GREEN = '#0C5D57';
 
 // Popups take a DOM node, not an HTML string: AED names come from the public.
 const popup = (title: string, sub?: string) => {
@@ -48,7 +49,7 @@ const popup = (title: string, sub?: string) => {
   el.appendChild(t);
   if (sub) {
     const s = document.createElement('div');
-    s.style.color = 'hsl(182 12% 62%)';
+    s.style.color = '#5B6B69';
     s.textContent = sub;
     el.appendChild(s);
   }
@@ -60,7 +61,7 @@ const aedIcon = (verified: boolean) =>
     className: '',
     iconSize: [22, 22],
     iconAnchor: [11, 11],
-    html: `<div style="width:22px;height:22px;border-radius:4px;display:grid;place-items:center;background:rgba(5,16,15,.85);color:${verified ? TEAL : '#7f9896'};border:1.5px solid ${verified ? TEAL : '#7f9896'};box-shadow:0 0 10px ${verified ? 'rgba(33,209,184,.45)' : 'transparent'}"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>`,
+    html: `<div style="width:22px;height:22px;border-radius:6px;display:grid;place-items:center;background:#fff;color:${verified ? GREEN : '#8A9694'};border:1.5px solid ${verified ? GREEN : '#B9C1BF'};box-shadow:0 1px 3px rgba(12,93,87,.25)"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>`,
   });
 
 interface Props {
@@ -78,6 +79,7 @@ const MapView = ({ incidents, aeds = [], responders = [], selectedId, onSelect }
   const aedLayer = useRef<L.LayerGroup | null>(null);
   const responderLayer = useRef<L.LayerGroup | null>(null);
   const fitted = useRef(false);
+  const [target, setTarget] = useState<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     if (!ref.current || map.current) return;
@@ -105,14 +107,14 @@ const MapView = ({ incidents, aeds = [], responders = [], selectedId, onSelect }
       const [lng, lat] = e.location!.coordinates;
       const selected = e._id === selectedId;
       const color = priorityColor(e.priority);
-      const size = selected ? 20 : 16;
-      // Calls still waiting for a responder pulse (sonar); the selected one gets a target ring.
+      const size = selected ? 22 : 18;
+      // A pin: coloured disc with a white core. Waiting for a responder, it pulses.
       const m = L.marker([lat, lng], {
         icon: L.divIcon({
           className: '',
           iconSize: [size, size],
           iconAnchor: [size / 2, size / 2],
-          html: `<div class="${e.status === 'pending' ? 'sonar' : ''}" style="width:${size}px;height:${size}px;border-radius:9999px;background:${color};color:${color};border:2px solid rgba(5,16,15,.9);box-shadow:0 0 14px ${color}${selected ? `,0 0 0 4px rgba(5,16,15,.9),0 0 0 6px ${TEAL}` : ''}"></div>`,
+          html: `<div class="${e.status === 'pending' ? 'pin-pulse' : ''}" style="position:relative;isolation:isolate;width:${size}px;height:${size}px;border-radius:9999px;background:${color};border:3px solid #fff;box-shadow:0 2px 6px rgba(19,32,31,.35)${selected ? `,0 0 0 3px ${color}` : ''}"></div>`,
         }),
         zIndexOffset: selected ? 1000 : e.priority === 1 ? 500 : 0,
       });
@@ -128,11 +130,21 @@ const MapView = ({ incidents, aeds = [], responders = [], selectedId, onSelect }
     }
   }, [located, selectedId, onSelect]);
 
+  const selectedPoint = located.find(x => x._id === selectedId)?.location!.coordinates ?? null;
+
   useEffect(() => {
-    if (!selectedId || !map.current) return;
-    const e = located.find(x => x._id === selectedId);
-    if (e) map.current.panTo([e.location!.coordinates[1], e.location!.coordinates[0]], { animate: true });
-  }, [selectedId, located]);
+    const m = map.current;
+    if (!m || !selectedPoint) { setTarget(null); return; }
+    const place = () => {
+      const p = m.latLngToContainerPoint([selectedPoint[1], selectedPoint[0]]);
+      setTarget({ x: p.x, y: p.y });
+    };
+    m.panTo([selectedPoint[1], selectedPoint[0]], { animate: true });
+    place();
+    m.on('move zoom resize', place);
+    return () => { m.off('move zoom resize', place); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPoint?.[0], selectedPoint?.[1]]);
 
   useEffect(() => {
     const layer = aedLayer.current;
@@ -152,23 +164,38 @@ const MapView = ({ incidents, aeds = [], responders = [], selectedId, onSelect }
     for (const r of responders) {
       layer.addLayer(
         L.circleMarker([r.coordinates[1], r.coordinates[0]], {
-          radius: 6, fillColor: TEAL, color: '#05100f', weight: 2, fillOpacity: 1, className: 'drop-shadow-[0_0_6px_#21d1b8]',
+          radius: 6, fillColor: TEAL, color: '#fff', weight: 2.5, fillOpacity: 1,
         }).bindTooltip(popup('Responder', 'Live position'), { direction: 'top' }),
       );
+      // Roughly what they can reach on foot in about five minutes.
+      layer.addLayer(L.circle([r.coordinates[1], r.coordinates[0]], {
+        radius: 400, color: TEAL, weight: 1, opacity: 0.55, dashArray: '4 5', fillColor: TEAL, fillOpacity: 0.05, interactive: false,
+      }));
     }
   }, [responders]);
 
   return (
-    <div className="map-night relative w-full h-full min-h-[420px] rounded-sm overflow-hidden">
+    <div className="map-brand relative w-full h-full min-h-[420px]">
       <div ref={ref} className="absolute inset-0" />
-      {/* Edge vignette so the map sinks into the panel. */}
-      <div className="pointer-events-none absolute inset-0 z-[401] shadow-[inset_0_0_80px_20px_hsl(var(--background))]" />
-      <div className="absolute left-3 bottom-3 z-[402] flex flex-wrap gap-x-4 gap-y-1 rounded-sm bg-background/85 backdrop-blur border border-border px-3 py-2 font-mono text-[11px] tracking-wide text-muted-foreground">
-        <span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-full bg-[#ff4d4d] shadow-[0_0_8px_#ff4d4d]" />Priority 1</span>
-        <span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-full bg-[#ff9f2e]" />Priority 2+</span>
-        <span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-full bg-[#21d1b8] shadow-[0_0_8px_#21d1b8]" />Responder</span>
-        <span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-[2px] border border-[#21d1b8]" />AED</span>
-        <span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-full border-2 border-[#ff4d4d]/70" />Pulsing: no responder yet</span>
+      {/* Crosshairs through the selected call, with its coordinates for the ambulance crew. */}
+      {target && (
+        <div className="pointer-events-none absolute inset-0 z-[401]" aria-hidden>
+          <div className="absolute left-0 right-0 h-px bg-[#0C5D57]/35" style={{ top: target.y }} />
+          <div className="absolute top-0 bottom-0 w-px bg-[#0C5D57]/35" style={{ left: target.x }} />
+          <div className="absolute w-12 h-12 -ml-6 -mt-6 rounded-full border border-[#0C5D57]/50" style={{ left: target.x, top: target.y }} />
+        </div>
+      )}
+      {selectedPoint && (
+        <div className="absolute right-3 top-3 z-[402] rounded-lg bg-white/95 border border-border px-3 py-2 shadow-sm">
+          <div className="text-[11px] text-muted-foreground">Selected call</div>
+          <div className="code text-[13px] font-medium text-foreground">{selectedPoint[1].toFixed(5)}° N, {selectedPoint[0].toFixed(5)}° E</div>
+        </div>
+      )}
+      <div className="absolute left-3 bottom-3 z-[402] flex flex-wrap gap-x-4 gap-y-1 rounded-lg bg-white/95 border border-border px-3 py-2 text-[12px] text-muted-foreground shadow-sm">
+        <span className="flex items-center gap-1.5"><i className="w-3 h-3 rounded-full bg-[#D92D2D] border-2 border-white shadow" />Priority 1</span>
+        <span className="flex items-center gap-1.5"><i className="w-3 h-3 rounded-full bg-[#E07A10] border-2 border-white shadow" />Priority 2</span>
+        <span className="flex items-center gap-1.5"><i className="w-3 h-3 rounded-full bg-[#14A897] border-2 border-white shadow" />Responder, 5-min reach</span>
+        <span className="flex items-center gap-1.5"><i className="w-3 h-3 rounded-[4px] bg-white border border-[#0C5D57]" />Defibrillator</span>
       </div>
     </div>
   );

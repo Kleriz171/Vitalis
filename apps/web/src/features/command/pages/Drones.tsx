@@ -116,7 +116,7 @@ export const Drones = () => {
                 <tr key={m._id} className="border-t border-border">
                   <td className="px-4 py-2.5 font-medium">{m.droneId}</td>
                   <td className="px-4 py-2.5">{m.routeName ?? '—'}{m.emergency ? ' · for an SOS' : ''}</td>
-                  <td className={cn('px-4 py-2.5', m.status === 'aborted' && 'text-red-300', m.status === 'delivered' && 'text-emerald-300')}>
+                  <td className={cn('px-4 py-2.5', m.status === 'aborted' && 'text-red-700', m.status === 'delivered' && 'text-emerald-700')}>
                     {MISSION_LABEL[m.status]}{m.abortReason ? `: ${m.abortReason}` : ''}
                   </td>
                   <td className="px-4 py-2.5 text-muted-foreground tabular-nums">{timeAgo(m.createdAt)}</td>
@@ -238,7 +238,7 @@ const DroneConsole = ({ drone, routes, emergencies, mission }: { drone: FleetEnt
               {stale ? 'Waiting for telemetry' : t.linkOk ? MODE_LABEL[t.mode ?? 'idle'] : 'Bridge can\'t reach the drone'}
             </span>
           </div>
-          <span className={cn('flex items-center gap-1.5 text-sm tabular-nums', lowBattery ? 'text-red-300 font-semibold' : 'text-muted-foreground')}>
+          <span className={cn('flex items-center gap-1.5 text-sm tabular-nums', lowBattery ? 'text-red-700 font-semibold' : 'text-muted-foreground')}>
             <Battery size={16} /> {t.battery != null ? `${battery}%` : '—'}
           </span>
         </div>
@@ -317,7 +317,7 @@ const DroneConsole = ({ drone, routes, emergencies, mission }: { drone: FleetEnt
               <Button onClick={dispatch} disabled={busy || !routeId || !t.linkOk || lowBattery || t.airborne}>
                 <Send size={16} /> Dispatch
               </Button>
-              {lowBattery && <p className="text-sm text-red-300">Battery below 30%. Charge before flying.</p>}
+              {lowBattery && <p className="text-sm text-red-700">Battery below 30%. Charge before flying.</p>}
             </>
           )}
         </Card>
@@ -358,7 +358,7 @@ const DroneConsole = ({ drone, routes, emergencies, mission }: { drone: FleetEnt
                 <Button variant="outline" onClick={() => setConfirmStop(false)}>Cancel</Button>
               </div>
             ) : (
-              <Button variant="outline" className="w-full text-red-300 border-red-500/30 hover:bg-red-500/10" disabled={!t.airborne} onClick={() => setConfirmStop(true)}>
+              <Button variant="outline" className="w-full text-red-700 border-red-500/30 hover:bg-red-500/10" disabled={!t.airborne} onClick={() => setConfirmStop(true)}>
                 <Octagon size={16} /> Emergency stop
               </Button>
             )}

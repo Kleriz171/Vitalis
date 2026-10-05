@@ -5,47 +5,49 @@
 @tailwind utilities;
 
 /*
- * Vitalis Command: an operations-room look. Near-black teal, Vitalis teal as the live signal,
- * red only for SOS and danger. Fonts are bundled (the desktop app's CSP blocks remote fonts).
+ * Vitalis Command. The brand's own colours: a deep-green frame (#0C5D57, the phone app's
+ * sign-in green) around an off-white work surface (#F7F5F0), teal (#14A897) for what is live
+ * or selected, red only for SOS. Fonts are bundled: the desktop CSP blocks remote fonts.
  */
 @layer base {
   :root {
-    --background: 192 45% 4%;
-    --foreground: 172 30% 90%;
-    --card: 190 38% 7%;
-    --card-foreground: 172 30% 90%;
-    --popover: 190 40% 8%;
-    --popover-foreground: 172 30% 90%;
-    --primary: 172 78% 47%;
-    --primary-foreground: 192 60% 5%;
-    --secondary: 188 30% 12%;
-    --secondary-foreground: 172 30% 88%;
-    --muted: 188 28% 11%;
-    --muted-foreground: 182 12% 58%;
-    --accent: 176 55% 14%;
-    --accent-foreground: 172 80% 70%;
-    --destructive: 0 85% 62%;
+    --background: 43 33% 95%;          /* #F7F5F0 work surface */
+    --foreground: 176 25% 10%;         /* green-black ink */
+    --card: 0 0% 100%;
+    --card-foreground: 176 25% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 176 25% 10%;
+    --primary: 175 77% 21%;            /* #0C5D57: buttons, white text passes AA */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 172 30% 93%;
+    --secondary-foreground: 175 77% 18%;
+    --muted: 40 18% 91%;
+    --muted-foreground: 175 8% 36%;
+    --accent: 172 55% 91%;
+    --accent-foreground: 175 77% 21%;
+    --destructive: 0 68% 52%;
     --destructive-foreground: 0 0% 100%;
-    --border: 182 32% 16%;
-    --input: 182 30% 18%;
-    --ring: 172 78% 47%;
-    --radius: 0.375rem;
+    --border: 40 14% 85%;
+    --input: 40 14% 82%;
+    --ring: 173 79% 37%;
+    --radius: 0.625rem;
 
-    --sidebar-background: 192 48% 5%;
-    --sidebar-foreground: 172 25% 85%;
-    --sidebar-primary: 172 78% 47%;
-    --sidebar-primary-foreground: 192 60% 5%;
-    --sidebar-accent: 176 50% 12%;
-    --sidebar-accent-foreground: 172 80% 70%;
-    --sidebar-border: 182 32% 14%;
-    --sidebar-ring: 172 78% 47%;
+    /* The frame: sidebar + top bar. */
+    --sidebar-background: 175 77% 17%;  /* a shade under #0C5D57 */
+    --sidebar-foreground: 160 30% 92%;
+    --sidebar-primary: 173 79% 37%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 175 60% 23%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 175 50% 24%;
+    --sidebar-ring: 173 79% 50%;
 
-    --glow: 172 78% 47%;
-    --danger: 0 85% 62%;
-    --warn: 38 95% 58%;
+    --teal: 173 79% 37%;               /* #14A897: live, selected, responders */
+    --sos: 0 72% 51%;
+    --warn: 32 92% 46%;
   }
 
-  :root { color-scheme: dark; }
+  :root { color-scheme: light; }
 
   * { @apply border-border; }
 
@@ -54,109 +56,67 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-    /* Faint plotting grid under everything, fading out toward the edges. */
-    background-image:
-      radial-gradient(ellipse at 50% 0%, hsl(var(--glow) / 0.07), transparent 60%),
-      linear-gradient(hsl(var(--glow) / 0.035) 1px, transparent 1px),
-      linear-gradient(90deg, hsl(var(--glow) / 0.035) 1px, transparent 1px);
-    background-size: 100% 100%, 40px 40px, 40px 40px;
-    background-attachment: fixed;
+    font-feature-settings: 'cv11', 'ss01';
   }
 
-  ::selection { background: hsl(var(--glow) / 0.35); }
-
-  /* Table headers read like instrument labels. */
-  thead th {
-    font-family: 'JetBrains Mono Variable', ui-monospace, monospace;
-    font-size: 11px !important;
-    font-weight: 500 !important;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: hsl(var(--muted-foreground)) !important;
-  }
-
-  /* Thin teal scrollbars instead of the OS defaults (Windows' are wide and grey). */
-  * { scrollbar-width: thin; scrollbar-color: hsl(var(--border)) transparent; }
-  ::-webkit-scrollbar { width: 8px; height: 8px; }
-  ::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 4px; }
-  ::-webkit-scrollbar-thumb:hover { background: hsl(var(--glow) / 0.4); }
-  ::-webkit-scrollbar-track { background: transparent; }
+  h1, h2, h3 { text-wrap: balance; }
+  ::selection { background: hsl(var(--teal) / 0.25); }
 }
 
 @layer components {
-  /* A panel with targeting-bracket corners. Applied to every Card. */
-  .hud-panel {
-    position: relative;
-    background:
-      linear-gradient(180deg, hsl(var(--glow) / 0.04), transparent 120px),
-      hsl(var(--card) / 0.92);
-    backdrop-filter: blur(6px);
+  .num { font-variant-numeric: tabular-nums; }
+  /* Codes that are literally codes: case numbers, coordinates, hashes. */
+  .code { font-family: 'JetBrains Mono Variable', ui-monospace, monospace; font-size: 0.92em; }
+
+  /* The green frame's faint street-map texture (an abstract of central Tirana's ring and axes). */
+  .frame-texture {
+    background-color: hsl(var(--sidebar-background));
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='640' viewBox='0 0 640 640' fill='none' stroke='%23ffffff' stroke-opacity='0.06' stroke-width='1.2'%3E%3Ccircle cx='320' cy='320' r='120'/%3E%3Ccircle cx='320' cy='320' r='210'/%3E%3Cpath d='M320 0v640M0 320h640M60 40l520 560M600 60L40 580M0 180c160 40 280 20 640 120M0 470c200-60 380-20 640-90'/%3E%3C/svg%3E");
+    background-size: 640px 640px;
   }
-  .hud-panel::before,
-  .hud-panel::after {
+
+  /* The active nav item is an open folder tab: concave corners where it meets the sheet. */
+  .tab-join::before, .tab-join::after {
     content: '';
     position: absolute;
-    width: 12px;
-    height: 12px;
+    right: 0;
+    width: 14px;
+    height: 14px;
     pointer-events: none;
-    border-color: hsl(var(--glow) / 0.7);
   }
-  .hud-panel::before { top: -1px; left: -1px; border-top: 1.5px solid; border-left: 1.5px solid; border-top-left-radius: var(--radius); }
-  .hud-panel::after { bottom: -1px; right: -1px; border-bottom: 1.5px solid; border-right: 1.5px solid; border-bottom-right-radius: var(--radius); }
+  .tab-join::before { top: -14px; border-bottom-right-radius: 14px; box-shadow: 5px 5px 0 5px hsl(var(--background)); }
+  .tab-join::after { bottom: -14px; border-top-right-radius: 14px; box-shadow: 5px -5px 0 5px hsl(var(--background)); }
 
-  /* Small uppercase mono label: section titles, field names, codes. */
-  .hud-label {
-    font-family: 'JetBrains Mono Variable', ui-monospace, monospace;
-    font-size: 11px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: hsl(var(--muted-foreground));
-  }
-  .hud-num { font-family: 'JetBrains Mono Variable', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
-  .glow-text { text-shadow: 0 0 18px hsl(var(--glow) / 0.55); }
-  .glow-danger { text-shadow: 0 0 18px hsl(var(--danger) / 0.6); }
+  /* Map: OpenStreetMap tiles washed into the brand's off-white and green ink. */
+  .map-brand .leaflet-tile-pane { filter: grayscale(1) sepia(0.22) hue-rotate(118deg) saturate(0.55) brightness(1.05) contrast(0.86); }
+  .map-brand .leaflet-container { background: hsl(var(--background)); font-family: inherit; }
+  .map-brand .leaflet-bar { border: 1px solid hsl(var(--border)); box-shadow: 0 2px 8px hsl(176 30% 10% / 0.08); }
+  .map-brand .leaflet-bar a { color: hsl(var(--foreground)); }
+  .map-brand .leaflet-tooltip { border-radius: 8px; border: 1px solid hsl(var(--border)); box-shadow: 0 4px 16px hsl(176 30% 10% / 0.12); }
 
-  /* Very faint scanlines over the whole app; purely decorative. */
-  .scanlines::after {
-    content: '';
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    z-index: 60;
-    background: repeating-linear-gradient(0deg, transparent 0 2px, hsl(0 0% 0% / 0.12) 2px 3px);
-    mix-blend-mode: multiply;
-  }
-
-  /* Map: OpenStreetMap tiles turned into a dark teal night map (no extra tile provider needed). */
-  .map-night .leaflet-tile-pane { filter: invert(1) grayscale(1) sepia(0.9) hue-rotate(125deg) saturate(1.6) brightness(0.62) contrast(1.25); }
-  .map-night .leaflet-container { background: hsl(var(--background)); }
-  .map-night .leaflet-control-attribution { background: hsl(var(--card) / 0.8) !important; color: hsl(var(--muted-foreground)) !important; }
-  .map-night .leaflet-control-attribution a { color: hsl(var(--primary)) !important; }
-  .map-night .leaflet-bar a { background: hsl(var(--card)); color: hsl(var(--foreground)); border-color: hsl(var(--border)); }
-  .map-night .leaflet-popup-content-wrapper, .map-night .leaflet-popup-tip { background: hsl(var(--popover)); color: hsl(var(--foreground)); border: 1px solid hsl(var(--border)); }
-
-  /* A live SOS on the map: expanding sonar rings. */
-  .sonar { position: relative; }
-  .sonar::before, .sonar::after {
+  /* A call still waiting for a responder: the pin pulses. */
+  .pin-pulse::before {
     content: '';
     position: absolute;
-    inset: -6px;
+    inset: -3px;
     border-radius: 9999px;
-    border: 2px solid currentColor;
-    animation: sonar 2.2s cubic-bezier(0.2, 0.6, 0.3, 1) infinite;
+    background: hsl(var(--sos) / 0.35);
+    animation: pin-pulse 1.8s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+    z-index: -1;
   }
-  .sonar::after { animation-delay: 1.1s; }
 }
 
-@keyframes sonar {
-  from { transform: scale(0.6); opacity: 0.9; }
-  to { transform: scale(2.6); opacity: 0; }
+@keyframes pin-pulse {
+  from { transform: scale(1); opacity: 1; }
+  to { transform: scale(3.2); opacity: 0; }
 }
-@keyframes blink { 50% { opacity: 0.25; } }
-.animate-blink { animation: blink 1.4s steps(2, start) infinite; }
+@keyframes dash { to { stroke-dashoffset: -22; } }
+@keyframes ping-soft { from { transform: scale(0.6); opacity: 1; } to { transform: scale(1.8); opacity: 0; } }
+@keyframes live-dot { 50% { opacity: 0.35; } }
+.animate-live { animation: live-dot 2s ease-in-out infinite; }
 
 @media (prefers-reduced-motion: reduce) {
-  .sonar::before, .sonar::after, .animate-blink { animation: none; }
+  .pin-pulse::before, .animate-live { animation: none; }
 }
 
 .scrollbar-hide::-webkit-scrollbar { display: none; }
