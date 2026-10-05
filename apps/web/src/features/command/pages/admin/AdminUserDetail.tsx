@@ -1,6 +1,6 @@
+import { ArrowLeft, CalendarBlank, Certificate, Heart, IdentificationCard, Pill, Pulse, Stethoscope, Syringe, Warning } from '@phosphor-icons/react';
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Heart, Pill, Syringe, AlertTriangle, Calendar, Activity, Award, Stethoscope } from 'lucide-react';
 import { api } from '../../../../api/client';
 import { PageHeader } from '../../../../components/layout/CommandShell';
 import { Card, CardContent, CardHeader } from '../../../../components/ui/card';
@@ -55,7 +55,7 @@ export const AdminUserDetail = () => {
 
   return (
     <>
-      <PageHeader
+      <PageHeader icon={IdentificationCard}
         title={u.name}
         subtitle={`${u.email} · ${u.role}`}
         actions={
@@ -96,7 +96,7 @@ export const AdminUserDetail = () => {
             ))}
           </Section>
 
-          <Section title="Allergies" icon={<AlertTriangle size={16} />} empty={!data.allergies.length}>
+          <Section title="Allergies" icon={<Warning size={16} />} empty={!data.allergies.length}>
             {data.allergies.map(a => (
               <Row key={a._id} title={a.allergen} badge={<Badge variant={a.severity === 'severe' ? 'destructive' : 'outline'}>{a.severity}</Badge>} />
             ))}
@@ -108,13 +108,13 @@ export const AdminUserDetail = () => {
             ))}
           </Section>
 
-          <Section title="Conditions" icon={<Activity size={16} />} empty={!data.conditions.length}>
+          <Section title="Conditions" icon={<Pulse size={16} />} empty={!data.conditions.length}>
             {data.conditions.map(c => (
               <Row key={c._id} title={c.name} subtitle={c.notes} />
             ))}
           </Section>
 
-          <Section title="Appointments" icon={<Calendar size={16} />} empty={!data.appointments.length}>
+          <Section title="Appointments" icon={<CalendarBlank size={16} />} empty={!data.appointments.length}>
             {data.appointments.map(a => (
               <Row key={a._id} title={a.appointmentType} subtitle={`${fmt(a.scheduledAt)} · ${a.status}`} />
             ))}
@@ -129,7 +129,7 @@ export const AdminUserDetail = () => {
 
         <Card>
           <CardHeader className="px-5 py-4 border-b">
-            <div className="font-semibold flex items-center gap-2"><Award size={16} /> Training certifications ({data.certifications.length})</div>
+            <div className="font-semibold flex items-center gap-2"><Certificate size={16} /> Training certifications ({data.certifications.length})</div>
           </CardHeader>
           <CardContent className="p-5">
             {data.certifications.length ? (

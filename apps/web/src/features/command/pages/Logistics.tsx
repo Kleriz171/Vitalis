@@ -1,5 +1,6 @@
+import { Ambulance, Bandaids, Certificate, Drop, FirstAid, Heartbeat, Hourglass, Lightning, Pill, Pulse, Siren, Timer, UsersThree, Warning, X, type Icon } from '@phosphor-icons/react';
+import { Tile, type TileTone } from '../../../components/ui/tile';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
-import { Activity, AlertTriangle, Award, X, Zap } from 'lucide-react';
 import { api } from '../../../api/client';
 import { socket } from '../../../realtime/socket';
 import { Card } from '../../../components/ui/card';
@@ -73,6 +74,16 @@ const clock = (s: number) => {
   return h ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 };
 const STEPS = ['pending', 'assigned', 'en_route', 'on_scene'];
+// The phone app's habit: every kind of call has its own icon and tint.
+const TYPE_ICON: Record<string, [Icon, TileTone]> = {
+  cardiac: [Heartbeat, 'sos'],
+  medical: [FirstAid, 'amber'],
+  trauma: [Bandaids, 'violet'],
+  blood_needed: [Drop, 'sos'],
+  rare_medicine: [Pill, 'blue'],
+  other: [Siren, 'slate'],
+};
+const typeTile = (type: string) => TYPE_ICON[type] ?? TYPE_ICON.other;
 
 export const StatusPill = ({ status }: { status: string }) => (
   <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset', STATUS_TONE[status] ?? STATUS_TONE.resolved)}>
@@ -142,7 +153,7 @@ export const Logistics = () => {
 
   return (
     <>
-      <PageHeader
+      <PageHeader icon={Pulse}
         title="Live operations"
         subtitle="SOS calls, responders and defibrillators in real time"
       />
@@ -150,10 +161,10 @@ export const Logistics = () => {
       <div className="px-6 pb-6 space-y-5">
         {/* Situation strip: four readings in one panel. */}
         <div className="grid grid-cols-2 xl:grid-cols-4 rounded-2xl border border-border bg-card">
-          <KPI label="Active calls" value={kpis.active ?? '—'} />
-          <KPI label="Waiting for a responder" value={kpis.pending ?? '—'} tone={kpis.pending ? 'rose' : 'teal'} />
-          <KPI label="Responders on duty" value={kpis.onDuty ?? '—'} />
-          <KPI label="Median time to accept, 24 h" value={kpis.medianAcceptSeconds != null ? formatEta(kpis.medianAcceptSeconds) : '—'} />
+          <KPI icon={Siren} iconTone="sos" label="Active calls" value={kpis.active ?? '—'} />
+          <KPI icon={Hourglass} iconTone={kpis.pending ? 'sos' : 'amber'} label="Waiting for a responder" value={kpis.pending ?? '—'} tone={kpis.pending ? 'rose' : 'teal'} />
+          <KPI icon={UsersThree} iconTone="teal" label="Responders on duty" value={kpis.onDuty ?? '—'} />
+          <KPI icon={Timer} iconTone="blue" label="Median time to accept, 24 h" value={kpis.medianAcceptSeconds != null ? formatEta(kpis.medianAcceptSeconds) : '—'} />
         </div>
 
         <div className="grid xl:grid-cols-[minmax(0,1fr)_400px] gap-5">
@@ -171,7 +182,7 @@ export const Logistics = () => {
 
           <section className="flex flex-col h-[min(70vh,760px)] rounded-2xl border border-border bg-card overflow-hidden" aria-label="Calls">
             <div className="px-5 h-14 shrink-0 border-b border-border flex items-center justify-between">
-              <h2 className="text-[15px] font-semibold">Calls</h2>
+              <h2 className="text-[16px] font-extrabold tracking-[-0.01em]">Calls</h2>
               <span className={cn('num text-[13px] font-semibold rounded-full px-2.5 py-0.5', active.length ? 'bg-[hsl(var(--sos))] text-white' : 'bg-muted text-muted-foreground')}>
                 {active.length} active
               </span>
@@ -180,7 +191,7 @@ export const Logistics = () => {
               {loading && <div className="p-3 space-y-2">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}</div>}
               {!loading && active.length === 0 && (
                 <div className="px-6 py-12 text-center">
-                  <div className="mx-auto w-11 h-11 rounded-full bg-accent grid place-items-center text-primary"><Activity size={20} /></div>
+                  <Tile icon={Pulse} tone="teal" size="lg" className="mx-auto" />
                   <p className="mt-3 font-medium">All quiet</p>
                   <p className="text-sm text-muted-foreground mt-1 text-pretty">A new SOS appears here and on the map the moment it is sent.</p>
                 </div>
@@ -198,34 +209,38 @@ export const Logistics = () => {
                       selectedId === e._id ? 'bg-accent/70' : waiting ? 'bg-[hsl(var(--sos)/0.06)] hover:bg-[hsl(var(--sos)/0.1)]' : 'hover:bg-muted/60',
                     )}
                   >
-                    <div className="flex items-center gap-2.5">
-                      <span className={cn('num text-[11px] font-bold rounded-md px-1.5 py-0.5', e.priority === 1 ? 'bg-[hsl(var(--sos))] text-white' : e.priority === 2 ? 'bg-[hsl(var(--warn)/0.15)] text-amber-800' : 'bg-muted text-muted-foreground')}>
-                        P{e.priority}
-                      </span>
-                      <span className="font-semibold truncate">{TYPE_LABEL[e.type] ?? 'Emergency'}</span>
-                      <span className={cn('ml-auto num text-[15px] font-semibold', waiting ? 'text-[hsl(var(--sos))]' : 'text-foreground')} title="Time since the SOS">
+                    <div className="flex items-center gap-3">
+                      <Tile icon={typeTile(e.type)[0]} tone={typeTile(e.type)[1]} size="md" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold truncate">{TYPE_LABEL[e.type] ?? 'Emergency'}</span>
+                          <span className={cn('num text-[11px] font-bold rounded-md px-1.5 py-px', e.priority === 1 ? 'bg-[hsl(var(--sos))] text-white' : e.priority === 2 ? 'bg-[hsl(var(--warn)/0.15)] text-amber-800' : 'bg-muted text-muted-foreground')}>
+                            P{e.priority}
+                          </span>
+                        </div>
+                        <div className="text-[13px] text-muted-foreground truncate">
+                          {STATUS_LABEL[e.status] ?? e.status}{nameOf(e.responder) ? ` · ${nameOf(e.responder)}` : ''}
+                        </div>
+                      </div>
+                      <span className={cn('num text-[17px] font-extrabold tracking-[-0.02em]', waiting ? 'text-[hsl(var(--sos))]' : 'text-foreground')} title="Time since the SOS">
                         {clock(waited)}
                       </span>
                     </div>
                     {/* Progress: received, accepted, on the way, on scene. */}
-                    <div className="mt-3 grid grid-cols-4 gap-1" aria-hidden>
+                    <div className="mt-3 ml-[52px] grid grid-cols-4 gap-1" aria-hidden>
                       {STEPS.map((s, i) => (
                         <span key={s} className={cn('h-1.5 rounded-full', i <= step ? (step === 0 ? 'bg-[hsl(var(--sos))]' : 'bg-[hsl(var(--teal))]') : 'bg-muted')} />
                       ))}
                     </div>
-                    <div className="mt-2 flex items-center gap-2 text-[13px] text-muted-foreground min-w-0">
-                      <span className="text-foreground font-medium shrink-0">{STATUS_LABEL[e.status] ?? e.status}</span>
-                      {nameOf(e.responder) && <span className="truncate">· {nameOf(e.responder)}</span>}
-                    </div>
                     {e.type === 'cardiac' && (
-                      <div className="mt-1 flex items-center gap-1.5 text-[13px] text-muted-foreground">
-                        <Zap size={13} className={e.aedRunner ? 'text-[hsl(var(--teal))]' : ''} />
+                      <div className="mt-2 ml-[52px] flex items-center gap-1.5 text-[13px] text-muted-foreground">
+                        <Lightning size={14} weight="duotone" className={e.aedRunner ? 'text-[hsl(var(--teal))]' : ''} />
                         {e.aedStatus === 'delivered' ? 'Defibrillator at the patient' : e.aedStatus === 'has_aed' ? 'Defibrillator on the way' : e.aedRunner ? 'Runner fetching a defibrillator' : 'No defibrillator runner yet'}
                       </div>
                     )}
                     {waiting && (
-                      <div className="mt-2.5 flex items-center gap-2 text-[13px] font-semibold text-[hsl(var(--sos))]">
-                        <AlertTriangle size={14} /> Nobody accepted for over a minute. Send an ambulance.
+                      <div className="mt-3 ml-[52px] flex items-start gap-2 rounded-lg bg-[hsl(var(--sos))] text-white px-3 py-2 text-[13px] font-semibold">
+                        <Ambulance size={18} weight="fill" className="shrink-0" /> Nobody accepted for over a minute. Send an ambulance.
                       </div>
                     )}
                   </button>
@@ -324,9 +339,12 @@ const IncidentPanel = ({ incident, onClose, onChanged }: { incident: Emergency; 
       {/* Case header: the type, its case number and where it stands. */}
       <div className="sticky top-0 z-10 bg-card border-b border-border px-6 pt-5 pb-4">
         <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
+          <div className="min-w-0 flex items-center gap-3">
+            <Tile icon={typeTile(incident.type)[0]} tone={typeTile(incident.type)[1]} size="lg" />
+            <div className="min-w-0">
             <div className="text-[13px] text-muted-foreground">Case <span className="code text-foreground">#{shortId(incident._id)}</span></div>
-            <h2 className={cn('mt-0.5 text-[22px] font-semibold tracking-[-0.015em]', incident.priority === 1 && 'text-[hsl(var(--sos))]')}>{TYPE_LABEL[incident.type] ?? 'Emergency'}</h2>
+            <h2 className={cn('mt-0.5 text-[22px] font-extrabold tracking-[-0.02em]', incident.priority === 1 && 'text-[hsl(var(--sos))]')}>{TYPE_LABEL[incident.type] ?? 'Emergency'}</h2>
+            </div>
           </div>
           <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close details"><X size={18} /></Button>
         </div>
@@ -343,7 +361,7 @@ const IncidentPanel = ({ incident, onClose, onChanged }: { incident: Emergency; 
           <>
             <section>
               <h3 className="text-[13px] font-medium text-muted-foreground">Patient</h3>
-              <p className="mt-1 text-[20px] font-semibold">{p?.name ?? 'Unknown'}</p>
+              <p className="mt-1 text-[21px] font-extrabold tracking-[-0.02em]">{p?.name ?? 'Unknown'}</p>
               <div className="mt-1 flex flex-wrap gap-1.5">
                 {p?.age != null && <span className="num rounded-md bg-muted px-2 py-0.5 text-[13px]">{p.age} years</span>}
                 {p?.bloodType && <span className="rounded-md bg-primary text-primary-foreground px-2 py-0.5 text-[13px] font-semibold">Blood {p.bloodType}</span>}
@@ -364,7 +382,7 @@ const IncidentPanel = ({ incident, onClose, onChanged }: { incident: Emergency; 
 
             {incident.callerCertifications && incident.callerCertifications.length > 0 && (
               <section className="flex items-start gap-2.5 rounded-xl bg-accent px-4 py-3 text-[14px] text-accent-foreground">
-                <Award size={16} className="mt-0.5 shrink-0" />
+                <Certificate size={20} weight="duotone" className="shrink-0" />
                 Caller holds {incident.callerCertifications.map(c => c.badgeLabel).join(', ')}. They may start care before help arrives.
               </section>
             )}

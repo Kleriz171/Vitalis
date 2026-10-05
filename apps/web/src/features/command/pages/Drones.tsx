@@ -1,10 +1,11 @@
+import { CheckCircle, Warning, AirplaneLanding, AirplaneTakeoff, ArrowClockwise, ArrowCounterClockwise, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, BatteryHigh, Drone, GameController, Octagon, PaperPlaneRight, VideoCamera } from '@phosphor-icons/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Battery, Gamepad2, Octagon, PlaneLanding, PlaneTakeoff, RotateCcw, RotateCw, Send, Video } from 'lucide-react';
 import { api } from '../../../api/client';
 import { socket } from '../../../realtime/socket';
 import { Card } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
 import { Skeleton } from '../../../components/ui/skeleton';
+import { Chip, Panel, Row } from '../../../components/ui/list';
 import { PageHeader } from '../../../components/layout/CommandShell';
 import { pushToast } from '../../../components/toast/toast';
 import { timeAgo } from '../../../lib/format';
@@ -79,7 +80,7 @@ export const Drones = () => {
 
   return (
     <>
-      <PageHeader title="Drones" subtitle="Autonomous dispatch and manual flight for connected drones" />
+      <PageHeader icon={Drone} title="Drones" subtitle="Autonomous dispatch and manual flight for connected drones" />
       <div className="p-6 space-y-6">
         {fleet === null ? (
           <Skeleton className="h-80 rounded-xl" />
@@ -97,34 +98,19 @@ export const Drones = () => {
           ))
         )}
 
-        <Card className="py-0 gap-0 overflow-hidden">
-          <div className="px-4 py-3 border-b border-border font-semibold">Mission history</div>
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-left text-muted-foreground">
-              <tr>
-                <th className="px-4 py-2 font-medium">Drone</th>
-                <th className="px-4 py-2 font-medium">Route</th>
-                <th className="px-4 py-2 font-medium">Result</th>
-                <th className="px-4 py-2 font-medium">When</th>
-              </tr>
-            </thead>
-            <tbody>
-              {missions.length === 0 && (
-                <tr><td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">No missions flown yet.</td></tr>
-              )}
-              {missions.map(m => (
-                <tr key={m._id} className="border-t border-border">
-                  <td className="px-4 py-2.5 font-medium">{m.droneId}</td>
-                  <td className="px-4 py-2.5">{m.routeName ?? '—'}{m.emergency ? ' · for an SOS' : ''}</td>
-                  <td className={cn('px-4 py-2.5', m.status === 'aborted' && 'text-red-700', m.status === 'delivered' && 'text-emerald-700')}>
-                    {MISSION_LABEL[m.status]}{m.abortReason ? `: ${m.abortReason}` : ''}
-                  </td>
-                  <td className="px-4 py-2.5 text-muted-foreground tabular-nums">{timeAgo(m.createdAt)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
+        <Panel title="Mission history">
+          {missions.length === 0 && <p className="px-5 py-10 text-center text-muted-foreground">No missions flown yet.</p>}
+          {missions.map(m => (
+            <Row
+              key={m._id}
+              icon={m.status === 'aborted' ? Warning : m.status === 'delivered' ? CheckCircle : Drone}
+              tone={m.status === 'aborted' ? 'sos' : m.status === 'delivered' ? 'teal' : 'blue'}
+              title={`${m.routeName ?? 'Manual flight'}${m.emergency ? ' · for an SOS' : ''}`}
+              summary={`${MISSION_LABEL[m.status]}${m.abortReason ? `: ${m.abortReason}` : ''}`}
+              right={<><Chip>{m.droneId}</Chip><span className="num text-[13px] text-muted-foreground w-20 text-right">{timeAgo(m.createdAt)}</span></>}
+            />
+          ))}
+        </Panel>
       </div>
     </>
   );
@@ -239,7 +225,7 @@ const DroneConsole = ({ drone, routes, emergencies, mission }: { drone: FleetEnt
             </span>
           </div>
           <span className={cn('flex items-center gap-1.5 text-sm tabular-nums', lowBattery ? 'text-red-700 font-semibold' : 'text-muted-foreground')}>
-            <Battery size={16} /> {t.battery != null ? `${battery}%` : '—'}
+            <BatteryHigh size={16} /> {t.battery != null ? `${battery}%` : '—'}
           </span>
         </div>
 
@@ -248,7 +234,7 @@ const DroneConsole = ({ drone, routes, emergencies, mission }: { drone: FleetEnt
             <img src={t.videoUrl} alt={`Live camera from ${drone.droneId}`} className="w-full h-full object-contain" />
           ) : (
             <div className="text-center px-6">
-              <Video className="mx-auto mb-2" size={28} aria-hidden />
+              <VideoCamera className="mx-auto mb-2" size={28} aria-hidden />
               <p className="text-sm">No video. Install ffmpeg on the bridge computer to stream the camera.</p>
             </div>
           )}
@@ -315,9 +301,9 @@ const DroneConsole = ({ drone, routes, emergencies, mission }: { drone: FleetEnt
                 Tello has no GPS: routes are measured moves from the take-off spot. Clear the area first.
               </p>
               <Button onClick={dispatch} disabled={busy || !routeId || !t.linkOk || lowBattery || t.airborne}>
-                <Send size={16} /> Dispatch
+                <PaperPlaneRight size={16} /> Dispatch
               </Button>
-              {lowBattery && <p className="text-sm text-red-700">Battery below 30%. Charge before flying.</p>}
+              {lowBattery && <p className="text-sm text-red-700">BatteryHigh below 30%. Charge before flying.</p>}
             </>
           )}
         </Card>
@@ -326,18 +312,18 @@ const DroneConsole = ({ drone, routes, emergencies, mission }: { drone: FleetEnt
           <div className="flex items-center justify-between gap-3">
             <h3 className="font-semibold">Manual flight</h3>
             <Button size="sm" variant={manual ? 'default' : 'outline'} onClick={() => setManual(v => !v)} aria-pressed={manual}>
-              <Gamepad2 size={16} /> {manual ? 'Controls armed' : 'Arm controls'}
+              <GameController size={16} /> {manual ? 'Controls armed' : 'Arm controls'}
             </Button>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <Button variant="outline" disabled={!t.linkOk || t.airborne || lowBattery} onClick={() => command('takeoff')}><PlaneTakeoff size={16} /> Take off</Button>
-            <Button disabled={!t.airborne} onClick={() => command('land')}><PlaneLanding size={16} /> Land</Button>
+            <Button variant="outline" disabled={!t.linkOk || t.airborne || lowBattery} onClick={() => command('takeoff')}><AirplaneTakeoff size={16} /> Take off</Button>
+            <Button disabled={!t.airborne} onClick={() => command('land')}><AirplaneLanding size={16} /> Land</Button>
           </div>
 
           {manual && (
             <>
               <div className="flex gap-6 justify-center py-2 select-none touch-none">
-                <Pad label="Height and turn" keys={[['arrowup', <ArrowUp key="u" size={18} />, 'Up'], ['arrowleft', <RotateCcw key="l" size={18} />, 'Turn left'], ['arrowright', <RotateCw key="r" size={18} />, 'Turn right'], ['arrowdown', <ArrowDown key="d" size={18} />, 'Down']]} hold={hold} />
+                <Pad label="Height and turn" keys={[['arrowup', <ArrowUp key="u" size={18} />, 'Up'], ['arrowleft', <ArrowCounterClockwise key="l" size={18} />, 'Turn left'], ['arrowright', <ArrowClockwise key="r" size={18} />, 'Turn right'], ['arrowdown', <ArrowDown key="d" size={18} />, 'Down']]} hold={hold} />
                 <Pad label="Move" keys={[['w', <ArrowUp key="f" size={18} />, 'Forward'], ['a', <ArrowLeft key="l" size={18} />, 'Left'], ['d', <ArrowRight key="r" size={18} />, 'Right'], ['s', <ArrowDown key="b" size={18} />, 'Back']]} hold={hold} />
               </div>
               <p className="text-xs text-muted-foreground text-center">Keyboard: W A S D to move, arrow keys for height and turning. Let go to hover.</p>

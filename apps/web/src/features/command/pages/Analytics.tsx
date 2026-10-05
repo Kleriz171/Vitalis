@@ -1,3 +1,4 @@
+import { ChartBar } from '@phosphor-icons/react';
 import { useEffect, useState } from 'react';
 import {
   ResponsiveContainer,
@@ -53,7 +54,7 @@ export const Analytics = () => {
 
   return (
     <>
-      <PageHeader title="Analytics" subtitle="Operational KPIs and trends" />
+      <PageHeader icon={ChartBar} title="Analytics" subtitle="Operational KPIs and trends" />
       <div className="p-6 space-y-4">
         <div className="grid grid-cols-2 md:grid-cols-4 rounded-2xl border border-border bg-card">
           <KPI label="Total incidents" value={kpis?.total ?? 0} />

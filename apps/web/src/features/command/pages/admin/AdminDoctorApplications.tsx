@@ -1,10 +1,10 @@
+import { FileText, Stethoscope } from '@phosphor-icons/react';
 import { useEffect, useState } from 'react';
 import { api } from '../../../../api/client';
 import { PageHeader } from '../../../../components/layout/CommandShell';
 import { Button } from '../../../../components/ui/button';
 import { Card, CardContent } from '../../../../components/ui/card';
 import { pushToast } from '../../../../components/toast/toast';
-import { FileText } from 'lucide-react';
 
 interface DoctorApp {
   id: string;
@@ -70,7 +70,7 @@ export const AdminDoctorApplications = () => {
 
   return (
     <>
-      <PageHeader title="Doctor applications" subtitle="Review submitted credentials before doctors appear in the directory." />
+      <PageHeader icon={Stethoscope} title="Doctor applications" subtitle="Review submitted credentials before doctors appear in the directory." />
       <div className="p-8 space-y-6">
         <div className="flex gap-2">
           {(['pending', 'approved', 'rejected', 'all'] as const).map(s => (

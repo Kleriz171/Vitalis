@@ -1,5 +1,4 @@
-@import '@fontsource-variable/inter';
-@import '@fontsource-variable/jetbrains-mono';
+@import '@fontsource-variable/schibsted-grotesk';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -55,8 +54,7 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-    font-feature-settings: 'cv11', 'ss01';
+    font-family: 'Schibsted Grotesk Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   }
 
   h1, h2, h3 { text-wrap: balance; }
@@ -66,26 +64,31 @@
 @layer components {
   .num { font-variant-numeric: tabular-nums; }
   /* Codes that are literally codes: case numbers, coordinates, hashes. */
-  .code { font-family: 'JetBrains Mono Variable', ui-monospace, monospace; font-size: 0.92em; }
+  .code { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 0.9em; }
 
   /* The green frame's faint street-map texture (an abstract of central Tirana's ring and axes). */
   .frame-texture {
     background-color: hsl(var(--sidebar-background));
+    background-attachment: fixed;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='640' viewBox='0 0 640 640' fill='none' stroke='%23ffffff' stroke-opacity='0.06' stroke-width='1.2'%3E%3Ccircle cx='320' cy='320' r='120'/%3E%3Ccircle cx='320' cy='320' r='210'/%3E%3Cpath d='M320 0v640M0 320h640M60 40l520 560M600 60L40 580M0 180c160 40 280 20 640 120M0 470c200-60 380-20 640-90'/%3E%3C/svg%3E");
     background-size: 640px 640px;
   }
 
-  /* The active nav item is an open folder tab: concave corners where it meets the sheet. */
-  .tab-join::before, .tab-join::after {
+  /* Page header band: the frame's green continues behind the title; the first block below
+     overlaps its lower edge (the phone app's header pattern). */
+  .page-band { position: relative; overflow: hidden; }
+  .page-band::after {
     content: '';
     position: absolute;
-    right: 0;
-    width: 14px;
-    height: 14px;
+    right: -120px;
+    top: -160px;
+    width: 420px;
+    height: 420px;
+    border-radius: 9999px;
+    background: hsl(0 0% 100% / 0.05);
     pointer-events: none;
   }
-  .tab-join::before { top: -14px; border-bottom-right-radius: 14px; box-shadow: 5px 5px 0 5px hsl(var(--background)); }
-  .tab-join::after { bottom: -14px; border-top-right-radius: 14px; box-shadow: 5px -5px 0 5px hsl(var(--background)); }
+  .page-band + * { margin-top: -3.25rem; position: relative; }
 
   /* Map: OpenStreetMap tiles washed into the brand's off-white and green ink. */
   .map-brand .leaflet-tile-pane { filter: grayscale(1) sepia(0.22) hue-rotate(118deg) saturate(0.55) brightness(1.05) contrast(0.86); }

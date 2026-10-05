@@ -1,6 +1,8 @@
+import { CheckCircle, Cube, MapPin, PersonSimpleRun, Siren, UserCheck, Warning, XCircle, type Icon } from '@phosphor-icons/react';
+import type { TileTone } from '../../../components/ui/tile';
 import { useEffect, useState } from 'react';
-import { CheckCircle2, AlertTriangle } from 'lucide-react';
 import { api } from '../../../api/client';
+import { Chip, Panel, Row } from '../../../components/ui/list';
 import { Card, CardHeader, CardContent } from '../../../components/ui/card';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
@@ -23,6 +25,16 @@ interface VerifyResult {
   length: number;
   brokenAt?: number;
 }
+
+// What each audit entry records, as the phone app would show it.
+const ACTION_TILE: Record<string, [Icon, TileTone]> = {
+  created: [Siren, 'sos'],
+  assigned: [UserCheck, 'teal'],
+  en_route: [PersonSimpleRun, 'blue'],
+  on_scene: [MapPin, 'teal'],
+  resolved: [CheckCircle, 'teal'],
+  cancelled: [XCircle, 'slate'],
+};
 
 export const Ledger = () => {
   const [blocks, setBlocks] = useState<Block[]>([]);
@@ -49,14 +61,14 @@ export const Ledger = () => {
 
   return (
     <>
-      <PageHeader
+      <PageHeader icon={Cube}
         title="Blockchain ledger"
         subtitle="Immutable audit trail · SHA-256 chained"
         actions={
           <div className="flex items-center gap-3">
             {verify && (
               <Badge variant={verify.valid ? 'secondary' : 'destructive'} className="gap-1.5">
-                {verify.valid ? <CheckCircle2 size={12} /> : <AlertTriangle size={12} />}
+                {verify.valid ? <CheckCircle size={12} /> : <Warning size={12} />}
                 {verify.valid ? `${verify.length} blocks` : `Broken @ ${verify.brokenAt}`}
               </Badge>
             )}
@@ -64,57 +76,29 @@ export const Ledger = () => {
           </div>
         }
       />
-      <div className="p-6 max-w-4xl">
-        <Card className="overflow-hidden gap-0 py-0">
-          <CardHeader className="px-5 py-4 border-b">
-            <div className="font-semibold">{blocks.length} blocks</div>
-            <div className="text-xs text-muted-foreground">Append-only · difficulty 2</div>
-          </CardHeader>
-          <CardContent className="space-y-2 p-3">
-            {loadingBlocks && Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="p-4 rounded-xl bg-muted/30 border border-border space-y-2">
-                <div className="flex items-center justify-between">
-                  <Skeleton className="h-6 w-12" />
-                  <Skeleton className="h-5 w-20" />
-                </div>
-                <Skeleton className="h-3 w-full" />
-                <Skeleton className="h-3 w-2/3" />
-              </div>
-            ))}
-            {!loadingBlocks && blocks.length === 0 && (
-              <p className="text-xs text-muted-foreground text-center py-12">
-                No blocks yet — trigger an emergency to mint the first one.
-              </p>
-            )}
-            {blocks.map(b => (
-              <div
+      <div className="p-6 max-w-5xl">
+        <Panel title={`${blocks.length} blocks`} aside={<span className="text-[13px] text-muted-foreground">Append-only · each block seals the one before</span>}>
+          {loadingBlocks && Array.from({ length: 5 }).map((_, i) => <div key={i} className="px-5 py-4"><Skeleton className="h-10" /></div>)}
+          {!loadingBlocks && blocks.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-12">No blocks yet. The first SOS writes the first one.</p>
+          )}
+          {blocks.map(b => {
+            const [icon, tone] = ACTION_TILE[b.payload?.action ?? ''] ?? [Cube, 'slate'];
+            return (
+              <Row
                 key={b._id}
-                className="p-4 rounded-xl bg-muted/30 border border-border hover:border-primary/40 transition"
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex items-center gap-3">
-                    <div className="text-2xl font-mono text-primary/70">#{b.index}</div>
-                    <div>
-                      <div className="text-xs capitalize font-medium">
-                        {b.payload?.action} · {b.payload?.entity}
-                      </div>
-                      <div className="text-xs text-muted-foreground font-mono">
-                        {new Date(b.timestamp).toLocaleString()}
-                      </div>
-                    </div>
-                  </div>
-                  <Badge variant="outline" className="font-mono">nonce {b.nonce}</Badge>
-                </div>
-                <div className="font-mono text-xs text-muted-foreground break-all">
-                  <span className="opacity-60">hash:</span> {b.hash}
-                </div>
-                <div className="font-mono text-xs text-muted-foreground/70 break-all mt-1">
-                  <span className="opacity-60">prev:</span> {b.prevHash}
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+                icon={icon}
+                tone={tone}
+                title={<span className="capitalize">{(b.payload?.action ?? '').replace('_', ' ')} · {b.payload?.entity}</span>}
+                summary={<span className="code" title={`hash ${b.hash}\nprev ${b.prevHash}`}>{b.hash.slice(0, 24)}… ← {b.prevHash.slice(0, 12)}…</span>}
+                right={<>
+                  <span className="text-[13px] text-muted-foreground">{new Date(b.timestamp).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                  <Chip><span className="num font-semibold text-foreground">#{b.index}</span></Chip>
+                </>}
+              />
+            );
+          })}
+        </Panel>
       </div>
     </>
   );

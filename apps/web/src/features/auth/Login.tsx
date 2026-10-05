@@ -1,7 +1,7 @@
+import { Heart } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { Heart } from 'lucide-react';
 import { api } from '../../api/client';
 import { setSession } from '../../store';
 import { Button } from '../../components/ui/button';
@@ -60,7 +60,7 @@ export const Login = () => {
         <Brand />
         <div className="max-w-[560px]">
           <ConvergeMap className="w-full max-w-[520px] -ml-3" />
-          <h1 className="mt-6 text-[34px] font-semibold leading-[1.15] tracking-[-0.02em] text-balance">Every call, every responder, every defibrillator on one screen.</h1>
+          <h1 className="mt-6 text-[38px] font-extrabold leading-[1.08] tracking-[-0.03em] text-balance">Every call, every responder, every defibrillator on one screen.</h1>
           <p className="mt-3 text-[15px] text-white/75 max-w-[46ch] text-pretty">Live SOS intake, responder tracking and patient handover for dispatch centres and hospital coordinators.</p>
         </div>
         <p className="text-[13px] text-white/55">Authorised operators only. Every action is recorded in the ledger.</p>
@@ -69,7 +69,7 @@ export const Login = () => {
       <section className="flex items-center justify-center p-6 lg:p-10">
         <div className="w-full max-w-[400px] rounded-[20px] bg-background p-8 shadow-[0_30px_80px_-30px_hsl(176_60%_6%/0.6)]">
           <div className="lg:hidden mb-6"><Brand dark /></div>
-          <h2 className="text-[24px] font-semibold tracking-[-0.015em]">Sign in</h2>
+          <h2 className="text-[26px] font-extrabold tracking-[-0.025em]">Sign in</h2>
           <p className="text-[14px] text-muted-foreground mt-1 mb-7">Use your dispatcher or administrator account.</p>
 
           <form onSubmit={submit} className="space-y-4">
@@ -114,10 +114,10 @@ export const Login = () => {
 const Brand = ({ dark = false }: { dark?: boolean }) => (
   <div className="flex items-center gap-2.5">
     <div className="w-9 h-9 rounded-xl bg-[hsl(var(--teal))] grid place-items-center text-white">
-      <Heart size={17} fill="currentColor" strokeWidth={0} />
+      <Heart size={20} weight="fill" />
     </div>
     <div className="leading-none">
-      <div className={`text-[19px] font-semibold tracking-tight ${dark ? 'text-foreground' : 'text-white'}`}>Vitalis</div>
+      <div className={`text-[20px] font-extrabold tracking-[-0.02em] ${dark ? 'text-foreground' : 'text-white'}`}>Vitalis</div>
       <div className={`text-[12px] mt-0.5 ${dark ? 'text-muted-foreground' : 'text-white/65'}`}>Command</div>
     </div>
   </div>

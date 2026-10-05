@@ -1,25 +1,26 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-  Activity, Plane, Boxes, BarChart3, LogOut, Heart, Users, Stethoscope, Zap,
-} from 'lucide-react';
+  Pulse, Lightning, Drone, Cube, ChartBar, SignOut, Heart, UsersThree, Stethoscope, type Icon,
+} from '@phosphor-icons/react';
+import { Tile } from '../ui/tile';
 import { ReactNode, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { RootState, logout } from '../../store';
 import { socket } from '../../realtime/socket';
 import { cn } from '../../lib/utils';
 
-type NavItem = { to: string; label: string; icon: typeof Activity; end?: boolean };
+type NavItem = { to: string; label: string; icon: Icon; end?: boolean };
 
 const baseNav: NavItem[] = [
-  { to: '/command', label: 'Live operations', icon: Activity, end: true },
-  { to: '/command/aeds', label: 'Defibrillators', icon: Zap },
-  { to: '/command/drones', label: 'Drones', icon: Plane },
-  { to: '/command/ledger', label: 'Ledger', icon: Boxes },
-  { to: '/command/analytics', label: 'Analytics', icon: BarChart3 },
+  { to: '/command', label: 'Live operations', icon: Pulse, end: true },
+  { to: '/command/aeds', label: 'Defibrillators', icon: Lightning },
+  { to: '/command/drones', label: 'Drones', icon: Drone },
+  { to: '/command/ledger', label: 'Ledger', icon: Cube },
+  { to: '/command/analytics', label: 'Analytics', icon: ChartBar },
 ];
 const adminNav: NavItem[] = [
-  { to: '/command/admin/users', label: 'Users', icon: Users },
+  { to: '/command/admin/users', label: 'Users', icon: UsersThree },
   { to: '/command/admin/doctor-applications', label: 'Doctor review', icon: Stethoscope },
 ];
 
@@ -69,11 +70,11 @@ export const CommandShell = () => {
     // The green frame (sidebar + top bar) with the work sheet laid on it.
     <div className="h-screen grid grid-rows-[56px_1fr] grid-cols-[232px_1fr] frame-texture text-sidebar-foreground">
       <div className="flex items-center gap-2.5 px-5">
-        <div className="w-8 h-8 rounded-lg bg-[hsl(var(--teal))] grid place-items-center text-white">
-          <Heart size={16} fill="currentColor" strokeWidth={0} />
+        <div className="w-9 h-9 rounded-xl bg-[hsl(var(--teal))] grid place-items-center text-white shadow-[0_6px_16px_-6px_hsl(173_79%_37%/0.8)]">
+          <Heart size={20} weight="fill" />
         </div>
         <div className="leading-none">
-          <div className="text-[17px] font-semibold tracking-tight text-white">Vitalis</div>
+          <div className="text-[18px] font-extrabold tracking-[-0.02em] text-white">Vitalis</div>
           <div className="text-[12px] text-sidebar-foreground/65 mt-0.5">Command</div>
         </div>
       </div>
@@ -104,38 +105,43 @@ export const CommandShell = () => {
             aria-label="Sign out"
             title="Sign out"
           >
-            <LogOut size={16} />
+            <SignOut size={18} weight="bold" />
           </button>
         </div>
       </header>
 
-      <aside className="flex flex-col min-h-0 pt-8">
-        <nav className="flex flex-col gap-1 pl-3">
-          {items.map(({ to, label, icon: Icon, end }) => (
+      <aside className="flex flex-col min-h-0 pt-4">
+        <nav className="flex flex-col gap-1 px-3">
+          {items.map(({ to, label, icon: I, end }) => (
             <NavLink
               key={to}
               to={to}
               end={end}
               className={({ isActive }) => cn(
-                'relative flex items-center gap-3 pl-3 pr-4 h-10 text-[14px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
+                'flex items-center gap-3 pl-2 pr-3 h-11 rounded-xl text-[14px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
                 isActive
-                  // The open folder tab: the sheet's colour, joined to it.
-                  ? 'bg-background text-primary font-medium rounded-l-xl tab-join'
-                  : 'text-sidebar-foreground/80 hover:text-white hover:bg-white/[0.07] rounded-xl mr-3',
+                  ? 'bg-white text-primary font-semibold shadow-[0_8px_20px_-10px_hsl(175_80%_5%/0.6)]'
+                  : 'text-sidebar-foreground/85 hover:text-white hover:bg-white/[0.08]',
               )}
             >
-              <Icon size={17} strokeWidth={2} />
-              <span className="truncate">{label}</span>
+              {({ isActive }) => (
+                <>
+                  <span className={cn('w-8 h-8 grid place-items-center rounded-[10px]', isActive ? 'bg-[hsl(173_55%_92%)] text-primary' : 'text-sidebar-foreground/85')}>
+                    <I size={19} weight={isActive ? 'duotone' : 'regular'} />
+                  </span>
+                  <span className="truncate">{label}</span>
+                </>
+              )}
             </NavLink>
           ))}
         </nav>
         <div className="mt-auto px-5 py-5 text-[12px] leading-relaxed text-sidebar-foreground/55">
           Dispatch network · Tirana
-          <div className="num">41.3275° N, 19.8187° E</div>
+          <div>41.3275° N, 19.8187° E</div>
         </div>
       </aside>
 
-      <main className="min-w-0 min-h-0 overflow-auto bg-background rounded-tl-[20px]">
+      <main className="min-w-0 min-h-0 overflow-auto bg-background">
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}
@@ -153,13 +159,19 @@ export const CommandShell = () => {
   );
 };
 
-/** Page title row: a plain title and one line saying what the page is for. */
-export const PageHeader = ({ title, subtitle, actions }: { title: string; subtitle?: string; actions?: ReactNode }) => (
-  <header className="flex items-end justify-between gap-4 px-6 pt-7 pb-5">
-    <div>
-      <h1 className="text-[26px] leading-tight font-semibold tracking-[-0.015em]">{title}</h1>
-      {subtitle && <p className="mt-1 text-[14px] text-muted-foreground">{subtitle}</p>}
+/**
+ * Page header on the green band, like the phone app: an icon tile, a heavy white title and one
+ * line on what the page is for. The first block after it overlaps the band's lower edge.
+ */
+export const PageHeader = ({ title, subtitle, actions, icon }: { title: string; subtitle?: string; actions?: ReactNode; icon?: Icon }) => (
+  <header className="page-band frame-texture flex items-start justify-between gap-4 px-6 pt-7 pb-[4.75rem]">
+    <div className="flex items-center gap-4 min-w-0">
+      {icon && <Tile icon={icon} tone="band" size="lg" />}
+      <div className="min-w-0">
+        <h1 className="text-[28px] leading-[1.1] font-extrabold tracking-[-0.025em] text-white">{title}</h1>
+        {subtitle && <p className="mt-1 text-[14px] text-white/75">{subtitle}</p>}
+      </div>
     </div>
-    {actions && <div className="flex items-center gap-2">{actions}</div>}
+    {actions && <div className="relative z-10 flex items-center gap-2">{actions}</div>}
   </header>
 );

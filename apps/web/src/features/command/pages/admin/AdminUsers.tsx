@@ -1,3 +1,6 @@
+import { FirstAidKit, Headset, ShieldStar, Stethoscope, User, UsersThree, type Icon } from '@phosphor-icons/react';
+import type { TileTone } from '../../../../components/ui/tile';
+import { Chip, Panel, Row } from '../../../../components/ui/list';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../../../api/client';
@@ -5,7 +8,6 @@ import { PageHeader } from '../../../../components/layout/CommandShell';
 import { Button } from '../../../../components/ui/button';
 import { Input } from '../../../../components/ui/input';
 import { Label } from '../../../../components/ui/label';
-import { Card, CardContent } from '../../../../components/ui/card';
 import { pushToast } from '../../../../components/toast/toast';
 
 interface AdminUser {
@@ -15,6 +17,15 @@ interface AdminUser {
   role: string;
   createdAt: string;
 }
+
+const ROLE_TILE: Record<string, [Icon, TileTone]> = {
+  admin: [ShieldStar, 'violet'],
+  dispatcher: [Headset, 'teal'],
+  doctor: [Stethoscope, 'blue'],
+  nurse: [FirstAidKit, 'blue'],
+  student_responder: [FirstAidKit, 'amber'],
+  citizen: [User, 'slate'],
+};
 
 export const AdminUsers = () => {
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -65,11 +76,10 @@ export const AdminUsers = () => {
 
   return (
     <>
-      <PageHeader title="User management" subtitle="Create dispatcher accounts and manage existing users." />
-      <div className="p-8 space-y-6">
-        <Card>
-          <CardContent className="p-6 space-y-4">
-            <h2 className="text-lg font-bold">Create dispatcher</h2>
+      <PageHeader icon={UsersThree} title="User management" subtitle="Create dispatcher accounts and manage existing users." />
+      <div className="p-6 space-y-5">
+        <Panel title="New dispatcher account">
+          <div className="p-5">
             <form onSubmit={createDispatcher} className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="fn">First name</Label>
@@ -88,36 +98,31 @@ export const AdminUsers = () => {
                 <Input id="pw" type="password" minLength={8} value={password} onChange={e => setPassword(e.target.value)} required />
               </div>
               <div className="col-span-2">
-                <Button type="submit" loading={creating}>Create dispatcher</Button>
+                <Button type="submit" loading={creating} className="rounded-lg">Create dispatcher</Button>
               </div>
             </form>
-          </CardContent>
-        </Card>
+          </div>
+        </Panel>
 
-        <Card>
-          <CardContent className="p-6 space-y-3">
-            <h2 className="text-lg font-bold">All users ({users.length})</h2>
-            {loading ? <p className="text-sm text-muted-foreground">Loading…</p> : null}
-            <div className="space-y-2">
-              {users.map(u => (
-                <div key={u._id} className="flex items-center justify-between gap-4 border border-border rounded-lg px-4 py-3 hover:bg-muted/40 transition">
-                  <Link to={`/command/admin/users/${u._id}`} className="flex-1 min-w-0">
-                    <div className="font-medium">{u.name} <span className="text-xs text-muted-foreground ml-2">{u.role}</span></div>
-                    <div className="text-xs text-muted-foreground">{u.email}</div>
-                  </Link>
-                  <div className="flex gap-2 shrink-0">
-                    <Link to={`/command/admin/users/${u._id}`}>
-                      <Button variant="outline" size="sm">View</Button>
-                    </Link>
-                    {u.role !== 'admin' ? (
-                      <Button variant="outline" size="sm" onClick={() => remove(u._id)}>Remove</Button>
-                    ) : null}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <Panel title={`All users (${users.length})`} aside={loading ? <span className="text-sm text-muted-foreground">Loading…</span> : null}>
+          {users.map(u => {
+            const [icon, tone] = ROLE_TILE[u.role] ?? ROLE_TILE.citizen;
+            return (
+              <Row
+                key={u._id}
+                icon={icon}
+                tone={tone}
+                title={<Link to={`/command/admin/users/${u._id}`} className="hover:underline underline-offset-2">{u.name}</Link>}
+                summary={u.email}
+                right={<>
+                  <Chip tone={u.role === 'admin' || u.role === 'dispatcher' ? 'teal' : 'muted'}><span className="capitalize">{u.role.replace('_', ' ')}</span></Chip>
+                  <Link to={`/command/admin/users/${u._id}`}><Button variant="outline" size="sm" className="rounded-lg">View</Button></Link>
+                  {u.role !== 'admin' ? <Button variant="ghost" size="sm" className="rounded-lg text-muted-foreground hover:text-destructive" onClick={() => remove(u._id)}>Remove</Button> : null}
+                </>}
+              />
+            );
+          })}
+        </Panel>
       </div>
     </>
   );
