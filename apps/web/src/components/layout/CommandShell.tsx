@@ -1,7 +1,7 @@
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-  Siren, FirstAidKit, ChartBar, SignOut, Heart, UsersThree, type Icon,
+  Siren, FirstAidKit, ChartBar, FilePdf, SignOut, Heart, UsersThree, type Icon,
 } from '@phosphor-icons/react';
 import { Tile } from '../ui/tile';
 import { Digits } from '../ui/digits';
@@ -12,6 +12,7 @@ import { BASE } from '../../lib/motion';
 import { RootState, logout } from '../../store';
 import { socket } from '../../realtime/socket';
 import { cn } from '../../lib/utils';
+import { exportPdf } from '../../lib/exportPdf';
 
 /** Four sections named for what operators do; a section with several pages shows them as tabs. */
 type Section = { label: string; icon: Icon; to: string; tabs?: { to: string; label: string }[] };
@@ -77,8 +78,8 @@ export const CommandShell = () => {
 
   return (
     // The green frame (sidebar + top bar) with the work sheet laid on it.
-    <div className="h-screen grid grid-rows-[56px_1fr] grid-cols-[232px_1fr] frame-texture text-sidebar-foreground">
-      <div className="flex items-center gap-2.5 px-5">
+    <div className="h-screen grid grid-rows-[56px_1fr] grid-cols-[232px_1fr] frame-texture text-sidebar-foreground print:block print:h-auto">
+      <div className="flex items-center gap-2.5 px-5 print:hidden">
         <div className="w-9 h-9 rounded-xl bg-[hsl(var(--teal))] grid place-items-center text-white shadow-[0_6px_16px_-6px_hsl(173_79%_37%/0.8)]">
           <Heart size={20} weight="fill" />
         </div>
@@ -88,7 +89,7 @@ export const CommandShell = () => {
         </div>
       </div>
 
-      <header className="flex items-center gap-6 pr-5">
+      <header className="flex items-center gap-6 pr-5 print:hidden">
         {/* The dashboard has its own large clock and link light; other pages get the small ones. */}
         {location.pathname !== '/command' && <>
         <div
@@ -122,7 +123,7 @@ export const CommandShell = () => {
         </div>
       </header>
 
-      <aside className="flex flex-col min-h-0 pt-4">
+      <aside className="flex flex-col min-h-0 pt-4 print:hidden">
         <nav className="flex flex-col gap-1 px-3">
           {SECTIONS.map(section => {
             const { to, label, icon: I } = section;
@@ -161,7 +162,7 @@ export const CommandShell = () => {
         </div>
       </aside>
 
-      <main className="min-w-0 min-h-0 overflow-auto bg-background">
+      <main className="min-w-0 min-h-0 overflow-auto bg-background print:overflow-visible print:bg-white">
         {/* Each page builds itself in (index.css: entrance choreography); keyed so it replays per visit. */}
         <div key={location.pathname} className="text-foreground">
           <Outlet />
@@ -186,10 +187,12 @@ export const PageHeader = ({ title, subtitle, actions, icon }: { title: string; 
           <div className="min-w-0">
             <h1 className="text-[28px] leading-[1.1] font-extrabold tracking-[-0.025em] text-white">{title}</h1>
             {subtitle && <p className="mt-1 text-[14px] text-white/75">{subtitle}</p>}
+            {/* On paper: where and when this came from. */}
+            <p className="hidden print:block mt-1 text-[12px] text-white/75">Vitalis Command · exported {new Date().toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
           </div>
         </div>
         {tabs && (
-          <nav className="relative z-10 mt-5 inline-flex gap-1 rounded-full bg-white/[0.1] p-1" aria-label="Pages in this section">
+          <nav className="print:hidden relative z-10 mt-5 inline-flex gap-1 rounded-full bg-white/[0.1] p-1" aria-label="Pages in this section">
             {tabs.map(t => {
               const on = pathname.startsWith(t.to);
               return (
@@ -203,7 +206,18 @@ export const PageHeader = ({ title, subtitle, actions, icon }: { title: string; 
           </nav>
         )}
       </div>
-      {actions && <div className="relative z-10 flex items-center gap-2">{actions}</div>}
+      {actions && <div className="relative z-10 flex items-center gap-2 print:hidden">{actions}</div>}
     </header>
   );
 };
+
+/**
+ * Header button that saves the page as a PDF report. `name` goes into the suggested file name;
+ * `prepare` runs first (e.g. checking the call log so the paper says whether it is intact).
+ */
+export const ExportPdfButton = ({ name, prepare }: { name: string; prepare?: () => Promise<unknown> }) => (
+  <button onClick={async () => { await prepare?.(); await new Promise(r => setTimeout(r, 150)); await exportPdf(name); }}
+    className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-white text-primary text-sm font-semibold hover:bg-white/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60">
+    <FilePdf size={18} weight="bold" /> Export PDF
+  </button>
+);

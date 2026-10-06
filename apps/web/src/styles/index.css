@@ -159,3 +159,16 @@
 
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Reports exported as PDF (lib/exportPdf.ts): A4 landscape, colours kept, nothing split across pages. */
+@media print {
+  @page { size: A4 landscape; margin: 10mm; }
+  html, body, #root { height: auto; overflow: visible; }
+  html, body { background: #fff; }
+  /* Charts were measured at screen width; let their SVG (it has a viewBox) scale to the paper. */
+  .recharts-responsive-container, .recharts-responsive-container > div, .recharts-wrapper { width: 100% !important; height: 100% !important; }
+  .recharts-surface { width: 100% !important; height: 100% !important; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .rise, .rise-side, .page-band > *, .page-band + * > *, .stagger > * { animation: none; }
+  section, .recharts-wrapper { break-inside: avoid; }
+}

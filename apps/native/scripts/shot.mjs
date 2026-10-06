@@ -3,7 +3,7 @@
  *   node scripts/shot.mjs /profile profile 1600          → .expo/shots/profile.png (390 wide, 1600 tall)
  *   CLICK="Ilaçet" node scripts/shot.mjs /profile open   → taps the element with that exact text first
  * Env: EMAIL/PASS (default demo account), APP, API, WAIT (ms), GEO="lat,lng" (fake location),
- *      WIDTH (desktop width, e.g. 1440 for the web console).
+ *      WIDTH (desktop width, e.g. 1440 for the web console), PDF=1 (save the printed page as .pdf).
  */
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -57,8 +57,14 @@ if (process.env.SCROLL) {
   await send('Runtime.evaluate', { expression: `[...document.querySelectorAll('*')].filter((e) => e.scrollHeight > e.clientHeight + 4 && getComputedStyle(e).overflowY !== 'visible').forEach((e) => { e.scrollTop = e.scrollHeight; })` });
   await sleep(1200);
 }
-const shot = await send('Page.captureScreenshot', { format: 'png' });
 mkdirSync('.expo/shots', { recursive: true });
-writeFileSync(`.expo/shots/${name}.png`, Buffer.from(shot.result.data, 'base64'));
+if (process.env.PDF) {
+  // What "Export PDF" produces: the page through its print styles.
+  const pdf = await send('Page.printToPDF', { preferCSSPageSize: true, printBackground: true });
+  writeFileSync(`.expo/shots/${name}.pdf`, Buffer.from(pdf.result.data, 'base64'));
+} else {
+  const shot = await send('Page.captureScreenshot', { format: 'png' });
+  writeFileSync(`.expo/shots/${name}.png`, Buffer.from(shot.result.data, 'base64'));
+}
 chrome.kill();
 process.exit(0);

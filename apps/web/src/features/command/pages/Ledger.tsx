@@ -7,7 +7,7 @@ import { Card, CardHeader, CardContent } from '../../../components/ui/card';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { Skeleton } from '../../../components/ui/skeleton';
-import { PageHeader } from '../../../components/layout/CommandShell';
+import { ExportPdfButton, PageHeader } from '../../../components/layout/CommandShell';
 import { pushToast } from '../../../components/toast/toast';
 
 interface Block {
@@ -64,6 +64,7 @@ export const Ledger = () => {
       <PageHeader icon={SealCheck}
         title="Call log"
         subtitle="Every step of every call, sealed so nobody can change it afterwards."
+        actions={<ExportPdfButton name="call log" prepare={runVerify} />}
       />
       <div className="p-6 max-w-5xl space-y-5">
         {/* Chain status: is the record intact, and how big is it. */}
@@ -78,7 +79,7 @@ export const Ledger = () => {
               {blocks.length ? <> Last entry <span>{new Date(blocks[blocks.length - 1].timestamp).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>.</> : null}
             </div>
           </div>
-          <Button loading={loading} onClick={runVerify} className="rounded-xl h-10 px-5">{verify ? 'Check again' : 'Check the log'}</Button>
+          <Button loading={loading} onClick={runVerify} className="rounded-xl h-10 px-5 print:hidden">{verify ? 'Check again' : 'Check the log'}</Button>
         </section>
         <Panel title={`${blocks.length} ${blocks.length === 1 ? 'entry' : 'entries'}`} aside={<span className="text-[13px] text-muted-foreground">Newest last · entries can be added, never edited</span>}>
           {loadingBlocks && Array.from({ length: 5 }).map((_, i) => <div key={i} className="px-5 py-4"><Skeleton className="h-10" /></div>)}

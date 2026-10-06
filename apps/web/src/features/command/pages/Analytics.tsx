@@ -10,7 +10,7 @@ import {
 import { api } from '../../../api/client';
 import { Card, CardHeader, CardContent } from '../../../components/ui/card';
 import { KPI } from '../../../components/widgets/KPI';
-import { PageHeader } from '../../../components/layout/CommandShell';
+import { ExportPdfButton, PageHeader } from '../../../components/layout/CommandShell';
 
 interface Kpis { total: number; active: number; resolvedToday: number; byType: { _id: string; count: number }[]; }
 interface TimePoint { date: string; count: number; resolved: number; }
@@ -55,17 +55,17 @@ export const Analytics = () => {
 
   return (
     <>
-      <PageHeader icon={ChartLineUp} title="Reports" subtitle="How many calls came in, and how fast help arrived." />
+      <PageHeader icon={ChartLineUp} title="Reports" subtitle="How many calls came in, and how fast help arrived." actions={<ExportPdfButton name="report" />} />
       <div className="p-6 space-y-5">
-        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 stagger">
+        <div className="grid grid-cols-2 xl:grid-cols-4 print:grid-cols-4 gap-4 stagger">
           <KPI icon={Siren} iconTone="deep" label="Calls, all time" value={kpis?.total ?? 0} />
           <KPI icon={Pulse} iconTone={kpis?.active ? 'sos' : 'teal'} label="Active now" value={kpis?.active ?? 0} tone={kpis?.active ? 'rose' : 'teal'} />
           <KPI icon={CheckCircle} iconTone="teal" label="Closed in the last 24 h" value={kpis?.resolvedToday ?? 0} />
           <KPI icon={Gauge} iconTone="mint" label="Calls closed" value={`${perf?.resolutionRate ?? 0}%`} />
         </div>
 
-        <div className="grid xl:grid-cols-3 gap-5 stagger" style={{ ['--base' as string]: '120ms' }}>
-          <ChartPanel icon={ChartLineUp} title="Calls, last 14 days" note="Received and closed per day" className="xl:col-span-2">
+        <div className="grid xl:grid-cols-3 print:grid-cols-3 gap-5 stagger" style={{ ['--base' as string]: '120ms' }}>
+          <ChartPanel icon={ChartLineUp} title="Calls, last 14 days" note="Received and closed per day" className="xl:col-span-2 print:col-span-2">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={series} margin={{ top: 10, right: 16, left: -12, bottom: 0 }}>
                 <defs>
@@ -115,7 +115,7 @@ export const Analytics = () => {
           </ChartPanel>
         </div>
 
-        <div className="grid xl:grid-cols-3 gap-5 stagger" style={{ ['--base' as string]: '240ms' }}>
+        <div className="grid xl:grid-cols-3 print:grid-cols-3 gap-5 stagger" style={{ ['--base' as string]: '240ms' }}>
           <ChartPanel icon={Timer} title="Arrival time" note="Across closed calls">
             <div className="h-full flex flex-col justify-center gap-5">
               <div>
@@ -134,7 +134,7 @@ export const Analytics = () => {
             </div>
           </ChartPanel>
 
-          <ChartPanel icon={UsersThree} title="Most calls, last 90 days" note="People who sent the most SOS calls" className="xl:col-span-2">
+          <ChartPanel icon={UsersThree} title="Most calls, last 90 days" note="People who sent the most SOS calls" className="xl:col-span-2 print:col-span-2">
             {top.length ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={top} layout="vertical" margin={{ top: 4, right: 24, left: 8, bottom: 0 }}>
