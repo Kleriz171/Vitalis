@@ -4,13 +4,12 @@ import { useParams, Link } from 'react-router-dom';
 import { api } from '../../../../api/client';
 import { KPI } from '../../../../components/widgets/KPI';
 import { PageHeader } from '../../../../components/layout/CommandShell';
-import { Card, CardContent, CardHeader } from '../../../../components/ui/card';
-import { Badge } from '../../../../components/ui/badge';
+import { Panel, Row as ListRow, Chip } from '../../../../components/ui/list';
 
 interface UserDetail {
   user: {
     _id: string;
-    email: string;
+    email?: string;
     name: string;
     firstName?: string;
     lastName?: string;
@@ -58,7 +57,7 @@ export const AdminUserDetail = () => {
     <>
       <PageHeader icon={IdentificationCard}
         title={u.name}
-        subtitle={`${u.email} · ${u.role === 'eso' ? 'Emergency services operator' : u.role.replace('_', ' ')}`}
+        subtitle={`${u.phone ?? u.email ?? 'No contact'} · ${u.role === 'eso' ? 'Emergency services operator' : u.role.replace('_', ' ')}`}
         actions={
           <Link to="/command/admin/users" className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-white/[0.12] text-white text-sm font-medium hover:bg-white/[0.2] transition-colors">
             <ArrowLeft size={14} /> Back to users
@@ -67,17 +66,14 @@ export const AdminUserDetail = () => {
       />
       <div className="p-6 space-y-5">
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 stagger">
-          <KPI icon={Drop} iconTone="sos" label="Blood type" value={u.bloodType ?? '—'} />
+          <KPI icon={Drop} iconTone="teal" label="Blood type" value={u.bloodType ?? '—'} />
           <KPI icon={User} iconTone="teal" label="Age" value={u.age != null ? `${u.age}` : '—'} />
           <KPI icon={Certificate} iconTone="mint" label="Active certificates" value={activeCerts.length} />
           <KPI icon={Siren} iconTone="deep" label="SOS calls sent" value={data.emergencies.length} />
         </div>
 
-        <Card>
-          <CardHeader className="px-5 py-4 border-b">
-            <div className="font-semibold flex items-center gap-2"><Heart size={16} /> Profile</div>
-          </CardHeader>
-          <CardContent className="p-5 grid md:grid-cols-3 gap-4 text-sm">
+        <Section title="Profile" icon={<Heart size={18} weight="duotone" />} empty={false}>
+          <div className="grid md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
             <Field label="First name" value={u.firstName ?? '—'} />
             <Field label="Last name" value={u.lastName ?? '—'} />
             <Field label="Phone" value={u.phone ?? '—'} />
@@ -87,8 +83,8 @@ export const AdminUserDetail = () => {
             <Field label="Joined" value={fmt(u.createdAt)} />
             <Field label="Illnesses (profile)" value={(u.illnesses ?? []).join(', ') || '—'} />
             <Field label="Disabilities (profile)" value={(u.disabilities ?? []).join(', ') || '—'} />
-          </CardContent>
-        </Card>
+          </div>
+        </Section>
 
         <div className="grid lg:grid-cols-2 gap-4">
           <Section title="Medications" icon={<Pill size={18} weight="duotone" />} empty={!data.medications.length}>
@@ -99,7 +95,7 @@ export const AdminUserDetail = () => {
 
           <Section title="Allergies" icon={<Warning size={18} weight="duotone" />} empty={!data.allergies.length}>
             {data.allergies.map(a => (
-              <Row key={a._id} title={a.allergen} badge={<Badge variant={a.severity === 'severe' ? 'destructive' : 'outline'}>{a.severity}</Badge>} />
+              <Row key={a._id} title={a.allergen} badge={<Chip tone={a.severity === 'severe' ? 'sos' : 'muted'}>{a.severity}</Chip>} />
             ))}
           </Section>
 
@@ -128,64 +124,29 @@ export const AdminUserDetail = () => {
           </Section>
         </div>
 
-        <Card>
-          <CardHeader className="px-5 py-4 border-b">
-            <div className="font-semibold flex items-center gap-2"><Certificate size={16} /> Training certifications ({data.certifications.length})</div>
-          </CardHeader>
-          <CardContent className="p-5">
-            {data.certifications.length ? (
-              <div className="space-y-2">
-                {data.certifications.map(c => {
-                  const active = new Date(c.expiresAt).getTime() > Date.now();
-                  return (
-                    <div key={c._id} className="flex items-center justify-between border border-border rounded-lg px-4 py-3">
-                      <div>
-                        <div className="font-medium">{c.badgeLabel}</div>
-                        <div className="text-xs text-muted-foreground">Score {c.score}% · Issued {fmt(c.issuedAt)} · Expires {fmt(c.expiresAt)}</div>
-                      </div>
-                      <Badge variant={active ? 'default' : 'outline'}>{active ? 'Active' : 'Expired'}</Badge>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : <p className="text-sm text-muted-foreground">No certifications earned.</p>}
-          </CardContent>
-        </Card>
+        <Panel title={`Training certificates · ${data.certifications.length}`}>
+          {data.certifications.length ? data.certifications.map(c => {
+            const active = new Date(c.expiresAt).getTime() > Date.now();
+            return (
+              <ListRow key={c._id} icon={Certificate} tone={active ? 'mint' : 'teal'} title={c.badgeLabel}
+                summary={`Score ${c.score}% · Issued ${fmt(c.issuedAt)} · Expires ${fmt(c.expiresAt)}`}
+                right={<Chip tone={active ? 'teal' : 'muted'}>{active ? 'Active' : 'Expired'}</Chip>} />
+            );
+          }) : <p className="px-5 py-4 text-sm text-muted-foreground">No certificates earned.</p>}
+        </Panel>
 
-        <Card>
-          <CardHeader className="px-5 py-4 border-b">
-            <div className="font-semibold">SOS / emergency history ({data.emergencies.length})</div>
-          </CardHeader>
-          <CardContent className="p-5">
-            {data.emergencies.length ? (
-              <div className="space-y-2">
-                {data.emergencies.map(e => (
-                  <div key={e._id} className="border border-border rounded-lg px-4 py-3">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="font-medium capitalize">{e.type.replace('_', ' ')} <span className="text-xs text-muted-foreground ml-2">P{e.priority}</span></div>
-                      <Badge variant={e.status === 'resolved' ? 'outline' : 'destructive'}>{e.status.replace('_', ' ')}</Badge>
-                    </div>
-                    {e.description ? <div className="text-xs text-muted-foreground mt-1">{e.description}</div> : null}
-                    <div className="text-xs text-muted-foreground mt-1">Triggered {fmt(e.createdAt)}{e.etaSeconds ? ` · ETA ${e.etaSeconds}s` : ''}</div>
-                  </div>
-                ))}
-              </div>
-            ) : <p className="text-sm text-muted-foreground">No emergency history.</p>}
-          </CardContent>
-        </Card>
+        <Panel title={`SOS history · ${data.emergencies.length}`}>
+          {data.emergencies.length ? data.emergencies.map(e => (
+            <ListRow key={e._id} icon={Siren} tone={e.status === 'resolved' ? 'teal' : 'sos'}
+              title={<span className="capitalize">{e.type.replace('_', ' ')} <span className="text-xs font-medium text-muted-foreground ml-1">P{e.priority}</span></span>}
+              summary={[e.description, `Sent ${fmt(e.createdAt)}`, e.etaSeconds ? `ETA ${Math.round(e.etaSeconds / 60)} min` : null].filter(Boolean).join(' · ')}
+              right={<Chip tone={e.status === 'resolved' ? 'muted' : 'sos'}>{e.status.replace('_', ' ')}</Chip>} />
+          )) : <p className="px-5 py-4 text-sm text-muted-foreground">No SOS calls.</p>}
+        </Panel>
       </div>
     </>
   );
 };
-
-const Kpi = ({ label, value, accent }: { label: string; value: number | string; accent?: string }) => (
-  <Card className="gap-0 py-0">
-    <CardContent className="p-4">
-      <div className="text-[11px] text-muted-foreground">{label}</div>
-      <div className={`text-2xl font-bold mt-1 ${accent ?? 'text-foreground'}`}>{value}</div>
-    </CardContent>
-  </Card>
-);
 
 const Field = ({ label, value }: { label: string; value: string }) => (
   <div>
