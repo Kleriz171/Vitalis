@@ -1,4 +1,5 @@
-import { LockSimple, LockSimpleOpen, MagnifyingGlass, Ambulance, Bandaids, Certificate, Drop, FirstAid, Heartbeat, Hourglass, Lightning, Pill, Pulse, Siren, PersonSimpleRun, Timer, Warning, X, type Icon } from '@phosphor-icons/react';
+import { LockSimple, LockSimpleOpen, MagnifyingGlass, Ambulance, Bandaids, Certificate, Drop, FirstAid, Heartbeat, Hourglass, Pill, Pulse, Siren, PersonSimpleRun, Timer, Warning, X, type Icon } from '@phosphor-icons/react';
+import { Defibrillator } from '../../../components/ui/aed-icon';
 import { Tile, type TileTone } from '../../../components/ui/tile';
 import { Digits } from '../../../components/ui/digits';
 import { NotchedPanel } from '../../../components/widgets/NotchedPanel';
@@ -169,7 +170,7 @@ const CallRow = memo(({ e, selected, onSelect, delay }: { e: Emergency; selected
       </div>
       {e.type === 'cardiac' && (
         <div className="mt-2 ml-[52px] flex items-center gap-1.5 text-[13px] text-muted-foreground">
-          <Lightning size={14} weight="duotone" className={e.aedRunner ? 'text-[hsl(var(--teal))]' : ''} />
+          <Defibrillator size={14} weight="duotone" className={e.aedRunner ? 'text-[hsl(var(--teal))]' : ''} />
           {e.aedStatus === 'delivered' ? 'Defibrillator at the patient' : e.aedStatus === 'has_aed' ? 'Defibrillator on the way' : e.aedRunner ? 'Runner fetching a defibrillator' : 'No defibrillator runner yet'}
         </div>
       )}

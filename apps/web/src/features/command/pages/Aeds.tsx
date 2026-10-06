@@ -1,4 +1,5 @@
-import { BatteryWarning, Clock, Lightning, MagnifyingGlass, ShieldCheck, ShieldWarning, Trash } from '@phosphor-icons/react';
+import { BatteryWarning, Clock, MagnifyingGlass, ShieldCheck, ShieldWarning, Trash } from '@phosphor-icons/react';
+import { Defibrillator } from '../../../components/ui/aed-icon';
 import { KPI } from '../../../components/widgets/KPI';
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { api } from '../../../api/client';
@@ -79,10 +80,10 @@ export const Aeds = () => {
 
   return (
     <>
-      <PageHeader icon={Lightning} title="Defibrillators" subtitle="Public defibrillators. Helpers are only sent to fetch the ones listed here." />
+      <PageHeader icon={Defibrillator} title="Defibrillators" subtitle="Public defibrillators. Helpers are only sent to fetch the ones listed here." />
       <div className="p-6 space-y-5">
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 stagger">
-          <KPI icon={Lightning} iconTone="deep" label="Registered defibrillators" value={counts.all} />
+          <KPI icon={Defibrillator} iconTone="deep" label="Registered defibrillators" value={counts.all} />
           <KPI icon={Clock} iconTone="teal" label="Open 24 hours" value={counts['24h']} />
           <KPI icon={ShieldWarning} iconTone={counts.unverified ? 'sos' : 'teal'} label="Waiting for review" value={counts.unverified} tone={counts.unverified ? 'rose' : 'teal'} />
           <KPI icon={BatteryWarning} iconTone={counts.expiring ? 'sos' : 'mint'} label="Pads expire within 60 days" value={counts.expiring} tone={counts.expiring ? 'rose' : 'teal'} />
@@ -120,7 +121,7 @@ export const Aeds = () => {
           {shown.map(a => (
             <Row
               key={a.id}
-              icon={Lightning}
+              icon={Defibrillator}
               tone={a.verified ? 'teal' : 'sos'}
               onClick={() => setFocus(a)}
               active={focus?.id === a.id}

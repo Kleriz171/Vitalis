@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { AED_BOLT, DEFIB_HEART_FILL } from '../ui/aed-icon';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -61,7 +62,7 @@ const aedIcon = (verified: boolean) =>
     className: '',
     iconSize: [22, 22],
     iconAnchor: [11, 11],
-    html: `<div style="width:22px;height:22px;border-radius:6px;display:grid;place-items:center;background:#fff;color:${verified ? GREEN : '#8A9694'};border:1.5px solid ${verified ? GREEN : '#B9C1BF'};box-shadow:0 1px 3px rgba(12,93,87,.25)"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>`,
+    html: `<div style="width:22px;height:22px;border-radius:6px;display:grid;place-items:center;background:#fff;color:${verified ? GREEN : '#8A9694'};border:1.5px solid ${verified ? GREEN : '#B9C1BF'};box-shadow:0 1px 3px rgba(12,93,87,.25)"><svg width="16" height="16" viewBox="0 0 256 256"><path fill="currentColor" d="${DEFIB_HEART_FILL}"/><path fill="#fff" d="${AED_BOLT}"/></svg></div>`,
   });
 
 interface Props {
