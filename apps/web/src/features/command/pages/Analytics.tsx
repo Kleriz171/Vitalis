@@ -11,8 +11,10 @@ import { api } from '../../../api/client';
 import { Card, CardHeader, CardContent } from '../../../components/ui/card';
 import { KPI } from '../../../components/widgets/KPI';
 import { ExportPdfButton, PageHeader } from '../../../components/layout/CommandShell';
+import { Figures, Notes, Report, ReportSection, Table } from '../../../components/print/Report';
+import { TYPE_LABEL } from '../../../components/map/MapView';
 
-interface Kpis { total: number; active: number; resolvedToday: number; byType: { _id: string; count: number }[]; }
+interface Kpis { total: number; active: number; resolvedToday: number; byType: { _id: string; count: number }[]; medianAcceptSeconds: number | null; acceptedUnderMinutePct: number | null; acceptedCount: number; }
 interface TimePoint { date: string; count: number; resolved: number; }
 interface Performance { total: number; resolved: number; resolutionRate: number; avgEtaSeconds: number; }
 interface TopCaller { userId: string; name: string; email: string; count: number; }
@@ -55,17 +57,18 @@ export const Analytics = () => {
 
   return (
     <>
+      <div className="print:hidden">
       <PageHeader icon={ChartLineUp} title="Reports" subtitle="How many calls came in, and how fast help arrived." actions={<ExportPdfButton name="report" />} />
       <div className="p-6 space-y-5">
-        <div className="grid grid-cols-2 xl:grid-cols-4 print:grid-cols-4 gap-4 stagger">
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 stagger">
           <KPI icon={Siren} iconTone="deep" label="Calls, all time" value={kpis?.total ?? 0} />
           <KPI icon={Pulse} iconTone={kpis?.active ? 'sos' : 'teal'} label="Active now" value={kpis?.active ?? 0} tone={kpis?.active ? 'rose' : 'teal'} />
           <KPI icon={CheckCircle} iconTone="teal" label="Closed in the last 24 h" value={kpis?.resolvedToday ?? 0} />
           <KPI icon={Gauge} iconTone="mint" label="Calls closed" value={`${perf?.resolutionRate ?? 0}%`} />
         </div>
 
-        <div className="grid xl:grid-cols-3 print:grid-cols-3 gap-5 stagger" style={{ ['--base' as string]: '120ms' }}>
-          <ChartPanel icon={ChartLineUp} title="Calls, last 14 days" note="Received and closed per day" className="xl:col-span-2 print:col-span-2">
+        <div className="grid xl:grid-cols-3 gap-5 stagger" style={{ ['--base' as string]: '120ms' }}>
+          <ChartPanel icon={ChartLineUp} title="Calls, last 14 days" note="Received and closed per day" className="xl:col-span-2">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={series} margin={{ top: 10, right: 16, left: -12, bottom: 0 }}>
                 <defs>
@@ -115,7 +118,7 @@ export const Analytics = () => {
           </ChartPanel>
         </div>
 
-        <div className="grid xl:grid-cols-3 print:grid-cols-3 gap-5 stagger" style={{ ['--base' as string]: '240ms' }}>
+        <div className="grid xl:grid-cols-3 gap-5 stagger" style={{ ['--base' as string]: '240ms' }}>
           <ChartPanel icon={Timer} title="Arrival time" note="Across closed calls">
             <div className="h-full flex flex-col justify-center gap-5">
               <div>
@@ -134,7 +137,7 @@ export const Analytics = () => {
             </div>
           </ChartPanel>
 
-          <ChartPanel icon={UsersThree} title="Most calls, last 90 days" note="People who sent the most SOS calls" className="xl:col-span-2 print:col-span-2">
+          <ChartPanel icon={UsersThree} title="Most calls, last 90 days" note="People who sent the most SOS calls" className="xl:col-span-2">
             {top.length ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={top} layout="vertical" margin={{ top: 4, right: 24, left: 8, bottom: 0 }}>
@@ -149,6 +152,8 @@ export const Analytics = () => {
           </ChartPanel>
         </div>
       </div>
+      </div>
+      <AnalyticsReport kpis={kpis} series={series} perf={perf} top={top} />
     </>
   );
 };
@@ -166,3 +171,63 @@ const ChartPanel = ({ icon, title, note, className, children }: { icon: Icon; ti
     <div className="flex-1 min-h-0 px-4 pb-4">{children}</div>
   </section>
 );
+
+/** Export PDF: the same figures as a report document. Charts have a fixed size so they fit the A4 page. */
+const AnalyticsReport = ({ kpis, series, perf, top }: { kpis: Kpis | null; series: TimePoint[]; perf: Performance | null; top: TopCaller[] }) => {
+  const byTypeTotal = (kpis?.byType ?? []).reduce((n, t) => n + t.count, 0);
+  const sum = (k: 'count' | 'resolved') => series.reduce((n, p) => n + p[k], 0);
+  const longDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  return (
+    <Report title="Operations report" details={[['Period', series.length ? `${longDate(series[0].date)} to ${longDate(series[series.length - 1].date)}` : 'Last 14 days']]}>
+      <ReportSection n={1} title="Summary">
+        <Figures items={[
+          ['Calls, all time', kpis?.total ?? 0],
+          ['Active when exported', kpis?.active ?? 0],
+          ['Closed in the last 24 hours', kpis?.resolvedToday ?? 0],
+          ['Calls closed', `${perf?.resolutionRate ?? 0}%`],
+          ['Average arrival time', fmtEta(perf?.avgEtaSeconds ?? 0)],
+        ]} />
+      </ReportSection>
+
+      <ReportSection n={2} title="Calls per day" note="SOS calls received and closed on each of the last 14 days." keep={false}>
+        <AreaChart width={660} height={150} data={series} margin={{ top: 6, right: 22, left: -24, bottom: 0 }}>
+          <CartesianGrid vertical={false} stroke="#E7E4DC" />
+          <XAxis dataKey="date" tickFormatter={fmtShortDate} tick={{ fontSize: 9, fill: '#55635F' }} tickLine={false} axisLine={false} interval={0} />
+          <YAxis allowDecimals={false} tick={{ fontSize: 9, fill: '#55635F' }} tickLine={false} axisLine={false} />
+          <Area type="monotone" dataKey="count" name="Received" stroke="#14A897" strokeWidth={2} fill="#14A897" fillOpacity={0.12} isAnimationActive={false} />
+          <Area type="monotone" dataKey="resolved" name="Closed" stroke="#0C5D57" strokeWidth={1.5} strokeDasharray="4 3" fill="transparent" isAnimationActive={false} />
+        </AreaChart>
+        <div className="mt-1 mb-3 flex gap-5 text-[8.5pt] text-[#55635F]">
+          <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-[#14A897]" />Received</span>
+          <span className="flex items-center gap-1.5"><span className="w-3 border-t-[1.5px] border-dashed border-[#0C5D57]" />Closed</span>
+        </div>
+        <Table head={['Day', 'Received', 'Closed']} right={[1, 2]}
+          rows={[...series.map(p => [longDate(p.date), p.count, p.resolved]), [<b key="t">Total</b>, <b key="c">{sum('count')}</b>, <b key="r">{sum('resolved')}</b>]]} />
+      </ReportSection>
+
+      <ReportSection n={3} title="Calls by type" note="All calls since Vitalis started.">
+        <Table head={['Type', 'Calls', 'Share']} right={[1, 2]} empty="No calls yet."
+          rows={(kpis?.byType ?? []).map(t => [TYPE_LABEL[t._id] ?? t._id.replace('_', ' '), t.count, `${Math.round((t.count / Math.max(byTypeTotal, 1)) * 100)}%`])} />
+      </ReportSection>
+
+      <ReportSection n={4} title="Response">
+        <Table head={['Measure', 'Value']} right={[1]} rows={[
+          ['Time until a responder accepted, median (last 24 hours)', kpis?.medianAcceptSeconds != null ? fmtEta(kpis.medianAcceptSeconds) : 'No accepted calls'],
+          ['Accepted within one minute (last 24 hours)', kpis?.acceptedUnderMinutePct != null ? `${kpis.acceptedUnderMinutePct}% of ${kpis.acceptedCount}` : 'No accepted calls'],
+          ['Average arrival time (all accepted calls)', fmtEta(perf?.avgEtaSeconds ?? 0)],
+          ['Calls closed (all time)', `${perf?.resolved ?? 0} of ${perf?.total ?? 0} (${perf?.resolutionRate ?? 0}%)`],
+        ]} />
+      </ReportSection>
+
+      <ReportSection n={5} title="People with the most calls" note="Last 90 days. Repeated calls from one person may need a follow-up.">
+        <Table head={['#', 'Name', 'Calls']} right={[2]} empty="No calls in the last 90 days."
+          rows={top.map((t, i) => [i + 1, t.name, t.count])} />
+      </ReportSection>
+
+      <Notes>
+        <p><b>How to read this report.</b> Figures come from Vitalis Command at the moment of export. A call is closed when a responder or operator marks it resolved.</p>
+        <p>Arrival time is the responder&apos;s estimated travel time at the moment they accepted, averaged over all accepted calls; it is an estimate, not a measured arrival. Time until accepted runs from the SOS to the first responder accepting.</p>
+      </Notes>
+    </Report>
+  );
+};

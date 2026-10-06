@@ -187,8 +187,6 @@ export const PageHeader = ({ title, subtitle, actions, icon }: { title: string; 
           <div className="min-w-0">
             <h1 className="text-[28px] leading-[1.1] font-extrabold tracking-[-0.025em] text-white">{title}</h1>
             {subtitle && <p className="mt-1 text-[14px] text-white/75">{subtitle}</p>}
-            {/* On paper: where and when this came from. */}
-            <p className="hidden print:block mt-1 text-[12px] text-white/75">Vitalis Command · exported {new Date().toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
           </div>
         </div>
         {tabs && (

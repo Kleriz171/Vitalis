@@ -7,7 +7,8 @@ import { blockchainService } from './blockchain.service';
 const r = Router();
 r.use(authRequired, allow('eso','doctor'));
 
-r.get('/', async (_req, res) => res.json(await BlockchainLog.find().sort('index').limit(200)));
+// The newest 200 entries, oldest first.
+r.get('/', async (_req, res) => res.json((await BlockchainLog.find().sort('-index').limit(200)).reverse()));
 r.get('/verify', async (_req, res) => res.json(await blockchainService.verifyChain()));
 
 export default r;
