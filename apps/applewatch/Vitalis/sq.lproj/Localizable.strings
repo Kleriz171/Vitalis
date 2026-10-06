@@ -11,7 +11,7 @@
 "Sending SOS in" = "SOS dërgohet pas";
 "Cancel" = "Anulo";
 "Are you OK?" = "Jeni mirë?";
-"Your heart rate is %lld bpm while resting." = "Rrahjet e zemrës janë %lld/min ndërsa pushoni.";
+"Resting heart rate %lld bpm" = "Rrahjet e zemrës në qetësi: %lld/min";
 "Your heart rate is %lld bpm while resting. No answer in 30 s sends an SOS." = "Rrahjet e zemrës janë %lld/min ndërsa pushoni. Pa përgjigje për 30 s dërgohet SOS.";
 "I'm OK" = "Jam mirë";
 "SOS in %lld s" = "SOS pas %lld s";

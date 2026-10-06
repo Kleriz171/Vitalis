@@ -410,11 +410,12 @@ struct AreYouOkView: View {
     var body: some View {
         let pending = Store.shared.alert
         VStack(spacing: 6) {
-            Image(systemName: "heart.fill").font(.system(size: 30)).foregroundStyle(Color.sos)
-                .symbolEffect(.pulse, options: .repeating)
+            // Beats at the rate that raised the alert.
+            BeatingHeart(bpm: pending?.bpm ?? 60).scaleEffect(1.25)
             Text("Are you OK?").font(.system(size: 20, weight: .heavy))
             if let pending {
-                Text("Your heart rate is \(pending.bpm) bpm while resting.").font(.system(size: 12)).multilineTextAlignment(.center).foregroundStyle(.secondary)
+                Text("Resting heart rate \(pending.bpm) bpm").font(.system(size: 12)).multilineTextAlignment(.center)
+                    .foregroundStyle(.white.opacity(0.75)).fixedSize(horizontal: false, vertical: true)
             }
             Button("I'm OK") {
                 HeartAlert.clear(quiet: 30 * 60)
@@ -520,6 +521,13 @@ struct StatusView: View {
             .padding(.horizontal, 2)
         }
         .task {
+            #if DEBUG
+            // Screenshots: `-demoStatus en_route` shows that step with a sample responder, no API.
+            if let s = UserDefaults.standard.string(forKey: "demoStatus") {
+                emergency = ["_id": "demo", "status": s, "etaSeconds": 240, "responder": ["name": "Arben K."]]
+                return
+            }
+            #endif
             while !Task.isCancelled {
                 do {
                     let res = try await Api.call("GET", "/watch/sos", key: Store.shared.key)
