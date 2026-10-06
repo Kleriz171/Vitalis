@@ -73,7 +73,7 @@ export const AdminDoctorApplications = () => {
 
   return (
     <>
-      <PageHeader icon={IdentificationCard} title="Doctor review" subtitle="Check credentials before a doctor appears in the app's directory." />
+      <PageHeader icon={IdentificationCard} title="Doctor applications" subtitle="Check a doctor's certificate before they appear in the app." />
       <div className="p-6 space-y-5">
         <div className="flex items-center gap-1 rounded-xl bg-card border border-border p-1 shadow-sm w-fit" role="tablist">
           {(['pending', 'approved', 'rejected', 'all'] as const).map(f => (

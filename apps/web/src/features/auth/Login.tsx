@@ -63,7 +63,7 @@ export const Login = () => {
           <h1 className="mt-6 text-[38px] font-extrabold leading-[1.08] tracking-[-0.03em] text-balance">Every call, every responder, every defibrillator on one screen.</h1>
           <p className="mt-3 text-[15px] text-white/75 max-w-[46ch] text-pretty">Live SOS intake, responder tracking and patient handover for dispatch centres and hospital coordinators.</p>
         </div>
-        <p className="text-[13px] text-white/55">Authorised operators only. Every action is recorded in the ledger.</p>
+        <p className="text-[13px] text-white/55">Authorised operators only. Every action is recorded in the call log.</p>
       </section>
 
       <section className="flex items-center justify-center p-6 lg:p-10">

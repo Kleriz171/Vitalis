@@ -81,10 +81,10 @@ export const Drones = () => {
 
   return (
     <>
-      <PageHeader icon={Drone} title="Drones" subtitle="Autonomous dispatch and manual flight for connected drones" />
+      <PageHeader icon={Drone} title="Drones" subtitle="Drones that fly a defibrillator to a call. Fly one by hand here if needed." />
       <div className="p-6 space-y-5">
         <div className="grid grid-cols-3 gap-4 stagger">
-          <KPI icon={Drone} iconTone="deep" label="Missions flown" value={missions.length} />
+          <KPI icon={Drone} iconTone="deep" label="Flights" value={missions.length} />
           <KPI icon={CheckCircle} iconTone="teal" label="Delivered" value={missions.filter(m => m.status === 'delivered').length} />
           <KPI icon={Warning} iconTone={missions.some(m => m.status === 'aborted') ? 'sos' : 'mint'} label="Aborted, usually by the pilot taking over" value={missions.filter(m => m.status === 'aborted').length} />
         </div>
@@ -104,7 +104,7 @@ export const Drones = () => {
           ))
         )}
 
-        <Panel title="Mission history">
+        <Panel title="Flight log">
           {missions.length === 0 && <p className="px-5 py-10 text-center text-muted-foreground">No missions flown yet.</p>}
           {missions.map(m => (
             <Row

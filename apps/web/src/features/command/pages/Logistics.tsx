@@ -150,7 +150,7 @@ const CallRow = memo(({ e, selected, onSelect, delay }: { e: Emergency; selected
           <div className="flex items-center gap-2">
             <span className="font-bold truncate">{TYPE_LABEL[e.type] ?? 'Emergency'}</span>
             <span className={cn('num text-[11px] font-bold rounded-md px-1.5 py-px', e.priority === 1 ? 'bg-[hsl(var(--sos))] text-white' : e.priority === 2 ? 'bg-[hsl(var(--warn)/0.15)] text-amber-800' : 'bg-muted text-muted-foreground')}>
-              P{e.priority}
+              Priority {e.priority}
             </span>
           </div>
           <div className="text-[13px] text-muted-foreground truncate">
@@ -261,8 +261,8 @@ export const Logistics = () => {
         <HeroClock />
         <div className="h-14 w-px bg-white/15" />
         <div className="min-w-0">
-          <h1 className="text-[30px] leading-[1.05] font-extrabold tracking-[-0.03em] text-white">Live operations</h1>
-          <p className="mt-1 text-[14px] text-white/75">SOS calls, responders and defibrillators in real time</p>
+          <h1 className="text-[30px] leading-[1.05] font-extrabold tracking-[-0.03em] text-white">Live calls</h1>
+          <p className="mt-1 text-[14px] text-white/75">Every SOS happening right now. Click a call to see who is on the way.</p>
         </div>
         <label className="relative z-10 ml-auto w-[min(340px,30vw)]">
           <span className="sr-only">Search calls</span>

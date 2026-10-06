@@ -79,7 +79,7 @@ export const Aeds = () => {
 
   return (
     <>
-      <PageHeader icon={Lightning} title="Defibrillators" subtitle="Public AED registry. AED runners are only sent to devices listed here." />
+      <PageHeader icon={Lightning} title="Defibrillators" subtitle="Public defibrillators. Helpers are only sent to fetch the ones listed here." />
       <div className="p-6 space-y-5">
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 stagger">
           <KPI icon={Lightning} iconTone="deep" label="Registered defibrillators" value={counts.all} />

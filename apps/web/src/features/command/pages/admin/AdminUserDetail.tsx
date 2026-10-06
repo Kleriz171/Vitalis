@@ -57,7 +57,7 @@ export const AdminUserDetail = () => {
     <>
       <PageHeader icon={IdentificationCard}
         title={u.name}
-        subtitle={`${u.phone ?? u.email ?? 'No contact'} · ${u.role === 'eso' ? 'Emergency services operator' : u.role.replace('_', ' ')}`}
+        subtitle={`${u.phone ?? u.email ?? 'No contact'} · ${u.role === 'eso' ? 'Operator' : u.role.replace('_', ' ')}`}
         actions={
           <Link to="/command/admin/users" className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-white/[0.12] text-white text-sm font-medium hover:bg-white/[0.2] transition-colors">
             <ArrowLeft size={14} /> Back to users
@@ -138,7 +138,7 @@ export const AdminUserDetail = () => {
         <Panel title={`SOS history · ${data.emergencies.length}`}>
           {data.emergencies.length ? data.emergencies.map(e => (
             <ListRow key={e._id} icon={Siren} tone={e.status === 'resolved' ? 'teal' : 'sos'}
-              title={<span className="capitalize">{e.type.replace('_', ' ')} <span className="text-xs font-medium text-muted-foreground ml-1">P{e.priority}</span></span>}
+              title={<span className="capitalize">{e.type.replace('_', ' ')} <span className="text-xs font-medium text-muted-foreground ml-1">Priority {e.priority}</span></span>}
               summary={[e.description, `Sent ${fmt(e.createdAt)}`, e.etaSeconds ? `ETA ${Math.round(e.etaSeconds / 60)} min` : null].filter(Boolean).join(' · ')}
               right={<Chip tone={e.status === 'resolved' ? 'muted' : 'sos'}>{e.status.replace('_', ' ')}</Chip>} />
           )) : <p className="px-5 py-4 text-sm text-muted-foreground">No SOS calls.</p>}

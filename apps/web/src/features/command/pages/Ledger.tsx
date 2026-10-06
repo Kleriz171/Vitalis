@@ -53,8 +53,8 @@ export const Ledger = () => {
       setVerify(data);
       pushToast({
         tone: data.valid ? 'success' : 'error',
-        title: data.valid ? 'Chain intact' : 'Chain corrupted',
-        body: data.valid ? `${data.length} blocks verified` : `Broke at index ${data.brokenAt}`,
+        title: data.valid ? 'Log intact' : 'Log was changed',
+        body: data.valid ? `${data.length} entries checked` : `Changed at entry #${data.brokenAt}`,
       });
     } finally { setLoading(false); }
   };
@@ -62,8 +62,8 @@ export const Ledger = () => {
   return (
     <>
       <PageHeader icon={SealCheck}
-        title="Blockchain ledger"
-        subtitle="Immutable audit trail · SHA-256 chained"
+        title="Call log"
+        subtitle="Every step of every call, sealed so nobody can change it afterwards."
       />
       <div className="p-6 max-w-5xl space-y-5">
         {/* Chain status: is the record intact, and how big is it. */}
@@ -71,19 +71,19 @@ export const Ledger = () => {
           <Tile icon={verify && !verify.valid ? Warning : SealCheck} tone={verify && !verify.valid ? 'sos' : verify ? 'deep' : 'teal'} size="lg" round />
           <div className="min-w-0 flex-1">
             <div className="text-[20px] font-extrabold tracking-[-0.02em]">
-              {!verify ? 'Not checked this session' : verify.valid ? 'Chain intact' : `Chain broken at block #${verify.brokenAt}`}
+              {!verify ? 'Not checked yet' : verify.valid ? 'Log intact' : `Log was changed at entry #${verify.brokenAt}`}
             </div>
             <div className="text-[14px] text-muted-foreground">
-              {verify?.valid ? `All ${verify.length} blocks re-hashed and linked.` : 'Every SOS, acceptance and closure is sealed into the block after it.'}
-              {blocks.length ? <> Last block <span>{new Date(blocks[blocks.length - 1].timestamp).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>.</> : null}
+              {verify?.valid ? `All ${verify.length} entries checked, nothing was changed.` : 'Each SOS, acceptance and closure is sealed to the entry before it, so any edit shows up here.'}
+              {blocks.length ? <> Last entry <span>{new Date(blocks[blocks.length - 1].timestamp).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>.</> : null}
             </div>
           </div>
-          <Button loading={loading} onClick={runVerify} className="rounded-xl h-10 px-5">{verify ? 'Check again' : 'Verify chain'}</Button>
+          <Button loading={loading} onClick={runVerify} className="rounded-xl h-10 px-5">{verify ? 'Check again' : 'Check the log'}</Button>
         </section>
-        <Panel title={`${blocks.length} blocks`} aside={<span className="text-[13px] text-muted-foreground">Append-only · each block seals the one before</span>}>
+        <Panel title={`${blocks.length} ${blocks.length === 1 ? 'entry' : 'entries'}`} aside={<span className="text-[13px] text-muted-foreground">Newest last · entries can be added, never edited</span>}>
           {loadingBlocks && Array.from({ length: 5 }).map((_, i) => <div key={i} className="px-5 py-4"><Skeleton className="h-10" /></div>)}
           {!loadingBlocks && blocks.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-12">No blocks yet. The first SOS writes the first one.</p>
+            <p className="text-sm text-muted-foreground text-center py-12">Nothing yet. The first SOS writes the first entry.</p>
           )}
           {blocks.map(b => {
             const [icon, tone] = ACTION_TILE[b.payload?.action ?? ''] ?? [SealCheck, 'slate'];
@@ -93,7 +93,7 @@ export const Ledger = () => {
                 icon={icon}
                 tone={tone}
                 title={<span className="capitalize">{(b.payload?.action ?? '').replace('_', ' ')} · {b.payload?.entity}</span>}
-                summary={<span className="code" title={`hash ${b.hash}\nprev ${b.prevHash}`}>{b.hash.slice(0, 24)}… ← {b.prevHash.slice(0, 12)}…</span>}
+                summary={<span title={`Seal ${b.hash}\nPrevious ${b.prevHash}`}>Seal <span className="code">{b.hash.slice(0, 12)}</span></span>}
                 right={<>
                   <span className="text-[13px] text-muted-foreground">{new Date(b.timestamp).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
                   <Chip><span className="num font-semibold text-foreground">#{b.index}</span></Chip>

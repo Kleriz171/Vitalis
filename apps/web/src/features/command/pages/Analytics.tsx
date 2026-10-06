@@ -55,13 +55,13 @@ export const Analytics = () => {
 
   return (
     <>
-      <PageHeader icon={ChartLineUp} title="Analytics" subtitle="Operational KPIs and trends" />
+      <PageHeader icon={ChartLineUp} title="Reports" subtitle="How many calls came in, and how fast help arrived." />
       <div className="p-6 space-y-5">
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 stagger">
           <KPI icon={Siren} iconTone="deep" label="Calls, all time" value={kpis?.total ?? 0} />
           <KPI icon={Pulse} iconTone={kpis?.active ? 'sos' : 'teal'} label="Active now" value={kpis?.active ?? 0} tone={kpis?.active ? 'rose' : 'teal'} />
           <KPI icon={CheckCircle} iconTone="teal" label="Closed in the last 24 h" value={kpis?.resolvedToday ?? 0} />
-          <KPI icon={Gauge} iconTone="mint" label="Resolution rate" value={`${perf?.resolutionRate ?? 0}%`} />
+          <KPI icon={Gauge} iconTone="mint" label="Calls closed" value={`${perf?.resolutionRate ?? 0}%`} />
         </div>
 
         <div className="grid xl:grid-cols-3 gap-5 stagger" style={{ ['--base' as string]: '120ms' }}>
@@ -116,7 +116,7 @@ export const Analytics = () => {
         </div>
 
         <div className="grid xl:grid-cols-3 gap-5 stagger" style={{ ['--base' as string]: '240ms' }}>
-          <ChartPanel icon={Timer} title="Response" note="Across closed calls">
+          <ChartPanel icon={Timer} title="Arrival time" note="Across closed calls">
             <div className="h-full flex flex-col justify-center gap-5">
               <div>
                 <div className="num text-[34px] font-extrabold leading-none tracking-[-0.03em]">{fmtEta(perf?.avgEtaSeconds ?? 0)}</div>

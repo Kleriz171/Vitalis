@@ -92,10 +92,10 @@ export const AdminUsers = () => {
 
   return (
     <>
-      <PageHeader icon={UsersThree} title="Users" subtitle="Operators, responders and citizens on the Vitalis network." actions={<Button onClick={() => setShowNew(v => !v)} className="rounded-xl bg-white text-primary hover:bg-white/90 h-10 px-4 font-semibold"><UserPlus size={18} weight="bold" /> New operator</Button>} />
+      <PageHeader icon={UsersThree} title="Users" subtitle="Everyone on Vitalis: operators, responders and the public. Click a person to see their record." actions={<Button onClick={() => setShowNew(v => !v)} className="rounded-xl bg-white text-primary hover:bg-white/90 h-10 px-4 font-semibold"><UserPlus size={18} weight="bold" /> New operator</Button>} />
       <div className="p-6 space-y-5">
         <div className="grid grid-cols-3 gap-4 stagger">
-          <KPI icon={Headset} iconTone="deep" label="Emergency services operators" value={counts.operators} />
+          <KPI icon={Headset} iconTone="deep" label="Operators" value={counts.operators} />
           <KPI icon={FirstAidKit} iconTone="teal" label="Responders (clinicians and certified)" value={counts.responders} />
           <KPI icon={User} iconTone="mint" label="Citizens" value={counts.citizens} />
         </div>
@@ -155,7 +155,7 @@ export const AdminUsers = () => {
                 title={<Link to={`/command/admin/users/${u._id}`} className="hover:underline underline-offset-2">{u.name}</Link>}
                 summary={u.email}
                 right={<>
-                  <Chip tone={u.role === 'eso' ? 'teal' : 'muted'}>{u.role === 'eso' ? 'ESO' : <span className="capitalize">{u.role.replace('_', ' ')}</span>}</Chip>
+                  <Chip tone={u.role === 'eso' ? 'teal' : 'muted'}>{u.role === 'eso' ? 'Operator' : <span className="capitalize">{u.role.replace('_', ' ')}</span>}</Chip>
                   <Link to={`/command/admin/users/${u._id}`}><Button variant="outline" size="sm" className="rounded-lg">View</Button></Link>
                   {u._id !== me?.id ? <Button variant="ghost" size="sm" className="rounded-lg text-muted-foreground hover:text-destructive" onClick={() => remove(u._id)}>Remove</Button> : null}
                 </>}

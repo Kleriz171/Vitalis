@@ -1,7 +1,7 @@
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-  Pulse, Lightning, Drone, SealCheck, ChartLineUp, SignOut, Heart, UsersThree, IdentificationCard, type Icon,
+  Siren, FirstAidKit, ChartBar, SignOut, Heart, UsersThree, type Icon,
 } from '@phosphor-icons/react';
 import { Tile } from '../ui/tile';
 import { Digits } from '../ui/digits';
@@ -13,21 +13,29 @@ import { RootState, logout } from '../../store';
 import { socket } from '../../realtime/socket';
 import { cn } from '../../lib/utils';
 
-type NavItem = { to: string; label: string; icon: Icon; end?: boolean };
+/** Four sections named for what operators do; a section with several pages shows them as tabs. */
+type Section = { label: string; icon: Icon; to: string; tabs?: { to: string; label: string }[] };
 
-const baseNav: NavItem[] = [
-  { to: '/command', label: 'Live operations', icon: Pulse, end: true },
-  { to: '/command/aeds', label: 'Defibrillators', icon: Lightning },
-  { to: '/command/drones', label: 'Drones', icon: Drone },
-  { to: '/command/ledger', label: 'Ledger', icon: SealCheck },
-  { to: '/command/analytics', label: 'Analytics', icon: ChartLineUp },
-];
-const adminNav: NavItem[] = [
-  { to: '/command/admin/users', label: 'Users', icon: UsersThree },
-  { to: '/command/admin/doctor-applications', label: 'Doctor review', icon: IdentificationCard },
+const SECTIONS: Section[] = [
+  { label: 'Live calls', icon: Siren, to: '/command' },
+  { label: 'Equipment', icon: FirstAidKit, to: '/command/aeds', tabs: [
+    { to: '/command/aeds', label: 'Defibrillators' },
+    { to: '/command/drones', label: 'Drones' },
+  ] },
+  { label: 'People', icon: UsersThree, to: '/command/admin/users', tabs: [
+    { to: '/command/admin/users', label: 'Users' },
+    { to: '/command/admin/doctor-applications', label: 'Doctor applications' },
+  ] },
+  { label: 'Reports', icon: ChartBar, to: '/command/analytics', tabs: [
+    { to: '/command/analytics', label: 'Overview' },
+    { to: '/command/ledger', label: 'Call log' },
+  ] },
 ];
 
-const ROLE_NAME: Record<string, string> = { eso: 'Emergency services operator', dispatcher: 'Emergency services operator', admin: 'Emergency services operator' };
+const sectionOf = (path: string) =>
+  SECTIONS.find(s => s.tabs ? s.tabs.some(t => path.startsWith(t.to)) : path === s.to || path === `${s.to}/`);
+
+const ROLE_NAME: Record<string, string> = { eso: 'Operator', dispatcher: 'Operator', admin: 'Operator' };
 
 const time = (d: Date, timeZone?: string) => d.toLocaleTimeString('en-GB', { hourCycle: 'h23', timeZone });
 
@@ -59,12 +67,11 @@ const Clock = () => {
 
 export const CommandShell = () => {
   const user = useSelector((s: RootState) => s.auth.user);
-  // One operator role does everything: dispatch and administration.
-  const items = [...baseNav, ...adminNav];
   const dispatch = useDispatch();
   const nav = useNavigate();
   const location = useLocation();
   const live = useLive();
+  const current = sectionOf(location.pathname);
 
   const signOut = () => { dispatch(logout()); nav('/login'); };
 
@@ -117,36 +124,36 @@ export const CommandShell = () => {
 
       <aside className="flex flex-col min-h-0 pt-4">
         <nav className="flex flex-col gap-1 px-3">
-          {items.map(({ to, label, icon: I, end }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              className={({ isActive }) => cn(
-                'relative flex items-center gap-3 pl-2 pr-3 h-11 rounded-xl text-[14px] transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
-                isActive
-                  ? 'text-primary font-semibold'
-                  : 'text-sidebar-foreground/85 hover:text-white hover:bg-white/[0.08]',
-              )}
-            >
-              {({ isActive }) => (
-                <>
-                  {/* One white pill that slides to whichever section is open. */}
-                  {isActive && (
-                    <motion.span
-                      layoutId="nav-pill"
-                      transition={BASE}
-                      className="absolute inset-0 rounded-xl bg-white shadow-[0_8px_20px_-10px_hsl(175_80%_5%/0.6)]"
-                    />
-                  )}
-                  <span className={cn('relative w-8 h-8 grid place-items-center rounded-[10px] transition-colors duration-300', isActive ? 'bg-[hsl(173_55%_92%)] text-primary' : 'text-sidebar-foreground/85')}>
-                    <I size={19} weight={isActive ? 'duotone' : 'regular'} />
-                  </span>
-                  <span className="relative truncate">{label}</span>
-                </>
-              )}
-            </NavLink>
-          ))}
+          {SECTIONS.map(section => {
+            const { to, label, icon: I } = section;
+            const isActive = section === current;
+            return (
+              <Link
+                key={to}
+                to={to}
+                aria-current={isActive ? 'page' : undefined}
+                className={cn(
+                  'relative flex items-center gap-3 pl-2 pr-3 h-11 rounded-xl text-[14px] transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
+                  isActive
+                    ? 'text-primary font-semibold'
+                    : 'text-sidebar-foreground/85 hover:text-white hover:bg-white/[0.08]',
+                )}
+              >
+                {/* One white pill that slides to whichever section is open. */}
+                {isActive && (
+                  <motion.span
+                    layoutId="nav-pill"
+                    transition={BASE}
+                    className="absolute inset-0 rounded-xl bg-white shadow-[0_8px_20px_-10px_hsl(175_80%_5%/0.6)]"
+                  />
+                )}
+                <span className={cn('relative w-8 h-8 grid place-items-center rounded-[10px] transition-colors duration-300', isActive ? 'bg-[hsl(173_55%_92%)] text-primary' : 'text-sidebar-foreground/85')}>
+                  <I size={19} weight={isActive ? 'duotone' : 'regular'} />
+                </span>
+                <span className="relative truncate">{label}</span>
+              </Link>
+            );
+          })}
         </nav>
         <div className="mt-auto px-5 py-5 text-[12px] leading-relaxed text-sidebar-foreground/55">
           Dispatch network · Tirana
@@ -168,15 +175,35 @@ export const CommandShell = () => {
  * Page header on the green band, like the phone app: an icon tile, a heavy white title and one
  * line on what the page is for. The first block after it overlaps the band's lower edge.
  */
-export const PageHeader = ({ title, subtitle, actions, icon }: { title: string; subtitle?: string; actions?: ReactNode; icon?: Icon }) => (
-  <header className="page-band frame-texture flex items-start justify-between gap-4 px-6 pt-7 pb-[4.75rem]">
-    <div className="flex items-center gap-4 min-w-0">
-      {icon && <Tile icon={icon} tone="band" size="lg" />}
+export const PageHeader = ({ title, subtitle, actions, icon }: { title: string; subtitle?: string; actions?: ReactNode; icon?: Icon }) => {
+  const { pathname } = useLocation();
+  const tabs = sectionOf(pathname)?.tabs;
+  return (
+    <header className="page-band frame-texture flex items-start justify-between gap-4 px-6 pt-7 pb-[4.75rem]">
       <div className="min-w-0">
-        <h1 className="text-[28px] leading-[1.1] font-extrabold tracking-[-0.025em] text-white">{title}</h1>
-        {subtitle && <p className="mt-1 text-[14px] text-white/75">{subtitle}</p>}
+        <div className="flex items-center gap-4 min-w-0">
+          {icon && <Tile icon={icon} tone="band" size="lg" />}
+          <div className="min-w-0">
+            <h1 className="text-[28px] leading-[1.1] font-extrabold tracking-[-0.025em] text-white">{title}</h1>
+            {subtitle && <p className="mt-1 text-[14px] text-white/75">{subtitle}</p>}
+          </div>
+        </div>
+        {tabs && (
+          <nav className="relative z-10 mt-5 inline-flex gap-1 rounded-full bg-white/[0.1] p-1" aria-label="Pages in this section">
+            {tabs.map(t => {
+              const on = pathname.startsWith(t.to);
+              return (
+                <Link key={t.to} to={t.to} aria-current={on ? 'page' : undefined}
+                  className={cn('h-8 px-4 grid place-items-center rounded-full text-[13px] font-semibold transition-colors',
+                    on ? 'bg-white text-primary' : 'text-white/80 hover:text-white hover:bg-white/[0.08]')}>
+                  {t.label}
+                </Link>
+              );
+            })}
+          </nav>
+        )}
       </div>
-    </div>
-    {actions && <div className="relative z-10 flex items-center gap-2">{actions}</div>}
-  </header>
-);
+      {actions && <div className="relative z-10 flex items-center gap-2">{actions}</div>}
+    </header>
+  );
+};
