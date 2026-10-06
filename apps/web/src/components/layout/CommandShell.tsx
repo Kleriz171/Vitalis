@@ -1,10 +1,9 @@
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-  Siren, ChartBar, SignOut, Heart, UsersThree, type Icon,
+  Siren, FirstAidKit, ChartBar, SignOut, Heart, UsersThree, type Icon,
 } from '@phosphor-icons/react';
 import { Tile } from '../ui/tile';
-import { Defibrillator } from '../ui/aed-icon';
 import { Digits } from '../ui/digits';
 import { useNow } from '../../lib/useNow';
 import { ReactNode, useEffect, useState } from 'react';
@@ -19,7 +18,7 @@ type Section = { label: string; icon: Icon; to: string; tabs?: { to: string; lab
 
 const SECTIONS: Section[] = [
   { label: 'Live calls', icon: Siren, to: '/command' },
-  { label: 'Equipment', icon: Defibrillator, to: '/command/aeds', tabs: [
+  { label: 'Equipment', icon: FirstAidKit, to: '/command/aeds', tabs: [
     { to: '/command/aeds', label: 'Defibrillators' },
     { to: '/command/drones', label: 'Drones' },
   ] },
