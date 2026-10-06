@@ -163,14 +163,12 @@
 /* Export PDF (lib/exportPdf.ts): pages print their <Report> document (components/print/Report.tsx), not the screen. */
 @page {
   size: A4 portrait;
-  margin: 16mm 16mm 18mm;
+  margin: 12mm 13mm 15mm;
   /* Page numbers where the print engine supports margin boxes (Chromium, WebView2 on Windows). */
-  @bottom-right { content: "Page " counter(page) " of " counter(pages); font: 8pt Inter, sans-serif; color: #55635F; }
+  @bottom-right { content: "Page " counter(page) " of " counter(pages); font: 7.5pt "Schibsted Grotesk Variable", sans-serif; color: #5C6966; }
 }
 @media print {
   html, body, #root { height: auto; overflow: visible; background: #fff; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .report { font-family: Inter, system-ui, sans-serif; color: #13201F; }
-  .report thead { display: table-header-group; }
   [data-sonner-toaster] { display: none !important; }
 }

@@ -1,4 +1,4 @@
-import { ChartLineUp, ChartPieSlice, CheckCircle, Gauge, Pulse, Siren, Timer, UsersThree, type Icon } from '@phosphor-icons/react';
+import { ChartLineUp, ChartPieSlice, CheckCircle, Gauge, PersonSimpleRun, Pulse, Siren, Timer, UsersThree, type Icon } from '@phosphor-icons/react';
 import { Tile } from '../../../components/ui/tile';
 import { useEffect, useState } from 'react';
 import {
@@ -11,7 +11,7 @@ import { api } from '../../../api/client';
 import { Card, CardHeader, CardContent } from '../../../components/ui/card';
 import { KPI } from '../../../components/widgets/KPI';
 import { ExportPdfButton, PageHeader } from '../../../components/layout/CommandShell';
-import { Figures, Notes, Report, ReportSection, Table } from '../../../components/print/Report';
+import { Bars, Empty, Meter, Note, RankList, Report, REPORT_COLORS, Ring, Section, ShareBar, Stat } from '../../../components/print/Report';
 import { TYPE_LABEL } from '../../../components/map/MapView';
 
 interface Kpis { total: number; active: number; resolvedToday: number; byType: { _id: string; count: number }[]; medianAcceptSeconds: number | null; acceptedUnderMinutePct: number | null; acceptedCount: number; }
@@ -172,62 +172,74 @@ const ChartPanel = ({ icon, title, note, className, children }: { icon: Icon; ti
   </section>
 );
 
-/** Export PDF: the same figures as a report document. Charts have a fixed size so they fit the A4 page. */
+/** Export PDF: the same figures as a designed report (components/print/Report.tsx). */
 const AnalyticsReport = ({ kpis, series, perf, top }: { kpis: Kpis | null; series: TimePoint[]; perf: Performance | null; top: TopCaller[] }) => {
-  const byTypeTotal = (kpis?.byType ?? []).reduce((n, t) => n + t.count, 0);
-  const sum = (k: 'count' | 'resolved') => series.reduce((n, p) => n + p[k], 0);
-  const longDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  const day = (iso: string, o: Intl.DateTimeFormatOptions) => new Date(iso).toLocaleDateString('en-GB', o);
+  const received = series.reduce((n, p) => n + p.count, 0);
+  const closed = series.reduce((n, p) => n + p.resolved, 0);
+  const busiest = series.reduce<TimePoint | null>((b, p) => (p.count > (b?.count ?? 0) ? p : b), null);
+  const quiet = series.filter(p => !p.count).length;
+  const period = series.length
+    ? `${day(series[0].date, { day: 'numeric', month: 'short' })} – ${day(series[series.length - 1].date, { day: 'numeric', month: 'short', year: 'numeric' })} · last ${series.length} days`
+    : 'Last 14 days';
+  const bars = series.map(p => ({ label: day(p.date, { day: 'numeric', month: 'short' }), value: p.count }));
+  const accept = kpis?.medianAcceptSeconds != null ? fmtEta(kpis.medianAcceptSeconds) : '—';
   return (
-    <Report title="Operations report" details={[['Period', series.length ? `${longDate(series[0].date)} to ${longDate(series[series.length - 1].date)}` : 'Last 14 days']]}>
-      <ReportSection n={1} title="Summary">
-        <Figures items={[
-          ['Calls, all time', kpis?.total ?? 0],
-          ['Active when exported', kpis?.active ?? 0],
-          ['Closed in the last 24 hours', kpis?.resolvedToday ?? 0],
-          ['Calls closed', `${perf?.resolutionRate ?? 0}%`],
-          ['Average arrival time', fmtEta(perf?.avgEtaSeconds ?? 0)],
-        ]} />
-      </ReportSection>
-
-      <ReportSection n={2} title="Calls per day" note="SOS calls received and closed on each of the last 14 days." keep={false}>
-        <AreaChart width={660} height={150} data={series} margin={{ top: 6, right: 22, left: -24, bottom: 0 }}>
-          <CartesianGrid vertical={false} stroke="#E7E4DC" />
-          <XAxis dataKey="date" tickFormatter={fmtShortDate} tick={{ fontSize: 9, fill: '#55635F' }} tickLine={false} axisLine={false} interval={0} />
-          <YAxis allowDecimals={false} tick={{ fontSize: 9, fill: '#55635F' }} tickLine={false} axisLine={false} />
-          <Area type="monotone" dataKey="count" name="Received" stroke="#14A897" strokeWidth={2} fill="#14A897" fillOpacity={0.12} isAnimationActive={false} />
-          <Area type="monotone" dataKey="resolved" name="Closed" stroke="#0C5D57" strokeWidth={1.5} strokeDasharray="4 3" fill="transparent" isAnimationActive={false} />
-        </AreaChart>
-        <div className="mt-1 mb-3 flex gap-5 text-[8.5pt] text-[#55635F]">
-          <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-[#14A897]" />Received</span>
-          <span className="flex items-center gap-1.5"><span className="w-3 border-t-[1.5px] border-dashed border-[#0C5D57]" />Closed</span>
+    <Report title="Operations report" period={period}>
+      <Section n={1} title="At a glance" lead={received
+        ? `${received} ${received === 1 ? 'call' : 'calls'} in ${series.length} days, ${closed} closed.${kpis?.medianAcceptSeconds != null ? ` Responders accepted in a median of ${accept} over the last day.` : ''}`
+        : `No calls in the last ${series.length} days.`}>
+        <div className="grid grid-cols-3 gap-3">
+          <Stat dark className="col-span-2" icon={Siren} label="Calls in this period" value={received} sub={`Over ${series.length} days, from every part of the network`}>
+            <div className="grid grid-cols-3 gap-4 border-t border-white/15 pt-3">
+              {([['Closed', closed], ['Not closed', received - closed], ['Busiest day', busiest ? `${day(busiest.date, { weekday: 'short', day: 'numeric', month: 'short' })} · ${busiest.count}` : '—']] as const).map(([k, v]) => (
+                <div key={k}><div className="text-[8pt] text-white/60">{k}</div><div className="mt-0.5 text-[12pt] font-bold tabular-nums">{v}</div></div>
+              ))}
+            </div>
+          </Stat>
+          <Stat icon={CheckCircle} label="Calls closed" value={`${perf?.resolutionRate ?? 0}%`} sub={`${perf?.resolved ?? 0} of ${perf?.total ?? 0}, all time`}
+            aside={<Ring pct={perf?.resolutionRate ?? 0} size={54} />} />
+          <Stat icon={Timer} label="Time to accept" value={accept} sub="Median, last 24 hours" />
+          <Stat icon={PersonSimpleRun} label="Arrival estimate" value={fmtEta(perf?.avgEtaSeconds ?? 0)} sub="Average, accepted calls" />
+          <Stat icon={Pulse} label="Active calls" value={kpis?.active ?? 0} sub="When this was exported" />
         </div>
-        <Table head={['Day', 'Received', 'Closed']} right={[1, 2]}
-          rows={[...series.map(p => [longDate(p.date), p.count, p.resolved]), [<b key="t">Total</b>, <b key="c">{sum('count')}</b>, <b key="r">{sum('resolved')}</b>]]} />
-      </ReportSection>
+      </Section>
 
-      <ReportSection n={3} title="Calls by type" note="All calls since Vitalis started.">
-        <Table head={['Type', 'Calls', 'Share']} right={[1, 2]} empty="No calls yet."
-          rows={(kpis?.byType ?? []).map(t => [TYPE_LABEL[t._id] ?? t._id.replace('_', ' '), t.count, `${Math.round((t.count / Math.max(byTypeTotal, 1)) * 100)}%`])} />
-      </ReportSection>
 
-      <ReportSection n={4} title="Response">
-        <Table head={['Measure', 'Value']} right={[1]} rows={[
-          ['Time until a responder accepted, median (last 24 hours)', kpis?.medianAcceptSeconds != null ? fmtEta(kpis.medianAcceptSeconds) : 'No accepted calls'],
-          ['Accepted within one minute (last 24 hours)', kpis?.acceptedUnderMinutePct != null ? `${kpis.acceptedUnderMinutePct}% of ${kpis.acceptedCount}` : 'No accepted calls'],
-          ['Average arrival time (all accepted calls)', fmtEta(perf?.avgEtaSeconds ?? 0)],
-          ['Calls closed (all time)', `${perf?.resolved ?? 0} of ${perf?.total ?? 0} (${perf?.resolutionRate ?? 0}%)`],
-        ]} />
-      </ReportSection>
+      <Section n={2} title="How fast help came" lead="From the SOS to a responder accepting, and their estimated travel time.">
+        <div className="rounded-[18px] px-5 py-1" style={{ border: `1px solid ${REPORT_COLORS.line}` }}>
+          <Meter label="Accepted within one minute" note={kpis?.acceptedCount ? `Of ${kpis.acceptedCount} calls accepted in the last 24 hours` : 'No calls accepted in the last 24 hours'}
+            value={kpis?.acceptedUnderMinutePct != null ? `${kpis.acceptedUnderMinutePct}%` : '—'} pct={kpis?.acceptedUnderMinutePct ?? 0} />
+          <Meter label="Time until a responder accepted" note="Median, last 24 hours" value={accept} />
+          <Meter label="Arrival estimate" note="Average travel time estimated when responders accepted" value={fmtEta(perf?.avgEtaSeconds ?? 0)} />
+          <Meter label="Calls closed" note={`${perf?.resolved ?? 0} of ${perf?.total ?? 0} calls, all time`} value={`${perf?.resolutionRate ?? 0}%`} pct={perf?.resolutionRate ?? 0} />
+        </div>
+      </Section>
 
-      <ReportSection n={5} title="People with the most calls" note="Last 90 days. Repeated calls from one person may need a follow-up.">
-        <Table head={['#', 'Name', 'Calls']} right={[2]} empty="No calls in the last 90 days."
-          rows={top.map((t, i) => [i + 1, t.name, t.count])} />
-      </ReportSection>
+      <Section n={3} title="Calls per day" pageBreak lead="Every SOS received in the period. The busiest day is in teal.">
+        <Bars data={bars} height={130} />
+        <div className="mt-3 grid grid-cols-3 gap-3">
+          <Stat small label="Busiest day" value={busiest ? busiest.count : 0} sub={busiest ? day(busiest.date, { weekday: 'long', day: 'numeric', month: 'long' }) : 'No calls'} />
+          <Stat small label="Daily average" value={(received / Math.max(series.length, 1)).toFixed(1)} sub="Calls per day" />
+          <Stat small label="Quiet days" value={quiet} sub={`Days without a call, of ${series.length}`} />
+        </div>
+      </Section>
 
-      <Notes>
-        <p><b>How to read this report.</b> Figures come from Vitalis Command at the moment of export. A call is closed when a responder or operator marks it resolved.</p>
-        <p>Arrival time is the responder&apos;s estimated travel time at the moment they accepted, averaged over all accepted calls; it is an estimate, not a measured arrival. Time until accepted runs from the SOS to the first responder accepting.</p>
-      </Notes>
+      <Section n={4} title="What the calls were about" lead="All calls since Vitalis started, by type.">
+        {kpis?.byType?.length
+          ? <ShareBar items={[...kpis.byType].sort((a, b) => b.count - a.count).map(t => ({ label: TYPE_LABEL[t._id] ?? t._id.replace('_', ' '), value: t.count }))} />
+          : <Empty>No calls yet.</Empty>}
+      </Section>
+
+      <Section n={5} title="Frequent callers" lead="Last 90 days. Several calls from one person may need a follow-up.">
+        {top.length ? <RankList unit="calls" items={top.map(t => ({ label: t.name, value: t.count }))} /> : <Empty>No calls in the last 90 days.</Empty>}
+      </Section>
+
+      <Note title="How to read this report">
+        Figures come from Vitalis Command at the moment of export. A call is closed when a responder or operator marks it resolved.
+        Time to accept runs from the SOS to the first responder accepting. The arrival estimate is the travel time estimated when a
+        responder accepted; it is not a measured arrival.
+      </Note>
     </Report>
   );
 };

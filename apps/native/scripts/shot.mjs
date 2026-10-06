@@ -3,7 +3,7 @@
  *   node scripts/shot.mjs /profile profile 1600          → .expo/shots/profile.png (390 wide, 1600 tall)
  *   CLICK="Ilaçet" node scripts/shot.mjs /profile open   → taps the element with that exact text first
  * Env: EMAIL/PASS (default demo account), APP, API, WAIT (ms), GEO="lat,lng" (fake location),
- *      WIDTH (desktop width, e.g. 1440 for the web console), PDF=1 (save the printed page as .pdf).
+ *      WIDTH (desktop width, e.g. 1440 for the web console), PDF=1 (save the printed page as .pdf, PAGES="1-2" for some pages).
  */
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -60,7 +60,7 @@ if (process.env.SCROLL) {
 mkdirSync('.expo/shots', { recursive: true });
 if (process.env.PDF) {
   // What "Export PDF" produces: the page through its print styles.
-  const pdf = await send('Page.printToPDF', { preferCSSPageSize: true, printBackground: true });
+  const pdf = await send('Page.printToPDF', { preferCSSPageSize: true, printBackground: true, pageRanges: process.env.PAGES ?? '' });
   writeFileSync(`.expo/shots/${name}.pdf`, Buffer.from(pdf.result.data, 'base64'));
 } else {
   const shot = await send('Page.captureScreenshot', { format: 'png' });

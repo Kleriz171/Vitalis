@@ -6,7 +6,7 @@ import { Chip, Panel, Row } from '../../../components/ui/list';
 import { Button } from '../../../components/ui/button';
 import { Skeleton } from '../../../components/ui/skeleton';
 import { ExportPdfButton, PageHeader } from '../../../components/layout/CommandShell';
-import { Notes, Report, ReportSection, Table } from '../../../components/print/Report';
+import { Empty, Note, Report, REPORT_COLORS as C, Section } from '../../../components/print/Report';
 import { shortId } from '../../../lib/format';
 import { pushToast } from '../../../components/toast/toast';
 
@@ -41,6 +41,10 @@ const EVENT: Record<string, string> = {
   created: 'SOS received', assigned: 'Responder accepted', aed_runner_assigned: 'Defibrillator runner assigned',
   en_route: 'Responder on the way', on_scene: 'Responder arrived', resolved: 'Call closed', cancelled: 'Call cancelled',
   dispatched: 'Drone sent', delivered: 'Drone delivered', aborted: 'Drone flight stopped',
+  aed_to_aed: 'Runner heading to the defibrillator', aed_has_aed: 'Runner has the defibrillator', aed_delivered: 'Defibrillator delivered',
+  released: 'Responder released, call sent to others',
+  checkin_missed: 'Safety check-in missed', checkin_duress: 'Safety check-in: duress PIN used', checkin_pin_attempts: 'Safety check-in: wrong PIN too often',
+  takeoff: 'Drone took off', land: 'Drone landed', emergency: 'Drone emergency stop', launched: 'Drone launched', in_flight: 'Drone in flight',
 };
 const sentence = (s: string) => { const t = s.replace(/_/g, ' '); return t.charAt(0).toUpperCase() + t.slice(1); };
 const describe = (b: Block) => {
@@ -129,27 +133,95 @@ export const Ledger = () => {
       </div>
       </div>
 
-      {/* Export PDF: the log as a document, checked just before printing. */}
-      <Report title="Call log" details={[
-        ['Entries', blocks.length ? `#${blocks[0].index} to #${blocks[blocks.length - 1].index} (${blocks.length})` : 'None'],
-        ['Covers', blocks.length ? `${when(blocks[0].timestamp)} to ${when(blocks[blocks.length - 1].timestamp)}` : '—'],
-      ]}>
-        <ReportSection n={1} title="Integrity check">
-          <div className={verify && !verify.valid ? 'rounded-md border border-[#D92D2D] bg-[#FDECEC] px-3 py-2.5' : 'rounded-md border border-[#D9D6CE] bg-[#F7F5F0] px-3 py-2.5'}>
-            <div className={verify && !verify.valid ? 'text-[11pt] font-extrabold text-[#B42318]' : 'text-[11pt] font-extrabold text-[#0C5D57]'}>
-              {!verify ? 'Not checked' : verify.valid ? `Intact: ${verify.length === 1 ? 'the 1 entry was' : `all ${verify.length} entries were`} checked, nothing was changed` : `Changed: the log was altered at entry #${verify.brokenAt}`}
-            </div>
-            <p className="mt-1 text-[9pt] text-[#55635F]">Checked when this report was exported. Each entry carries a seal made from its own contents and the seal of the entry before it, so changing any entry breaks every seal after it.</p>
-          </div>
-        </ReportSection>
-        <ReportSection n={2} title="Entries" note="Oldest first. Times are local (Tirana)." keep={false}>
-          <Table head={['No.', 'Time', 'Event', 'Concerns', 'Seal']} right={[0]} empty="No entries yet."
-            rows={blocks.map(b => [b.index, when(b.timestamp, true), describe(b).event, describe(b).subject, <span key="s" className="font-mono text-[8pt] text-[#55635F]">{b.hash.slice(0, 16)}</span>])} />
-        </ReportSection>
-        <Notes>
-          <p>The seal shown is the first 16 characters of each entry&apos;s SHA-256 seal. The full seals are kept in Vitalis and can be re-checked at any time from Reports → Call log.</p>
-        </Notes>
-      </Report>
+      {/* Export PDF: the log as a designed document, checked just before printing. */}
+      <CallLogReport blocks={blocks} verify={verify} />
     </>
+  );
+};
+
+/** Colour of an entry's dot: red for a new SOS, grey for cancelled, green for closed, teal otherwise. */
+const dot = (action?: string) => action === 'created' ? C.sos : action === 'cancelled' ? '#9BB5B0' : action === 'resolved' ? C.green : C.teal;
+
+const CallLogReport = ({ blocks, verify }: { blocks: Block[]; verify: VerifyResult | null }) => {
+  const broken = verify && !verify.valid;
+  const date = (iso: string, o: Intl.DateTimeFormatOptions) => new Date(iso).toLocaleString('en-GB', o);
+  const days = blocks.reduce<{ key: string; items: Block[] }[]>((g, b) => {
+    const key = date(b.timestamp, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    if (g[g.length - 1]?.key === key) g[g.length - 1].items.push(b); else g.push({ key, items: [b] });
+    return g;
+  }, []);
+  const n = blocks.length;
+  const period = n
+    ? `${date(blocks[0].timestamp, { day: 'numeric', month: 'short', year: 'numeric' })} – ${date(blocks[n - 1].timestamp, { day: 'numeric', month: 'short', year: 'numeric' })} · ${n} ${n === 1 ? 'entry' : 'entries'}`
+    : 'No entries yet';
+  const links = Math.min(n, 18);
+  return (
+    <Report title="Call log" period={period} meta={n ? [['Entries', `#${blocks[0].index} – #${blocks[n - 1].index}`]] : []}>
+      <Section n={1} title="Integrity" lead="Checked at the moment of export.">
+        <div className="flex items-center gap-5 rounded-[18px] px-5 py-4"
+          style={broken ? { background: '#FDECEC', border: `1px solid ${C.sos}` } : { background: C.paper, border: `1px solid ${C.line}` }}>
+          <span className="w-12 h-12 shrink-0 rounded-full grid place-items-center text-white" style={{ background: broken ? C.sos : C.green }}>
+            {broken ? <Warning size={24} weight="bold" /> : <SealCheck size={24} weight="bold" />}
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="text-[16pt] font-extrabold tracking-[-0.02em]" style={{ color: broken ? '#B42318' : C.green }}>
+              {!verify ? 'Not checked' : broken ? `Changed at entry #${verify.brokenAt}` : 'Intact'}
+            </div>
+            <div className="text-[9pt]" style={{ color: C.muted }}>
+              {!verify ? 'The check could not run.' : broken ? 'An entry was altered after it was written. Every entry after it no longer matches.'
+                : `${verify.length === 1 ? 'The 1 entry in the log matches its seal' : `All ${verify.length} entries in the log match their seals`}. Nothing was changed.${verify.length > n ? ` This report lists the newest ${n}.` : ''}`}
+            </div>
+          </div>
+          {/* The chain: each entry sealed to the one before. */}
+          {links > 0 && (
+            <svg viewBox={`0 0 ${links * 16 + 4} 20`} width={Math.min(170, links * 16 + 4)} aria-hidden>
+              {Array.from({ length: links }).map((_, i) => {
+                const bad = broken && blocks[n - links + i]?.index >= (verify?.brokenAt ?? Infinity);
+                return (
+                  <g key={i}>
+                    {i > 0 && <line x1={i * 16 - 6} x2={i * 16 + 4} y1="10" y2="10" stroke={bad ? C.sos : C.mint} strokeWidth="2" />}
+                    <circle cx={i * 16 + 9} cy="10" r="5" fill={bad ? C.sos : C.teal} />
+                  </g>
+                );
+              })}
+            </svg>
+          )}
+        </div>
+      </Section>
+
+      <Section n={2} title="Timeline" lead="Every step of every call, oldest first. Times are local (Tirana)." keep={false}>
+        {n === 0 ? <Empty>No entries yet. The first SOS writes the first one.</Empty> : (
+          <div className="space-y-5">
+            {days.map(d => (
+              <div key={d.key}>
+                <div className="break-after-avoid flex items-baseline justify-between border-b pb-1.5 mb-1" style={{ borderColor: C.ink }}>
+                  <span className="text-[10pt] font-bold" style={{ color: C.ink }}>{d.key}</span>
+                  <span className="text-[8pt]" style={{ color: C.muted }}>{d.items.length} {d.items.length === 1 ? 'entry' : 'entries'}</span>
+                </div>
+                {d.items.map(b => {
+                  const { event, subject } = describe(b);
+                  return (
+                    <div key={b._id} className="break-inside-avoid grid grid-cols-[62px_14px_1fr_auto_118px_34px] items-center gap-2 py-[5px] border-b text-[9pt]" style={{ borderColor: C.line }}>
+                      <span className="tabular-nums font-semibold" style={{ color: C.ink }}>{date(b.timestamp, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ background: dot(b.payload?.action) }} />
+                      <span className="font-semibold truncate" style={{ color: C.ink }}>{event}</span>
+                      <span className="rounded-full px-2 py-[1px] text-[8pt] font-semibold" style={{ background: '#E3F4F1', color: C.green }}>{subject}</span>
+                      <span className="font-mono text-[7.5pt] text-right" style={{ color: C.muted }}>{b.hash.slice(0, 16)}</span>
+                      <span className="text-right tabular-nums text-[8pt]" style={{ color: C.muted }}>#{b.index}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        )}
+      </Section>
+
+      <Note title="About the seals">
+        Each entry is sealed with a SHA-256 code made from its own contents and the seal of the entry before it, so changing any entry
+        breaks every seal after it. The first 16 characters are shown; the full seals stay in Vitalis and can be re-checked any time
+        from Reports → Call log.
+      </Note>
+    </Report>
   );
 };
