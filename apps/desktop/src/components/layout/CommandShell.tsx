@@ -1,0 +1,220 @@
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  Siren, FirstAidKit, ChartBar, FilePdf, SignOut, UsersThree, type Icon,
+} from '@phosphor-icons/react';
+import { Tile } from '../ui/tile';
+import { Digits } from '../ui/digits';
+import { useNow } from '../../lib/useNow';
+import { ReactNode, useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
+import { BASE } from '../../lib/motion';
+import { RootState, logout } from '../../store';
+import { socket } from '../../realtime/socket';
+import { cn } from '../../lib/utils';
+import { exportPdf } from '../../lib/exportPdf';
+import { Logo } from '../ui/logo';
+
+/** Four sections named for what operators do; a section with several pages shows them as tabs. */
+type Section = { label: string; icon: Icon; to: string; tabs?: { to: string; label: string }[] };
+
+const SECTIONS: Section[] = [
+  { label: 'Live calls', icon: Siren, to: '/command' },
+  { label: 'Equipment', icon: FirstAidKit, to: '/command/aeds', tabs: [
+    { to: '/command/aeds', label: 'Defibrillators' },
+    { to: '/command/drones', label: 'Drones' },
+  ] },
+  { label: 'People', icon: UsersThree, to: '/command/admin/users', tabs: [
+    { to: '/command/admin/users', label: 'Users' },
+    { to: '/command/admin/doctor-applications', label: 'Doctor applications' },
+  ] },
+  { label: 'Reports', icon: ChartBar, to: '/command/analytics', tabs: [
+    { to: '/command/analytics', label: 'Overview' },
+    { to: '/command/ledger', label: 'Call log' },
+  ] },
+];
+
+const sectionOf = (path: string) =>
+  SECTIONS.find(s => s.tabs ? s.tabs.some(t => path.startsWith(t.to)) : path === s.to || path === `${s.to}/`);
+
+const ROLE_NAME: Record<string, string> = { eso: 'Operator', dispatcher: 'Operator', admin: 'Operator' };
+
+const time = (d: Date, timeZone?: string) => d.toLocaleTimeString('en-GB', { hourCycle: 'h23', timeZone });
+
+/** Socket link state, for the status light in the top bar. */
+const useLive = () => {
+  const [live, setLive] = useState(socket.connected);
+  useEffect(() => {
+    const up = () => setLive(true);
+    const down = () => setLive(false);
+    socket.on('connect', up);
+    socket.on('disconnect', down);
+    // The socket often connects before this mounts; read its state now so the light is not stale.
+    setLive(socket.connected);
+    return () => { socket.off('connect', up); socket.off('disconnect', down); };
+  }, []);
+  return live;
+};
+
+const Clock = () => {
+  const now = new Date(useNow());
+  return (
+    <div className="hidden lg:flex items-baseline gap-2 text-sm">
+      <Digits value={time(now, 'Europe/Tirane')} className="text-[15px] font-medium text-white" />
+      <span className="text-sidebar-foreground/60">Tirana</span>
+      <span className="text-sidebar-foreground/60 ml-2"><Digits value={time(now, 'UTC').slice(0, 5)} /> UTC</span>
+    </div>
+  );
+};
+
+export const CommandShell = () => {
+  const user = useSelector((s: RootState) => s.auth.user);
+  const dispatch = useDispatch();
+  const nav = useNavigate();
+  const location = useLocation();
+  const live = useLive();
+  const current = sectionOf(location.pathname);
+
+  const signOut = () => { dispatch(logout()); nav('/login'); };
+
+  return (
+    // The green frame (sidebar + top bar) with the work sheet laid on it.
+    <div className="h-screen grid grid-rows-[56px_1fr] grid-cols-[232px_1fr] frame-texture text-sidebar-foreground print:block print:h-auto">
+      <div className="flex items-center gap-2.5 px-5 print:hidden">
+        <Logo size={36} className="shadow-[0_6px_16px_-6px_hsl(173_79%_20%/0.8)] rounded-[9px]" />
+        <div className="leading-none">
+          <div className="text-[18px] font-extrabold tracking-[-0.02em] text-white">Vitalis</div>
+          <div className="text-[12px] text-sidebar-foreground/65 mt-0.5">Command</div>
+        </div>
+      </div>
+
+      <header className="flex items-center gap-6 pr-5 print:hidden">
+        {/* The dashboard has its own large clock and link light; other pages get the small ones. */}
+        {location.pathname !== '/command' && <>
+        <div
+          className={cn(
+            'flex items-center gap-2 rounded-full pl-2.5 pr-3 h-7 text-[13px] font-medium',
+            live ? 'bg-white/10 text-white' : 'bg-[hsl(var(--warn))] text-white',
+          )}
+          aria-live="polite"
+        >
+          <span className={cn('w-2 h-2 rounded-full', live ? 'bg-[hsl(173_79%_55%)] animate-live' : 'bg-white')} />
+          {live ? 'Live' : 'Reconnecting'}
+        </div>
+        <Clock />
+        </>}
+        <div className="ml-auto flex items-center gap-3">
+          <div className="text-right leading-tight">
+            <div className="text-sm font-medium text-white">{user?.name ?? 'Operator'}</div>
+            <div className="text-[12px] text-sidebar-foreground/65">{ROLE_NAME[user?.role ?? ''] ?? user?.role ?? ''}</div>
+          </div>
+          <div className="w-8 h-8 rounded-full bg-white/10 grid place-items-center text-sm font-semibold text-white">
+            {(user?.name ?? '?').slice(0, 1).toUpperCase()}
+          </div>
+          <button
+            onClick={signOut}
+            className="w-8 h-8 grid place-items-center rounded-lg text-sidebar-foreground/70 hover:text-white hover:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+            aria-label="Sign out"
+            title="Sign out"
+          >
+            <SignOut size={18} weight="bold" />
+          </button>
+        </div>
+      </header>
+
+      <aside className="flex flex-col min-h-0 pt-4 print:hidden">
+        <nav className="flex flex-col gap-1 px-3">
+          {SECTIONS.map(section => {
+            const { to, label, icon: I } = section;
+            const isActive = section === current;
+            return (
+              <Link
+                key={to}
+                to={to}
+                aria-current={isActive ? 'page' : undefined}
+                className={cn(
+                  'relative flex items-center gap-3 pl-2 pr-3 h-11 rounded-xl text-[14px] transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
+                  isActive
+                    ? 'text-primary font-semibold'
+                    : 'text-sidebar-foreground/85 hover:text-white hover:bg-white/[0.08]',
+                )}
+              >
+                {/* One white pill that slides to whichever section is open. */}
+                {isActive && (
+                  <motion.span
+                    layoutId="nav-pill"
+                    transition={BASE}
+                    className="absolute inset-0 rounded-xl bg-white shadow-[0_8px_20px_-10px_hsl(175_80%_5%/0.6)]"
+                  />
+                )}
+                <span className={cn('relative w-8 h-8 grid place-items-center rounded-[10px] transition-colors duration-300', isActive ? 'bg-[hsl(173_55%_92%)] text-primary' : 'text-sidebar-foreground/85')}>
+                  <I size={19} weight={isActive ? 'duotone' : 'regular'} />
+                </span>
+                <span className="relative truncate">{label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+        <div className="mt-auto px-5 py-5 text-[12px] leading-relaxed text-sidebar-foreground/55">
+          Dispatch network · Tirana
+          <div>41.3275° N, 19.8187° E</div>
+        </div>
+      </aside>
+
+      <main className="min-w-0 min-h-0 overflow-auto bg-background print:overflow-visible print:bg-white">
+        {/* Each page builds itself in (index.css: entrance choreography); keyed so it replays per visit. */}
+        <div key={location.pathname} className="text-foreground">
+          <Outlet />
+        </div>
+      </main>
+    </div>
+  );
+};
+
+/**
+ * Page header on the green band, like the phone app: an icon tile, a heavy white title and one
+ * line on what the page is for. The first block after it overlaps the band's lower edge.
+ */
+export const PageHeader = ({ title, subtitle, actions, icon }: { title: string; subtitle?: string; actions?: ReactNode; icon?: Icon }) => {
+  const { pathname } = useLocation();
+  const tabs = sectionOf(pathname)?.tabs;
+  return (
+    <header className="page-band frame-texture flex items-start justify-between gap-4 px-6 pt-7 pb-[4.75rem]">
+      <div className="min-w-0">
+        <div className="flex items-center gap-4 min-w-0">
+          {icon && <Tile icon={icon} tone="band" size="lg" />}
+          <div className="min-w-0">
+            <h1 className="text-[28px] leading-[1.1] font-extrabold tracking-[-0.025em] text-white">{title}</h1>
+            {subtitle && <p className="mt-1 text-[14px] text-white/75">{subtitle}</p>}
+          </div>
+        </div>
+        {tabs && (
+          <nav className="print:hidden relative z-10 mt-5 inline-flex gap-1 rounded-full bg-white/[0.1] p-1" aria-label="Pages in this section">
+            {tabs.map(t => {
+              const on = pathname.startsWith(t.to);
+              return (
+                <Link key={t.to} to={t.to} aria-current={on ? 'page' : undefined}
+                  className={cn('h-8 px-4 grid place-items-center rounded-full text-[13px] font-semibold transition-colors',
+                    on ? 'bg-white text-primary' : 'text-white/80 hover:text-white hover:bg-white/[0.08]')}>
+                  {t.label}
+                </Link>
+              );
+            })}
+          </nav>
+        )}
+      </div>
+      {actions && <div className="relative z-10 flex items-center gap-2 print:hidden">{actions}</div>}
+    </header>
+  );
+};
+
+/**
+ * Header button that saves the page as a PDF report. `name` goes into the suggested file name;
+ * `prepare` runs first (e.g. checking the call log so the paper says whether it is intact).
+ */
+export const ExportPdfButton = ({ name, prepare }: { name: string; prepare?: () => Promise<unknown> }) => (
+  <button onClick={async () => { await prepare?.(); await new Promise(r => setTimeout(r, 150)); await exportPdf(name); }}
+    className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-white text-primary text-sm font-semibold hover:bg-white/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60">
+    <FilePdf size={18} weight="bold" /> Export PDF
+  </button>
+);

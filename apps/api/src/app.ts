@@ -8,6 +8,8 @@ import { logger } from './config/logger';
 import { errorHandler } from './middleware/error';
 
 import authRoutes from './modules/auth/auth.routes';
+import checkInRoutes from './modules/checkin/checkin.routes';
+import smsRoutes from './modules/sms/sms.routes';
 import emergencyRoutes from './modules/emergency/emergency.routes';
 import medicineRoutes from './modules/medicine/medicine.routes';
 import bioRoutes from './modules/biopassport/biopassport.routes';
@@ -23,9 +25,18 @@ import trainingRoutes from './modules/training/training.routes';
 import aiRoutes from './modules/ai/ai.routes';
 import adminRoutes from './modules/admin/admin.routes';
 import doctorApplicationsRoutes from './modules/doctorApplications/doctorApplications.routes';
+import aedRoutes from './modules/aed/aed.routes';
+import pushRoutes from './modules/push/push.routes';
+import trackRoutes from './modules/track/track.routes';
+import accountRoutes from './modules/account/account.routes';
+import watchRoutes from './modules/watch/watch.routes';
+import mongoose from 'mongoose';
 
 export function buildApp() {
   const app = express();
+  // Flat string query params only: blocks `?field[$ne]=x` NoSQL operator injection.
+  app.set('query parser', 'simple');
+  if (env.nodeEnv === 'production') app.set('trust proxy', 1); // behind Render/Railway proxy
   app.use(helmet());
   // In development, reflect any origin so iOS Simulator / device LAN IPs work.
   // Production reads from CORS_ORIGIN env (comma-separated allowlist).
@@ -38,6 +49,8 @@ export function buildApp() {
   app.use(compression());
   app.use(express.json({ limit: '1mb' }));
   app.use(rateLimit({ windowMs: 60_000, max: 200 }));
+  // Tighter limits where abuse costs something: credential stuffing, AI spend.
+  const strict = (max: number) => rateLimit({ windowMs: 60_000, max, standardHeaders: true, legacyHeaders: false });
 
   if (env.nodeEnv !== 'test') {
     app.use((req, res, next) => {
@@ -49,9 +62,19 @@ export function buildApp() {
     });
   }
 
-  app.get('/health', (_req, res) => res.json({ status: 'ok', ts: Date.now() }));
-  app.use('/api/auth', authRoutes);
+  // Uptime monitors poll this: 503 when the database is not connected.
+  app.get('/health', (_req, res) => {
+    const db = mongoose.connection.readyState === 1;
+    res.status(db ? 200 : 503).json({ status: db ? 'ok' : 'degraded', db, ts: Date.now() });
+  });
+  app.use('/api/auth', strict(20), authRoutes);
   app.use('/api/emergencies', emergencyRoutes);
+  // PIN guessing is also capped per check-in (5 wrong → silent alarm).
+  app.use('/api/checkin', strict(30), checkInRoutes);
+  app.use('/api/sms', strict(60), smsRoutes); // Twilio webhook; signature-checked
+  app.use('/api/account', strict(10), accountRoutes); // export / erase your own data
+  app.use('/api/track', strict(60), trackRoutes); // public live link for the emergency contact
+  app.use('/api/watch', strict(30), watchRoutes); // paired watches; pairing codes expire in 10 min
   app.use('/api/medicine', medicineRoutes);
   app.use('/api/biopassport', bioRoutes);
   app.use('/api/drones', droneRoutes);
@@ -63,9 +86,11 @@ export function buildApp() {
   app.use('/api/health', healthRoutes);
   app.use('/api/supply', supplyRoutes);
   app.use('/api/training', trainingRoutes);
-  app.use('/api/ai', aiRoutes);
+  app.use('/api/ai', strict(15), aiRoutes);
   app.use('/api/admin', adminRoutes);
   app.use('/api/doctor-applications', doctorApplicationsRoutes);
+  app.use('/api/aeds', aedRoutes);
+  app.use('/api/push', pushRoutes);
 
   app.use(errorHandler);
   return app;

@@ -1,9 +1,9 @@
-version: '3.9'
 services:
   mongo:
     image: mongo:7
     restart: unless-stopped
-    ports: ['27017:27017']
+    # Loopback only: the database must never be reachable from the internet.
+    ports: ['127.0.0.1:27017:27017']
     volumes: ['mongo_data:/data/db']
 
   api:
@@ -11,31 +11,57 @@ services:
     restart: unless-stopped
     ports: ['4000:4000']
     environment:
+      - NODE_ENV=production
       - PORT=4000
       - MONGO_URI=mongodb://mongo:27017/vitalis
       - JWT_ACCESS=${JWT_ACCESS}
       - JWT_REFRESH=${JWT_REFRESH}
-      - CORS_ORIGIN=http://localhost:5173,http://localhost:5174
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:5173,http://localhost:5175}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - DRONE_BRIDGE_KEY=${DRONE_BRIDGE_KEY}
+      - PUBLIC_WEB_URL=${PUBLIC_WEB_URL}
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
+      - TWILIO_FROM=${TWILIO_FROM}
+      - TWILIO_WEBHOOK_URL=${TWILIO_WEBHOOK_URL}
+      # http://osrm:5000 once `--profile osrm` runs; empty = straight-line ETAs.
+      - OSRM_URL=${OSRM_URL:-}
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:4000/health']
+      interval: 30s
+      timeout: 5s
+      retries: 3
     depends_on: [mongo]
 
-  web:
-    build: ./apps/web
+  # The desktop console's web build, for operators who use it in a browser.
+  console:
+    build:
+      context: ./apps/desktop
+      # Vite bakes these in at build time; changing them needs `docker compose build console`.
+      args:
+        VITE_API_URL: ${CONSOLE_API_URL:-http://localhost:4000/api}
+        VITE_SOCKET_URL: ${CONSOLE_SOCKET_URL:-http://localhost:4000}
     restart: unless-stopped
     ports: ['5173:5173']
-    environment:
-      - VITE_API_URL=http://localhost:4000/api
-      - VITE_SOCKET_URL=http://localhost:4000
-      - VITE_MAPBOX_TOKEN=${MAPBOX_TOKEN}
     depends_on: [api]
 
-  mobile:
-    build: ./apps/mobile
+  # Nightly gzip dump of the database into ./backups, keeping 14 days.
+  # Restore: docker compose exec -T mongo mongorestore --gzip --archive --drop < backups/vitalis-YYYY-MM-DD.gz
+  backup:
+    image: mongo:7
     restart: unless-stopped
-    ports: ['5174:5174']
-    environment:
-      - VITE_API_URL=http://localhost:4000/api
-      - VITE_SOCKET_URL=http://localhost:4000
-    depends_on: [api]
+    volumes: ['./backups:/backups']
+    entrypoint: ['sh', '-c', 'while true; do mongodump --uri=mongodb://mongo:27017/vitalis --gzip --archive=/backups/vitalis-$$(date +%F).gz && find /backups -name "vitalis-*.gz" -mtime +14 -delete; sleep 86400; done']
+    depends_on: [mongo]
+
+  # Self-hosted road routing for responder ETAs (no data leaves the server).
+  # Prepare the Albania map once with scripts/osrm-prepare.sh, then: docker compose --profile osrm up -d
+  osrm:
+    image: ghcr.io/project-osrm/osrm-backend:v5.27.1
+    profiles: ['osrm']
+    restart: unless-stopped
+    volumes: ['./data/osrm:/data']
+    command: osrm-routed --algorithm mld /data/albania-latest.osrm
 
 volumes:
   mongo_data:

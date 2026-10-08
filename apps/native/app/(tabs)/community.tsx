@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { ArrowLeft, Eye, MessageCircle, Shield, Users } from 'lucide-react-native';
+import { ArrowLeft, Eye, MessageCircle, Users } from 'lucide-react-native';
 import { toast } from 'sonner-native';
 import { api } from '@/lib/api';
 import { AppScreen } from '@/components/AppScreen';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
+import { Group, Row } from '@/components/ui/List';
 import { Empty } from '@/components/ui/Empty';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { colors, radius } from '@/lib/theme';
+import { apiError, locale, t, tn } from '@/lib/i18n';
 
 interface Group {
   id: string;
@@ -61,7 +62,7 @@ export default function Community() {
         setGroups(response.data ?? []);
       } catch (err: any) {
         setGroups([]);
-        setGroupsError(err.response?.data?.error ?? 'Community groups are unavailable right now.');
+        setGroupsError(apiError(err, 'Community groups are unavailable right now.'));
       } finally {
         setGroupsLoading(false);
       }
@@ -81,7 +82,7 @@ export default function Community() {
         setPosts(response.data ?? []);
       } catch (err: any) {
         setPosts([]);
-        setPostsError(err.response?.data?.error ?? 'This group could not be opened.');
+        setPostsError(apiError(err, 'This group could not be opened.'));
       } finally {
         setPostsLoading(false);
       }
@@ -102,9 +103,9 @@ export default function Community() {
       const refreshed = await api.get(`/community/posts?groupId=${selected.id}`);
       setPosts(refreshed.data ?? []);
       setNewPost('');
-      toast.success('Post published');
+      toast.success(t('Post published'));
     } catch (err: any) {
-      toast.error(err.response?.data?.error ?? 'Post failed');
+      toast.error(apiError(err, 'Post failed'));
     } finally {
       setPosting(false);
     }
@@ -114,82 +115,81 @@ export default function Community() {
     return (
       <AppScreen
         tone="purple"
-        eyebrow="Support group"
         title={selected.name}
-        subtitle={`${selected.memberCount?.toLocaleString() ?? 0} members`}
+        subtitle={tn(selected.memberCount ?? 0, '1 member', '{n} members')}
         icon={<Text style={styles.heroEmoji}>{categoryIcons[selected.category] ?? '💬'}</Text>}
-        action={
-          <Pressable onPress={() => setSelected(null)} style={styles.backBtn}>
+          action={
+          <Pressable onPress={() => setSelected(null)} style={styles.backBtn} accessibilityRole="button" accessibilityLabel={t('Back')}>
             <ArrowLeft size={16} color="#fff" />
           </Pressable>
         }
       >
-        <Card style={styles.composerCard}>
-          <Text style={styles.sectionTitle}>Share safely</Text>
-          <TextInput
-            value={newPost}
-            onChangeText={setNewPost}
-            multiline
-            placeholder="Share your experience or ask for advice…"
-            placeholderTextColor="#94A3B8"
-            style={styles.composerInput}
-          />
-          <Button
-            size="lg"
-            onPress={() => void submit()}
-            loading={posting}
-            disabled={!newPost.trim()}
-            style={styles.postButton}
-          >
-            Send
-          </Button>
-          <View style={styles.composerFooter}>
-            <Pressable onPress={() => setAnonymous((value) => !value)} style={[styles.anonymousPill, anonymous && styles.anonymousPillActive]}>
-              <Eye size={12} color={anonymous ? '#fff' : colors.mutedForeground} />
-              <Text style={[styles.anonymousText, anonymous && styles.anonymousTextActive]}>
-                {anonymous ? 'Anonymous' : 'Public'}
-              </Text>
-            </Pressable>
+        <Group title={t('Share safely')}>
+          <View style={styles.composer}>
+            <TextInput
+              value={newPost}
+              onChangeText={setNewPost}
+              multiline
+              placeholder={t('Share your experience or ask for advice…')}
+              placeholderTextColor={colors.mutedForeground}
+              style={styles.composerInput}
+            />
+            <View style={styles.composerBar}>
+              <Pressable
+                onPress={() => setAnonymous((value) => !value)}
+                style={[styles.anonymousPill, anonymous && styles.anonymousPillActive]}
+                accessibilityRole="switch"
+                accessibilityState={{ checked: anonymous }}
+              >
+                <Eye size={14} color={anonymous ? '#fff' : colors.mutedForeground} />
+                <Text style={[styles.anonymousText, anonymous && styles.anonymousTextActive]}>
+                  {anonymous ? t('Anonymous') : t('Public')}
+                </Text>
+              </Pressable>
+              <Button onPress={() => void submit()} loading={posting} disabled={!newPost.trim()} style={styles.postButton}>
+                {t('Send')}
+              </Button>
+            </View>
           </View>
-        </Card>
+        </Group>
 
         {postsLoading ? (
-          Array.from({ length: 2 }).map((_, index) => (
-            <Card key={index} style={styles.postCard}>
-              <Skeleton style={{ height: 16, width: 120 }} />
-              <Skeleton style={{ height: 12, width: '100%' }} />
-              <Skeleton style={{ height: 12, width: '85%' }} />
-            </Card>
-          ))
+          <Group>
+            {Array.from({ length: 2 }).map((_, index) => (
+              <View key={index} style={styles.post}>
+                <Skeleton style={{ height: 14, width: 120 }} />
+                <Skeleton style={{ height: 12, width: '100%' }} />
+                <Skeleton style={{ height: 12, width: '85%' }} />
+              </View>
+            ))}
+          </Group>
         ) : postsError ? (
-          <Card style={styles.postCard}>
-            <Empty icon={MessageCircle} title="Couldn’t load posts" description={postsError} />
-          </Card>
+          <Group>
+            <Empty icon={MessageCircle} title={t('Couldn’t load posts')} description={postsError} />
+          </Group>
         ) : posts.length ? (
-          posts.map((post) => (
-            <Card key={post.id} style={styles.postCard}>
-              <View style={styles.postTop}>
-                <View style={styles.postAvatar}>
-                  <Text style={styles.postAvatarText}>
-                    {post.isAnonymous ? '?' : (post.authorName?.[0]?.toUpperCase() ?? 'U')}
-                  </Text>
+          <Group title={tn(posts.length, '1 post', '{n} posts')}>
+            {posts.map((post, index) => (
+              <View key={post.id} style={[styles.post, index > 0 && styles.divider]}>
+                <View style={styles.postTop}>
+                  <View style={styles.postAvatar}>
+                    <Text style={styles.postAvatarText}>{post.isAnonymous ? '?' : (post.authorName?.[0]?.toUpperCase() ?? 'U')}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.postAuthor}>{post.isAnonymous ? t('Anonymous member') : post.authorName ?? t('Member')}</Text>
+                    <Text style={styles.postMeta}>
+                      {new Date(post.createdAt).toLocaleDateString(locale, { day: 'numeric', month: 'short' })} · {tn(post.likes, '1 like', '{n} likes')} · {tn(post.commentsCount, '1 comment', '{n} comments')}
+                    </Text>
+                  </View>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.postAuthor}>{post.isAnonymous ? 'Anonymous member' : post.authorName ?? 'Member'}</Text>
-                  <Text style={styles.postDate}>{new Date(post.createdAt).toLocaleDateString()}</Text>
-                </View>
+                <Text style={styles.postContent}>{post.content}</Text>
               </View>
-              <Text style={styles.postContent}>{post.content}</Text>
-              <View style={styles.postMeta}>
-                <Text style={styles.postMetaText}>{post.likes} likes</Text>
-                <Text style={styles.postMetaText}>{post.commentsCount} comments</Text>
-              </View>
-            </Card>
-          ))
+            ))}
+          </Group>
         ) : (
-          <Card style={styles.postCard}>
-            <Empty icon={MessageCircle} title="No posts yet" description="Be the first person to share support in this group." />
-          </Card>
+          <Group>
+            <Empty icon={MessageCircle} title={t('No posts yet')} description={t('Be the first person to share support in this group.')} />
+          </Group>
         )}
       </AppScreen>
     );
@@ -198,55 +198,47 @@ export default function Community() {
   return (
     <AppScreen
       tone="purple"
-      eyebrow="Community"
-      title="Find support that feels human."
-      subtitle="Protected groups for experiences, questions, and peer help."
-      icon={<Users size={24} color="#fff" />}
-      headerContent={
-        <View style={styles.safeBanner}>
-          <Shield size={16} color="#fff" />
-          <Text style={styles.safeBannerText}>Tap a group to read posts and share your own message — anonymous posting is available.</Text>
-        </View>
-      }
+      title={t('Community')}
+      subtitle={t('Anonymous posting is available.')}
+      icon={<Users size={20} color="#fff" />}
     >
       {groupsLoading ? (
-        Array.from({ length: 4 }).map((_, index) => (
-          <Card key={index} style={styles.groupCard}>
-            <Skeleton style={{ width: 52, height: 52, borderRadius: radius.lg }} />
-            <View style={{ flex: 1, gap: 8 }}>
-              <Skeleton style={{ height: 16, width: 140 }} />
-              <Skeleton style={{ height: 12, width: '100%' }} />
+        <Group>
+          {Array.from({ length: 4 }).map((_, index) => (
+            <View key={index} style={styles.skeletonRow}>
+              <Skeleton style={{ width: 36, height: 36, borderRadius: radius.md }} />
+              <View style={{ flex: 1, gap: 6 }}>
+                <Skeleton style={{ height: 14, width: 140 }} />
+                <Skeleton style={{ height: 12, width: '80%' }} />
+              </View>
             </View>
-          </Card>
-        ))
+          ))}
+        </Group>
       ) : groupsError ? (
-        <Card style={styles.groupCard}>
-          <Empty icon={Users} title="Couldn’t load groups" description={groupsError} />
-        </Card>
+        <Group>
+          <Empty icon={Users} title={t('Couldn’t load groups')} description={groupsError} />
+        </Group>
       ) : (
-        groups.map((group) => (
-          <Pressable key={group.id} onPress={() => setSelected(group)}>
-            <Card style={styles.groupCard}>
-              <View style={styles.groupIcon}>
-                <Text style={styles.groupEmoji}>{categoryIcons[group.category] ?? '💬'}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.groupName}>{group.name}</Text>
-                <Text style={styles.groupDescription} numberOfLines={2}>
-                  {group.description || 'A secure support space for shared experience.'}
-                </Text>
-                <Text style={styles.groupMembers}>{group.memberCount?.toLocaleString() ?? 0} members</Text>
-              </View>
-            </Card>
-          </Pressable>
-        ))
+        <Group title={t('Support groups')}>
+          {groups.map((group, index) => (
+            <Row
+              key={group.id}
+              first={index === 0}
+              icon={<Text style={styles.groupEmoji}>{categoryIcons[group.category] ?? '💬'}</Text>}
+              tint={colors.purpleSoft}
+              title={group.name}
+              summary={`${tn(group.memberCount ?? 0, '1 member', '{n} members')} · ${group.description || t('A secure support space for shared experience.')}`}
+              onPress={() => setSelected(group)}
+            />
+          ))}
+        </Group>
       )}
     </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  heroEmoji: { fontSize: 24 },
+  heroEmoji: { fontSize: 20 },
   backBtn: {
     width: 40,
     height: 40,
@@ -255,75 +247,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.14)',
   },
-  safeBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  safeBannerText: {
-    color: '#fff',
-    fontSize: 13,
-    flex: 1,
-  },
-  groupCard: {
-    padding: 16,
-    flexDirection: 'row',
-    gap: 14,
-    alignItems: 'center',
-  },
-  groupIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: radius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.purpleSoft,
-  },
-  groupEmoji: {
-    fontSize: 22,
-  },
-  groupName: {
-    color: colors.foreground,
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  groupDescription: {
-    color: colors.mutedForeground,
-    fontSize: 12,
-    lineHeight: 18,
-    marginTop: 2,
-  },
-  groupMembers: {
-    color: colors.purple,
-    fontSize: 11,
-    fontWeight: '700',
-    marginTop: 8,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  composerCard: {
-    padding: 18,
-    gap: 12,
-  },
-  sectionTitle: {
-    color: colors.foreground,
-    fontSize: 17,
-    fontWeight: '800',
-  },
+  skeletonRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
+  groupEmoji: { fontSize: 18 },
+  composer: { gap: 10, paddingBottom: 14 },
   composerInput: {
-    minHeight: 110,
-    padding: 14,
+    minHeight: 84,
     borderRadius: radius.lg,
-    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 12,
     color: colors.foreground,
     fontSize: 14,
-    lineHeight: 20,
+    textAlignVertical: 'top',
   },
-  composerFooter: {
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-  },
+  composerBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   anonymousPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -331,72 +268,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: radius.full,
-    backgroundColor: colors.background,
+    backgroundColor: colors.muted,
   },
-  anonymousPillActive: {
-    backgroundColor: colors.purple,
-  },
-  anonymousText: {
-    color: colors.mutedForeground,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  anonymousTextActive: {
-    color: '#fff',
-  },
-  postButton: {
-    width: 220,
-    alignSelf: 'center',
-    borderRadius: radius.full,
-    backgroundColor: colors.purple,
-  },
-  postCard: {
-    padding: 16,
-    gap: 12,
-  },
-  postTop: {
-    flexDirection: 'row',
-    gap: 10,
-    alignItems: 'center',
-  },
+  anonymousPillActive: { backgroundColor: colors.purple },
+  anonymousText: { color: colors.mutedForeground, fontSize: 13, fontWeight: '700' },
+  anonymousTextActive: { color: '#fff' },
+  postButton: { backgroundColor: colors.purple, paddingHorizontal: 22 },
+  post: { gap: 10, paddingVertical: 14 },
+  divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  postTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   postAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.full,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.purpleSoft,
   },
-  postAvatarText: {
-    color: colors.purple,
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  postAuthor: {
-    color: colors.foreground,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  postDate: {
-    color: colors.mutedForeground,
-    fontSize: 11,
-    marginTop: 2,
-  },
-  postContent: {
-    color: colors.foreground,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  postMeta: {
-    flexDirection: 'row',
-    gap: 14,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  postMetaText: {
-    color: colors.mutedForeground,
-    fontSize: 12,
-    fontWeight: '600',
-  },
+  postAvatarText: { color: colors.purple, fontSize: 14, fontWeight: '800' },
+  postAuthor: { color: colors.foreground, fontSize: 14, fontWeight: '700' },
+  postMeta: { color: colors.mutedForeground, fontSize: 12, marginTop: 1 },
+  postContent: { color: colors.foreground, fontSize: 14, lineHeight: 21 },
 });

@@ -1,0 +1,174 @@
+@import '@fontsource-variable/schibsted-grotesk';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Vitalis Command. The brand's own colours: a deep-green frame (#0C5D57, the phone app's
+ * sign-in green) around an off-white work surface (#F7F5F0), teal (#14A897) for what is live
+ * or selected, red only for SOS. Fonts are bundled: the desktop CSP blocks remote fonts.
+ */
+@layer base {
+  :root {
+    --background: 43 33% 95%;          /* #F7F5F0 work surface */
+    --foreground: 176 25% 10%;         /* green-black ink */
+    --card: 0 0% 100%;
+    --card-foreground: 176 25% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 176 25% 10%;
+    --primary: 175 77% 21%;            /* #0C5D57: buttons, white text passes AA */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 172 30% 93%;
+    --secondary-foreground: 175 77% 18%;
+    --muted: 40 18% 91%;
+    --muted-foreground: 175 8% 36%;
+    --accent: 172 55% 91%;
+    --accent-foreground: 175 77% 21%;
+    --destructive: 0 68% 52%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 40 14% 85%;
+    --input: 40 14% 82%;
+    --ring: 173 79% 37%;
+    --radius: 0.625rem;
+
+    /* The frame: sidebar + top bar. */
+    --sidebar-background: 175 77% 17%;  /* a shade under #0C5D57 */
+    --sidebar-foreground: 160 30% 92%;
+    --sidebar-primary: 173 79% 37%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 175 60% 23%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 175 50% 24%;
+    --sidebar-ring: 173 79% 50%;
+
+    --teal: 173 79% 37%;               /* #14A897: live, selected, responders */
+    --sos: 0 72% 51%;
+    --warn: 32 92% 46%;
+  }
+
+  :root { color-scheme: light; }
+
+  * { @apply border-border; }
+
+  html, body, #root { height: 100%; }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Schibsted Grotesk Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  h1, h2, h3 { text-wrap: balance; }
+  ::selection { background: hsl(var(--teal) / 0.25); }
+}
+
+@layer components {
+  .num { font-variant-numeric: tabular-nums; }
+  /* Codes that are literally codes: case numbers, coordinates, hashes. */
+  .code { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 0.9em; }
+
+  /* The green frame's faint street-map texture (an abstract of central Tirana's ring and axes). */
+  .frame-texture {
+    background-color: hsl(var(--sidebar-background));
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='640' viewBox='0 0 640 640' fill='none' stroke='%23ffffff' stroke-opacity='0.06' stroke-width='1.2'%3E%3Ccircle cx='320' cy='320' r='120'/%3E%3Ccircle cx='320' cy='320' r='210'/%3E%3Cpath d='M320 0v640M0 320h640M60 40l520 560M600 60L40 580M0 180c160 40 280 20 640 120M0 470c200-60 380-20 640-90'/%3E%3C/svg%3E");
+    background-size: 640px 640px;
+  }
+
+  /* Page header band: the frame's green continues behind the title; the first block below
+     overlaps its lower edge (the phone app's header pattern). */
+  .page-band { position: relative; overflow: hidden; }
+  .page-band::after {
+    content: '';
+    position: absolute;
+    right: -120px;
+    top: -160px;
+    width: 420px;
+    height: 420px;
+    border-radius: 9999px;
+    background: hsl(0 0% 100% / 0.05);
+    pointer-events: none;
+  }
+  .page-band + * { margin-top: -3.25rem; position: relative; }
+
+  /* Map: OpenStreetMap tiles washed into the brand's off-white and green ink. */
+  .map-brand .leaflet-tile-pane { filter: grayscale(1) sepia(0.22) hue-rotate(118deg) saturate(0.55) brightness(1.05) contrast(0.86); }
+  .map-brand .leaflet-container { background: hsl(var(--background)); font-family: inherit; }
+  .map-brand .leaflet-bar { border: 1px solid hsl(var(--border)); box-shadow: 0 2px 8px hsl(176 30% 10% / 0.08); }
+  .map-brand .leaflet-bar a { color: hsl(var(--foreground)); }
+  .map-brand .leaflet-tooltip { border-radius: 8px; border: 1px solid hsl(var(--border)); box-shadow: 0 4px 16px hsl(176 30% 10% / 0.12); }
+
+  /* A call still waiting for a responder: the pin pulses. */
+  .pin-pulse::before {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 9999px;
+    background: hsl(var(--sos) / 0.35);
+    animation: pin-pulse 1.8s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+    z-index: -1;
+  }
+}
+
+/*
+ * Entrance choreography: every page builds itself in order instead of appearing at once.
+ * Only opacity and transform animate (the cheap, compositor-only properties), with one curve.
+ * The band's parts first, then each block below it, then the items inside a .stagger group.
+ */
+:root { --ease-out: cubic-bezier(0.22, 1, 0.36, 1); }
+@keyframes rise { from { opacity: 0; transform: translate3d(0, 16px, 0); } }
+@keyframes rise-side { from { opacity: 0; transform: translate3d(22px, 0, 0); } }
+.rise, .page-band > *, .page-band + * > *, .stagger > * {
+  animation: rise 0.7s var(--ease-out) both;
+  animation-delay: var(--d, 0ms);
+}
+.rise-side { animation: rise-side 0.7s var(--ease-out) both; animation-delay: var(--d, 0ms); }
+.page-band > *:nth-child(2) { --d: 70ms; }
+.page-band > *:nth-child(3) { --d: 140ms; }
+.page-band > *:nth-child(4) { --d: 200ms; }
+.page-band + * > *:nth-child(1) { --d: 160ms; }
+.page-band + * > *:nth-child(2) { --d: 300ms; }
+.page-band + * > *:nth-child(3) { --d: 420ms; }
+.page-band + * > *:nth-child(n+4) { --d: 520ms; }
+/* Items in a group follow each other 60 ms apart, after the group's own --base. */
+.stagger > *:nth-child(1) { --d: calc(var(--base, 0ms) + 0ms); }
+.stagger > *:nth-child(2) { --d: calc(var(--base, 0ms) + 60ms); }
+.stagger > *:nth-child(3) { --d: calc(var(--base, 0ms) + 120ms); }
+.stagger > *:nth-child(4) { --d: calc(var(--base, 0ms) + 180ms); }
+.stagger > *:nth-child(5) { --d: calc(var(--base, 0ms) + 240ms); }
+.stagger > *:nth-child(6) { --d: calc(var(--base, 0ms) + 290ms); }
+.stagger > *:nth-child(7) { --d: calc(var(--base, 0ms) + 340ms); }
+.stagger > *:nth-child(8) { --d: calc(var(--base, 0ms) + 380ms); }
+.stagger > *:nth-child(9) { --d: calc(var(--base, 0ms) + 420ms); }
+.stagger > *:nth-child(10) { --d: calc(var(--base, 0ms) + 450ms); }
+.stagger > *:nth-child(n+11) { --d: calc(var(--base, 0ms) + 480ms); }
+@media (prefers-reduced-motion: reduce) {
+  .rise, .rise-side, .page-band > *, .page-band + * > *, .stagger > * { animation: none; }
+}
+
+@keyframes pin-pulse {
+  from { transform: scale(1); opacity: 1; }
+  to { transform: scale(3.2); opacity: 0; }
+}
+@keyframes dash { to { stroke-dashoffset: -22; } }
+@keyframes ping-soft { from { transform: scale(0.6); opacity: 1; } to { transform: scale(1.8); opacity: 0; } }
+@keyframes live-dot { 50% { opacity: 0.35; } }
+.animate-live { animation: live-dot 2s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pin-pulse::before, .animate-live { animation: none; }
+}
+
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Export PDF (lib/exportPdf.ts): pages print their <Report> document (components/print/Report.tsx), not the screen. */
+@page {
+  size: A4 portrait;
+  margin: 12mm 13mm 15mm;
+  /* Page numbers where the print engine supports margin boxes (Chromium, WebView2 on Windows). */
+  @bottom-right { content: "Page " counter(page) " of " counter(pages); font: 7.5pt "Schibsted Grotesk Variable", sans-serif; color: #5C6966; }
+}
+@media print {
+  html, body, #root { height: auto; overflow: visible; background: #fff; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  [data-sonner-toaster] { display: none !important; }
+}

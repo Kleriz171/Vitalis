@@ -4,9 +4,36 @@ import { randomBytes } from 'crypto';
 import mongoose from 'mongoose';
 import { authRequired, AuthReq } from '../../middleware/auth';
 import { validate } from '../../middleware/validate';
-import { Course, Enrollment, Certification } from '../../models/Training';
+import { Course, Enrollment, Certification, RESPONDER_COURSES } from '../../models/Training';
+import { User } from '../../models/User';
 import { generateQR } from '../../utils/qr';
 import { env } from '../../config/env';
+import { trainingCourses } from '../../seeds/trainingCourses';
+import { coursesSq } from '../../seeds/trainingCourses.sq';
+import { wantsAlbanian } from '../../utils/lang';
+
+// Albanian is overlaid by lesson/question order and graded by choice index, so the two
+// versions must have the same shape. Refuse to start rather than mis-grade a quiz.
+for (const c of trainingCourses) {
+  const sq = coursesSq[c.slug];
+  const same = sq && sq.lessons.length === c.lessons.length && sq.quiz.length === c.quiz.length
+    && sq.quiz.every((q, i) => q.choices.length === c.quiz[i].choices.length);
+  if (!same) throw new Error(`Albanian course text out of sync with ${c.slug}`);
+}
+
+/** Course (lean doc) with the Albanian title, lessons and quiz text laid over it. */
+const localize = (c: any, albanian: boolean) => {
+  const t = albanian ? coursesSq[c.slug] : undefined;
+  if (!t) return c;
+  return {
+    ...c,
+    title: t.title,
+    shortDescription: t.shortDescription,
+    badgeLabel: t.badgeLabel,
+    lessons: (c.lessons ?? []).map((l: any, i: number) => ({ ...l, ...t.lessons[i] })),
+    quiz: (c.quiz ?? []).map((q: any, i: number) => ({ ...q, ...t.quiz[i] })),
+  };
+};
 
 const r = Router();
 
@@ -44,11 +71,11 @@ const courseToDetail = (c: any) => ({
   })),
 });
 
-const certToView = (c: any) => ({
+const certToView = (c: any, albanian = false) => ({
   id: String(c._id),
   courseId: String(c.course),
   courseSlug: c.courseSlug,
-  badgeLabel: c.badgeLabel,
+  badgeLabel: (albanian && coursesSq[c.courseSlug]?.badgeLabel) || c.badgeLabel,
   score: c.score,
   issuedAt: c.issuedAt,
   expiresAt: c.expiresAt,
@@ -87,10 +114,12 @@ r.get('/certifications/verify/:token', async (req, res, next) => {
 
 r.use(authRequired);
 
-r.get('/courses', async (_req, res, next) => {
+r.get('/courses', async (req, res, next) => {
   try {
-    const courses = await Course.find().sort('title').lean();
-    res.json(courses.map(courseToSummary));
+    // Seed order is teaching order (CPR first); _id preserves it.
+    const courses = await Course.find().sort('_id').lean();
+    const albanian = wantsAlbanian(req);
+    res.json(courses.map(c => courseToSummary(localize(c, albanian))));
   } catch (e) { next(e); }
 });
 
@@ -101,7 +130,7 @@ r.get('/courses/:id', async (req, res, next) => {
       isObjectId ? { $or: [{ _id: req.params.id }, { slug: req.params.id }] } : { slug: req.params.id }
     ).lean();
     if (!course) return res.status(404).json({ error: 'Course not found' });
-    res.json(courseToDetail(course));
+    res.json(courseToDetail(localize(course, wantsAlbanian(req))));
   } catch (e) { next(e); }
 });
 
@@ -174,7 +203,8 @@ r.post('/enrollments/:courseId/quiz', validate(quizSchema), async (req: AuthReq,
     ).lean();
     if (!course) return res.status(404).json({ error: 'Course not found' });
 
-    const quiz: any[] = course.quiz ?? [];
+    const albanian = wantsAlbanian(req);
+    const quiz: any[] = localize(course, albanian).quiz ?? [];
     if (!quiz.length) return res.status(400).json({ error: 'Course has no quiz' });
 
     let correct = 0;
@@ -182,12 +212,7 @@ r.post('/enrollments/:courseId/quiz', validate(quizSchema), async (req: AuthReq,
       const submitted = answers.find((a) => a.questionId === String(q._id));
       const right = submitted?.choiceIndex === q.answerIndex;
       if (right) correct++;
-      return {
-        questionId: String(q._id),
-        correct: right,
-        correctIndex: q.answerIndex,
-        explanation: q.explanation,
-      };
+      return { questionId: String(q._id), correct: right, explanation: q.explanation };
     });
     const score = Math.round((correct / quiz.length) * 100);
     const passed = score >= (course.passingScore ?? 70);
@@ -203,6 +228,12 @@ r.post('/enrollments/:courseId/quiz', validate(quizSchema), async (req: AuthReq,
     ).lean();
 
     let certification: any = null;
+    let roleChanged = false;
+    if (passed && RESPONDER_COURSES.includes(course.slug)) {
+      // Training is the way into the responder network. Clients refresh their token to pick this up.
+      const r = await User.updateOne({ _id: req.user!.id, role: 'citizen' }, { $set: { role: 'student_responder' } });
+      roleChanged = r.modifiedCount > 0;
+    }
     if (passed) {
       const shareToken = randomBytes(12).toString('hex');
       certification = await Certification.findOneAndUpdate(
@@ -225,13 +256,17 @@ r.post('/enrollments/:courseId/quiz', validate(quizSchema), async (req: AuthReq,
       ).lean();
     }
 
+    // Certifications gate who can respond to SOS, so answers are only revealed once passed.
     res.json({
       score,
       passed,
       passingScore: course.passingScore ?? 70,
-      review,
+      review: passed
+        ? review.map((item, i) => ({ ...item, correctIndex: quiz[i].answerIndex }))
+        : review.map(({ questionId, correct }) => ({ questionId, correct })),
       enrollment: enrollmentToView(enrollment),
-      certification: certification ? certToView(certification) : null,
+      certification: certification ? certToView(certification, albanian) : null,
+      roleChanged,
     });
   } catch (e) { next(e); }
 });
@@ -239,7 +274,8 @@ r.post('/enrollments/:courseId/quiz', validate(quizSchema), async (req: AuthReq,
 r.get('/certifications', async (req: AuthReq, res, next) => {
   try {
     const certs = await Certification.find({ user: req.user!.id }).sort('-issuedAt').lean();
-    res.json(certs.map(certToView));
+    const albanian = wantsAlbanian(req);
+    res.json(certs.map(c => certToView(c, albanian)));
   } catch (e) { next(e); }
 });
 
@@ -249,7 +285,7 @@ r.get('/certifications/:id', async (req: AuthReq, res, next) => {
     if (!cert) return res.status(404).json({ error: 'Certificate not found' });
     const verifyUrl = `${env.publicWebUrl}/verify/${cert.shareToken}`;
     const qr = await generateQR({ url: verifyUrl, token: cert.shareToken });
-    res.json({ ...certToView(cert), qr, verifyUrl });
+    res.json({ ...certToView(cert, wantsAlbanian(req)), qr, verifyUrl });
   } catch (e) { next(e); }
 });
 

@@ -5,17 +5,32 @@ import { authRequired } from '../../middleware/auth';
 import { allow } from '../../middleware/rbac';
 
 const r = Router();
-r.use(authRequired, allow('dispatcher','admin'));
+r.use(authRequired, allow('eso'));
 
 r.get('/kpis', async (_req, res, next) => {
   try {
-    const [total, active, resolvedToday] = await Promise.all([
+    const since = new Date(Date.now() - 86400000);
+    const [total, active, pending, resolvedToday, onDuty, recent] = await Promise.all([
       Emergency.countDocuments(),
       Emergency.countDocuments({ status: { $in: ['pending','assigned','en_route','on_scene'] } }),
-      Emergency.countDocuments({ status: 'resolved', updatedAt: { $gte: new Date(Date.now() - 86400000) } }),
+      Emergency.countDocuments({ status: 'pending' }),
+      Emergency.countDocuments({ status: 'resolved', updatedAt: { $gte: since } }),
+      User.countDocuments({ available: true, role: { $in: ['doctor','nurse','student_responder','blood_donor'] } }),
+      Emergency.find({ createdAt: { $gte: since }, 'timeline.status': 'assigned' }).select('createdAt timeline').lean(),
     ]);
     const byType = await Emergency.aggregate([{ $group: { _id: '$type', count: { $sum: 1 } } }]);
-    res.json({ total, active, resolvedToday, byType });
+    // Time from SOS to a responder accepting: the number that decides survival in an arrest.
+    const waits = recent
+      .map((e: any) => {
+        const t = e.timeline.find((x: any) => x.status === 'assigned');
+        return t ? (+new Date(t.at) - +new Date(e.createdAt)) / 1000 : null;
+      })
+      .filter((x): x is number => x != null)
+      .sort((a, b) => a - b);
+    const medianAcceptSeconds = waits.length ? Math.round(waits[Math.floor(waits.length / 2)]) : null;
+    // Share of accepted calls (24 h) that a responder took within a minute: the dispatch target.
+    const acceptedUnderMinutePct = waits.length ? Math.round((100 * waits.filter(w => w <= 60).length) / waits.length) : null;
+    res.json({ total, active, pending, resolvedToday, onDuty, medianAcceptSeconds, acceptedUnderMinutePct, acceptedCount: waits.length, byType });
   } catch (e) { next(e); }
 });
 

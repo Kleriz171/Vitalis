@@ -4,21 +4,22 @@ import { User } from '../../models/User';
 import { Medication, Allergy, Vaccination, Appointment, Condition, Disability } from '../../models/HealthRecord';
 import { Emergency } from '../../models/Emergency';
 import { Certification, Enrollment } from '../../models/Training';
-import { authRequired } from '../../middleware/auth';
+import { authRequired, AuthReq } from '../../middleware/auth';
 import { allow } from '../../middleware/rbac';
 import { validate } from '../../middleware/validate';
 
 const r = Router();
-r.use(authRequired, allow('admin'));
+r.use(authRequired, allow('eso'));
 
-const createDispatcherSchema = z.object({
+const createOperatorSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
   firstName: z.string().min(1),
   lastName: z.string().min(1),
 });
 
-r.post('/dispatchers', validate(createDispatcherSchema), async (req, res, next) => {
+// New emergency services operator account.
+r.post('/operators', validate(createOperatorSchema), async (req, res, next) => {
   try {
     const { email, password, firstName, lastName } = req.body;
     const exists = await User.findOne({ email });
@@ -29,7 +30,7 @@ r.post('/dispatchers', validate(createDispatcherSchema), async (req, res, next) 
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       name: `${firstName.trim()} ${lastName.trim()}`,
-      role: 'dispatcher',
+      role: 'eso',
     });
     res.status(201).json({ id: user._id, email: user.email, name: user.name, role: user.role });
   } catch (e) { next(e); }
@@ -74,11 +75,12 @@ r.get('/users/:id', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-r.delete('/users/:id', async (req, res, next) => {
+r.delete('/users/:id', async (req: AuthReq, res, next) => {
   try {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ error: 'Not found' });
-    if (user.role === 'admin') return res.status(400).json({ error: 'Cannot delete admin' });
+    // Operators may remove each other, never themselves: someone must always be left to run the console.
+    if (String(user._id) === req.user!.id) return res.status(400).json({ error: 'You cannot remove your own account' });
     await user.deleteOne();
     res.json({ ok: true });
   } catch (e) { next(e); }

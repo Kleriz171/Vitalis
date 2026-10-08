@@ -3,27 +3,37 @@
   "private": true,
   "version": "0.1.0",
   "workspaces": [
-    "apps/*",
-    "packages/*"
+    "apps/*"
   ],
   "scripts": {
     "dev:api": "npm run dev -w @vitalis/api",
-    "dev:web": "npm run dev -w @vitalis/web",
-    "dev:mobile": "npm run dev -w @vitalis/mobile",
+    "dev:desktop": "npm run dev -w @vitalis/desktop",
+    "dev:landing": "npm run dev -w @vitalis/landing",
     "dev:native": "npm run start -w @vitalis/native",
+    "dev:iphone": "cd apps/native && IP=$(ipconfig getifaddr en0 || ipconfig getifaddr en1) && echo \"Expo Go → scan the QR that just opened, or Enter URL manually: exp://$IP:8081\" && npx -y qrcode -w 600 -o \"$TMPDIR/vitalis-expo-go.png\" \"exp://$IP:8081\" && open \"$TMPDIR/vitalis-expo-go.png\" && EXPO_PUBLIC_API_URL=http://$IP:4000/api REACT_NATIVE_PACKAGER_HOSTNAME=$IP npx expo start --go --clear",
     "dev:ios": "npm run ios -w @vitalis/native",
     "seed": "npm run seed -w @vitalis/api",
-    "build": "npm run build -w @vitalis/api && npm run build -w @vitalis/web && npm run build -w @vitalis/mobile"
+    "build": "npm run build -w @vitalis/api && npm run build -w @vitalis/desktop && npm run build -w @vitalis/landing",
+    "dev:drone": "npm run start -w @vitalis/drone",
+    "dev:drone:sim": "npm run sim -w @vitalis/drone",
+    "check:security": "npx tsx apps/api/scripts/security-check.ts",
+    "check:drones": "npx tsx apps/api/scripts/drone-check.ts",
+    "check:i18n": "npx tsx apps/native/scripts/i18n-check.ts",
+    "check:redispatch": "npx tsx apps/api/scripts/redispatch-check.ts",
+    "check:checkin": "npx tsx apps/api/scripts/checkin-check.ts",
+    "check:fall": "npx tsx apps/native/scripts/fall-check.ts",
+    "check:sms": "npx tsx apps/api/scripts/sms-check.ts",
+    "check:voice": "npx tsx apps/native/scripts/voice-check.ts",
+    "check:eta": "npx tsx apps/api/scripts/eta-check.ts",
+    "check:track": "npx tsx apps/api/scripts/track-check.ts",
+    "check:account": "npx tsx apps/api/scripts/account-check.ts",
+    "check:watch": "npx tsx apps/api/scripts/watch-check.ts"
   },
   "overrides": {
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
-    "react-native": "0.81.5",
-    "react-native-reanimated": "~4.1.1",
-    "react-native-worklets": "0.5.1",
-    "react-native-css-interop": "0.1.22"
-  },
-  "dependencies": {
-    "framer-motion": "^12.38.0"
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-reanimated": "4.5.1",
+    "react-native-worklets": "0.10.1"
   }
 }

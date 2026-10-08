@@ -30,7 +30,7 @@ const callGemini = async (userMessage: string): Promise<string> => {
   if (!env.geminiApiKey) {
     return 'The AI assistant is not configured. Please set GEMINI_API_KEY on the server.';
   }
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${env.geminiApiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
   const body = {
     system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
     contents: [{ role: 'user', parts: [{ text: userMessage }] }],
@@ -45,7 +45,8 @@ const callGemini = async (userMessage: string): Promise<string> => {
 
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.geminiApiKey },
+    signal: AbortSignal.timeout(20_000),
     body: JSON.stringify(body),
   });
 

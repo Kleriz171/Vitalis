@@ -58,6 +58,12 @@ const CertificationSchema = new Schema({
 
 export const Certification = model('Certification', CertificationSchema);
 
+// A valid certificate in one of these lets a citizen go on duty as a responder.
+export const RESPONDER_COURSES = ['cpr-adult', 'aed-use'];
+
+export const hasResponderCertification = async (userId: string) =>
+  !!(await Certification.exists({ user: userId, courseSlug: { $in: RESPONDER_COURSES }, expiresAt: { $gt: new Date() } }));
+
 export type CourseDoc = ReturnType<typeof Course['hydrate']>;
 export type EnrollmentDoc = ReturnType<typeof Enrollment['hydrate']>;
 export type CertificationDoc = ReturnType<typeof Certification['hydrate']>;

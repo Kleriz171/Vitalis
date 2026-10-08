@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useDispatch, useSelector } from 'react-redux';
-import { Award, BookOpen, Clock3, GraduationCap, Heart, ShieldCheck } from 'lucide-react-native';
+import { Award, GraduationCap } from 'lucide-react-native';
 import { toast } from 'sonner-native';
+import { SvgXml } from 'react-native-svg';
+import { courseArt } from '@/lib/courseArt';
 
 import { AppScreen } from '@/components/AppScreen';
-import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { Group, Row } from '@/components/ui/List';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Empty } from '@/components/ui/Empty';
 import { api } from '@/lib/api';
@@ -18,6 +20,7 @@ import {
   TrainingEnrollment,
 } from '@/lib/store';
 import { colors, radius } from '@/lib/theme';
+import { apiError, locale, t, tn } from '@/lib/i18n';
 
 interface CourseSummary {
   id: string;
@@ -31,6 +34,8 @@ interface CourseSummary {
   lessonCount: number;
   badgeLabel: string;
 }
+
+const LEVEL_LABEL: Record<string, string> = { intro: t('Intro'), standard: t('Standard'), advanced: t('Advanced') };
 
 export default function Training() {
   const dispatch = useDispatch();
@@ -57,7 +62,7 @@ export default function Training() {
         setLoading(true);
         await load();
       } catch (err: any) {
-        toast.error('Could not load training', { description: err.response?.data?.error ?? 'Try again shortly.' });
+        toast.error(t('Could not load training'), { description: apiError(err, 'Try again shortly.') });
       } finally {
         setLoading(false);
       }
@@ -85,177 +90,90 @@ export default function Training() {
     return map;
   }, [trainingState.certifications]);
 
+  const [now] = useState(Date.now);
   const activeCerts = useMemo(
-    () => trainingState.certifications.filter((c) => new Date(c.expiresAt).getTime() > Date.now()),
-    [trainingState.certifications]
+    () => trainingState.certifications.filter((c) => new Date(c.expiresAt).getTime() > now),
+    [trainingState.certifications, now]
   );
 
   return (
     <AppScreen
       tone="primary"
-      eyebrow="First aid training"
-      title="Become a life-saver."
-      subtitle="Quick lessons based on Red Cross guidelines — certify yourself in minutes."
-      icon={<GraduationCap size={24} color="#fff" />}
-      headerContent={
-        <View style={styles.heroChips}>
-          <View style={styles.heroChip}>
-            <Award size={14} color="#fff" />
-            <Text style={styles.heroChipText}>{activeCerts.length} active certs</Text>
-          </View>
-          <View style={styles.heroChip}>
-            <ShieldCheck size={14} color="#fff" />
-            <Text style={styles.heroChipText}>Educational • not a replacement for in-person training</Text>
-          </View>
-        </View>
-      }
+      title={t('Training')}
+      subtitle={t('Educational. Not a replacement for in-person training.')}
+      icon={<GraduationCap size={20} color="#fff" />}
       scrollProps={{
-        refreshControl: <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />,
+        refreshControl: <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />,
       }}
     >
       {activeCerts.length ? (
-        <Card style={styles.certCard}>
-          <View style={styles.certHeader}>
-            <Heart size={18} color={colors.primary} fill={colors.primary} />
-            <Text style={styles.certTitle}>Your certifications</Text>
-          </View>
-          <View style={styles.badgeRow}>
-            {activeCerts.map((cert) => (
-              <Pressable
-                key={cert.id}
-                onPress={() => router.push({ pathname: '/training/certificate/[id]', params: { id: cert.id } } as never)}
-                style={styles.badgePill}
-              >
-                <Text style={styles.badgePillText}>{cert.badgeLabel}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </Card>
+        <Group title={t('Your certifications')}>
+          {activeCerts.map((cert, index) => (
+            <Row
+              key={cert.id}
+              first={index === 0}
+              icon={<Award size={18} color="#fff" />}
+              tint={colors.primary}
+              title={cert.badgeLabel}
+              summary={t('Valid until {date}', { date: new Date(cert.expiresAt).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' }) })}
+              onPress={() => router.push({ pathname: '/training/certificate/[id]', params: { id: cert.id } } as never)}
+            />
+          ))}
+        </Group>
       ) : null}
 
       {loading ? (
-        Array.from({ length: 3 }).map((_, idx) => (
-          <Card key={idx} style={styles.courseCard}>
-            <Skeleton style={{ width: 52, height: 52, borderRadius: radius.lg }} />
-            <View style={{ flex: 1, gap: 8 }}>
-              <Skeleton style={{ height: 16, width: 160 }} />
-              <Skeleton style={{ height: 12, width: '90%' }} />
+        <Group>
+          {Array.from({ length: 4 }).map((_, idx) => (
+            <View key={idx} style={styles.skeletonRow}>
+              <Skeleton style={{ width: 44, height: 44, borderRadius: 22 }} />
+              <View style={{ flex: 1, gap: 6 }}>
+                <Skeleton style={{ height: 14, width: 160 }} />
+                <Skeleton style={{ height: 12, width: '70%' }} />
+              </View>
             </View>
-          </Card>
-        ))
+          ))}
+        </Group>
       ) : !courses.length ? (
-        <Card style={styles.courseCard}>
-          <Empty icon={GraduationCap} title="No courses yet" description="Training content will appear once the seed runs." />
-        </Card>
+        <Group>
+          <Empty icon={GraduationCap} title={t('No courses yet')} description={t('Training content will appear once the seed runs.')} />
+        </Group>
       ) : (
-        courses.map((course, index) => {
-          const enrollment = enrollmentByCourse.get(course.id);
-          const cert = certByCourse.get(course.id);
-          const completedLessons = enrollment?.completedLessonIds.length ?? 0;
-          const progress = course.lessonCount
-            ? Math.round((completedLessons / course.lessonCount) * 100)
-            : 0;
-          return (
-            <Animated.View key={course.id} entering={FadeInDown.delay(40 * index).duration(280)}>
-              <Pressable onPress={() => router.push({ pathname: '/training/[slug]', params: { slug: course.slug } } as never)}>
-                <Card style={styles.courseCard}>
-                  <View style={styles.courseTop}>
-                    <View style={styles.emojiBadge}>
-                      <Text style={styles.emoji}>{course.heroEmoji}</Text>
-                    </View>
-                    <View style={styles.courseMain}>
-                      <View style={styles.titleRow}>
-                        <Text style={styles.courseTitle}>{course.title}</Text>
-                        {cert ? <View style={styles.miniBadge}><Text style={styles.miniBadgeText}>Certified</Text></View> : null}
-                      </View>
-                      <Text style={styles.courseDesc} numberOfLines={2}>{course.shortDescription}</Text>
-                      <View style={styles.badgeRowMeta}>
-                        <View style={styles.metaBadge}>
-                          <Clock3 size={11} color={colors.foreground} />
-                          <Text style={styles.metaBadgeText}>{course.estimatedMinutes} min</Text>
-                        </View>
-                        <View style={styles.metaBadge}>
-                          <BookOpen size={11} color={colors.foreground} />
-                          <Text style={styles.metaBadgeText}>{course.lessonCount} lessons</Text>
-                        </View>
-                        <View style={styles.metaBadge}>
-                          <Text style={styles.metaBadgeText}>{course.level}</Text>
-                        </View>
-                      </View>
-                    </View>
+        <Group title={t('Courses')}>
+          {courses.map((course, index) => {
+            const enrollment = enrollmentByCourse.get(course.id);
+            const cert = certByCourse.get(course.id);
+            const completedLessons = enrollment?.completedLessonIds.length ?? 0;
+            const progress = course.lessonCount ? Math.round((completedLessons / course.lessonCount) * 100) : 0;
+            const art = courseArt(course.slug);
+            return (
+              <Row
+                key={course.id}
+                first={index === 0}
+                icon={art ? <SvgXml xml={art} width={44} height={44} /> : <Text style={styles.emoji}>{course.heroEmoji}</Text>}
+                tint="transparent"
+                title={course.title}
+                summary={[t('{n} min', { n: course.estimatedMinutes }), tn(course.lessonCount, '1 lesson', '{n} lessons'), LEVEL_LABEL[course.level] ?? course.level].join(' · ')}
+                right={cert ? <Badge>{t('Certified')}</Badge> : undefined}
+                onPress={() => router.push({ pathname: '/training/[slug]', params: { slug: course.slug } } as never)}
+              >
+                {progress > 0 && !cert ? (
+                  <View style={styles.progressTrack} accessibilityLabel={`${t('Progress')} ${progress}%`}>
+                    <View style={[styles.progressFill, { width: `${progress}%` }]} />
                   </View>
-                  <View style={styles.progressBlock}>
-                    <View style={styles.progressHeader}>
-                      <Text style={styles.progressLabel}>{progress > 0 ? 'Progress' : 'Ready to start'}</Text>
-                      <Text style={styles.progressValue}>{progress}%</Text>
-                    </View>
-                    <View style={styles.progressTrack}>
-                      <View style={[styles.progressFill, { width: `${progress}%` }]} />
-                    </View>
-                  </View>
-                </Card>
-              </Pressable>
-            </Animated.View>
-          );
-        })
+                ) : null}
+              </Row>
+            );
+          })}
+        </Group>
       )}
     </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  heroChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  heroChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 12, paddingVertical: 8,
-    borderRadius: radius.full, backgroundColor: 'rgba(255,255,255,0.14)',
-  },
-  heroChipText: { color: '#fff', fontSize: 12, fontWeight: '600' },
-  certCard: { padding: 16, gap: 12 },
-  certHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  certTitle: { color: colors.foreground, fontSize: 15, fontWeight: '800' },
-  badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  badgePill: {
-    paddingHorizontal: 12, paddingVertical: 8,
-    borderRadius: radius.full,
-    backgroundColor: colors.accent,
-  },
-  badgePillText: { color: colors.accentForeground, fontSize: 12, fontWeight: '700' },
-  courseCard: {
-    padding: 16, gap: 14,
-  },
-  courseTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
-  courseMain: { flex: 1, gap: 8 },
-  emojiBadge: {
-    width: 52, height: 52, borderRadius: radius.lg,
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: colors.accent,
-  },
+  skeletonRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
   emoji: { fontSize: 26 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  courseTitle: { color: colors.foreground, fontSize: 15, fontWeight: '800' },
-  miniBadge: {
-    paddingHorizontal: 8, paddingVertical: 3,
-    borderRadius: radius.full,
-    backgroundColor: colors.successSoft,
-  },
-  miniBadgeText: { color: colors.success, fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.6 },
-  courseDesc: { color: colors.mutedForeground, fontSize: 12, lineHeight: 18 },
-  badgeRowMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  metaBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    backgroundColor: colors.soft,
-    borderColor: colors.border,
-  },
-  metaBadgeText: { color: colors.foreground, fontSize: 11, fontWeight: '700', letterSpacing: 0, textTransform: 'capitalize' },
-  progressBlock: { gap: 8 },
-  progressHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  progressLabel: { color: colors.mutedForeground, fontSize: 11, fontWeight: '700' },
-  progressValue: { color: colors.primary, fontSize: 11, fontWeight: '800' },
   progressTrack: {
     height: 7, backgroundColor: colors.muted, borderRadius: radius.full, overflow: 'hidden',
   },

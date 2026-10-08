@@ -1,297 +1,299 @@
-import { type Dispatch, type SetStateAction, useEffect, useMemo, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ReactNode, useEffect, useState } from 'react';
+import { KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInputProps, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import Animated, { FadeIn, FadeInDown, FadeInRight, FadeOutLeft } from 'react-native-reanimated';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import { useRouter } from 'expo-router';
 import { useDispatch } from 'react-redux';
-import { ArrowLeft, Check, Heart, ShieldCheck } from 'lucide-react-native';
+import { ArrowLeft, Check, X } from 'lucide-react-native';
 import { toast } from 'sonner-native';
 
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
+import { Logo } from '@/components/ui/Logo';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
-import { api } from '@/lib/api';
+import { api, PRIVACY_URL } from '@/lib/api';
 import { setSession } from '@/lib/store';
 import { colors, radius, shadows } from '@/lib/theme';
+import { apiError, t } from '@/lib/i18n';
+import { isE164, toE164 } from '@/lib/geo';
 
-type Mode = 'login' | 'register';
-type Step = 0 | 1 | 2;
-type BloodType = 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-';
-type Gender = 'female' | 'male' | 'non_binary' | 'other' | 'prefer_not_to_say';
+type Step = 'phone' | 'code' | 'about' | 'passport' | 'email';
 type Severity = 'mild' | 'moderate' | 'severe';
 
-interface MedicationDraft {
-  name: string;
-  dosage?: string;
-  isActive?: boolean;
-}
+const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+const SEVERITIES: Severity[] = ['mild', 'moderate', 'severe'];
+const severityLabels: Record<Severity, string> = { mild: t('Mild'), moderate: t('Moderate'), severe: t('Severe') };
+const RESEND_SECONDS = 30;
 
-interface AllergyDraft {
-  allergen: string;
-  severity: Severity;
-}
 
-interface VaccinationDraft {
-  name: string;
-  date?: string;
-  provider?: string;
-}
+const errorText = (e: any) => apiError(e, 'Check your connection and try again.');
 
-const BLOOD_TYPES: BloodType[] = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-const GENDERS: Array<{ value: Gender; label: string }> = [
-  { value: 'female', label: 'Female' },
-  { value: 'male', label: 'Male' },
-  { value: 'non_binary', label: 'Non-binary' },
-  { value: 'other', label: 'Other' },
-  { value: 'prefer_not_to_say', label: 'Prefer not to say' },
-];
-const passwordRule = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
-const isoDateRule = /^\d{4}-\d{2}-\d{2}$/;
-const DEMO_EMAIL = '';
-const DEMO_PASSWORD = '';
+/** YYYY-MM-DD from separate fields, or null when it is not a real past date. */
+const isoDob = (d: string, m: string, y: string) => {
+  const iso = `${y.padStart(4, '0')}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+  const date = new Date(`${iso}T00:00:00.000Z`);
+  if (y.length !== 4 || Number.isNaN(date.getTime()) || !date.toISOString().startsWith(iso)) return null;
+  const years = (Date.now() - date.getTime()) / (365.25 * 24 * 3600_000);
+  return years >= 0 && years <= 130 ? iso : null;
+};
 
-export default function Login() {
-  const { mode: modeParam } = useLocalSearchParams<{ mode?: string }>();
-  const routeMode: Mode = modeParam === 'register' ? 'register' : 'login';
-  const [mode, setMode] = useState<Mode>(routeMode);
-  const [step, setStep] = useState<Step>(0);
+export default function SignIn() {
+  const router = useRouter();
+  const dispatch = useDispatch();
+  const [step, setStep] = useState<Step>('phone');
+  const [consent, setConsent] = useState(false);
+  const [busy, setBusy] = useState(false);
 
-  const [email, setEmail] = useState(DEMO_EMAIL);
-  const [password, setPassword] = useState(DEMO_PASSWORD);
-  const [loading, setLoading] = useState(false);
+  const [phoneRaw, setPhoneRaw] = useState('');
+  const phone = toE164(phoneRaw);
+  const [code, setCode] = useState('');
+  const [resendAt, setResendAt] = useState(0);
+  const [now, setNow] = useState(Date.now);
+  const [signupToken, setSignupToken] = useState('');
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [age, setAge] = useState('');
-  const [gender, setGender] = useState<Gender | null>(null);
-  const [heightCm, setHeightCm] = useState('');
-  const [weightKg, setWeightKg] = useState('');
-  const [bloodType, setBloodType] = useState<BloodType | null>(null);
+  const [day, setDay] = useState('');
+  const [month, setMonth] = useState('');
+  const [year, setYear] = useState('');
+  const [contactName, setContactName] = useState('');
+  const [contactPhoneRaw, setContactPhoneRaw] = useState('');
+  const contactPhone = toE164(contactPhoneRaw);
 
-  const [medicationName, setMedicationName] = useState('');
-  const [medicationDosage, setMedicationDosage] = useState('');
-  const [medications, setMedications] = useState<MedicationDraft[]>([]);
-  const [allergyName, setAllergyName] = useState('');
-  const [allergySeverity, setAllergySeverity] = useState<Severity>('mild');
-  const [allergies, setAllergies] = useState<AllergyDraft[]>([]);
-  const [vaccineName, setVaccineName] = useState('');
-  const [vaccineProvider, setVaccineProvider] = useState('');
-  const [vaccineDate, setVaccineDate] = useState('');
-  const [vaccines, setVaccines] = useState<VaccinationDraft[]>([]);
-  const [illnessInput, setIllnessInput] = useState('');
-  const [illnesses, setIllnesses] = useState<string[]>([]);
-  const [disabilityInput, setDisabilityInput] = useState('');
-  const [disabilities, setDisabilities] = useState<string[]>([]);
+  // Passport answers: null = not answered yet. Every question needs an answer.
+  const [bloodType, setBloodType] = useState<string | null>(null);
+  const [hasAllergies, setHasAllergies] = useState<boolean | null>(null);
+  const [allergies, setAllergies] = useState<{ allergen: string; severity: Severity }[]>([]);
+  const [hasMeds, setHasMeds] = useState<boolean | null>(null);
+  const [meds, setMeds] = useState<{ name: string; dosage?: string }[]>([]);
+  const [hasConditions, setHasConditions] = useState<boolean | null>(null);
+  const [conditions, setConditions] = useState<string[]>([]);
 
-  const dispatch = useDispatch();
-  const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   useEffect(() => {
-    setMode(routeMode);
-    setStep(0);
-    if (routeMode === 'register') {
-      setEmail(DEMO_EMAIL);
-      setPassword(DEMO_PASSWORD);
-    }
-  }, [routeMode]);
+    if (step !== 'code') return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [step]);
+  const resendIn = Math.max(0, Math.ceil((resendAt - now) / 1000));
 
-  const helperText = useMemo(() => {
-    if (mode === 'login') return 'Sign in to access SOS, your Bio Passport, and care discovery.';
-    return step === 0
-      ? 'Step 1 of 3 - create your secure account.'
-      : step === 1
-      ? 'Step 2 of 3 - add biometric and identity information.'
-      : 'Step 3 of 3 - complete your medical Bio Passport.';
-  }, [mode, step]);
-
-  const emailIsValid = /\S+@\S+\.\S+/.test(email);
-  const passwordIsStrong = passwordRule.test(password);
-  const ageValue = Number(age);
-  const heightValue = Number(heightCm);
-  const weightValue = Number(weightKg);
-  const biometricsComplete =
-    Number.isFinite(ageValue) &&
-    ageValue > 0 &&
-    Number.isFinite(heightValue) &&
-    heightValue > 0 &&
-    Number.isFinite(weightValue) &&
-    weightValue > 0 &&
-    Boolean(gender) &&
-    Boolean(bloodType);
-
-  const canContinue =
-    !loading &&
-    (mode === 'login'
-      ? emailIsValid && password.length >= 8
-      : step === 0
-      ? Boolean(firstName.trim() && lastName.trim() && emailIsValid && passwordIsStrong)
-      : step === 1
-      ? biometricsComplete
-      : true);
-
-  const switchMode = (nextMode: Mode) => {
-    setMode(nextMode);
-    setStep(0);
+  const run = async (fn: () => Promise<void>) => {
+    setBusy(true);
+    try { await fn(); } catch (e) { toast.error(errorText(e)); } finally { setBusy(false); }
   };
 
-  const submitLogin = async () => {
-    setLoading(true);
-    try {
-      const { data } = await api.post('/auth/login', { email, password });
-      if (data.user.role === 'admin' || data.user.role === 'dispatcher') {
-        toast.error('Use the desktop portal', { description: 'This account type is for the web dashboard.' });
-        return;
-      }
-      dispatch(setSession(data));
-      toast.success('Welcome back');
-      router.replace('/(tabs)/home');
-    } catch (e: any) {
-      toast.error(e.response?.data?.error ?? 'login failed');
-    } finally {
-      setLoading(false);
-    }
+  const signedIn = (data: any) => {
+    dispatch(setSession(data));
+    router.replace('/(tabs)/home');
   };
 
-  const submitRegister = async () => {
-    setLoading(true);
-    try {
-      const { data } = await api.post('/auth/register', {
-        email,
-        password,
-        firstName,
-        lastName,
-        role: 'citizen',
-        age: Number(age),
-        gender,
-        heightCm: Number(heightCm),
-        weightKg: Number(weightKg),
-        bloodType,
-        illnesses,
-        disabilities,
-        medications,
-        allergies,
-        vaccinations: vaccines,
-      });
-      dispatch(setSession(data));
-      toast.success('Account created');
-      router.replace('/(tabs)/home');
-    } catch (e: any) {
-      const body = e.response?.data;
-      const detail =
-        body?.error ??
-        (Array.isArray(body?.issues) && body.issues[0]?.message) ??
-        (Array.isArray(body?.errors) && (body.errors[0]?.message ?? body.errors[0])) ??
-        e.message ??
-        'Please try again';
-      const code = e.response?.status ? `HTTP ${e.response.status}` : (e.code ?? 'network');
-      toast.error('Register failed', { description: `${code} · ${detail}` });
-      if (__DEV__) console.warn('[register] failed', { code, body, message: e.message });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const sendCode = () => run(async () => {
+    const { data } = await api.post('/auth/phone/start', { phone });
+    setResendAt(Date.now() + RESEND_SECONDS * 1000);
+    setNow(Date.now());
+    setCode(__DEV__ && data.devCode ? data.devCode : '');
+    setStep('code');
+  });
 
-  const validateCurrentStep = () => {
-    if (mode === 'login') return true;
-    if (step === 0) {
-      if (!firstName.trim() || !lastName.trim()) {
-        toast.error('Enter your first and last name');
-        return false;
-      }
-      if (!emailIsValid) {
-        toast.error('Enter a valid email address');
-        return false;
-      }
-      if (!passwordIsStrong) {
-        toast.error('Password needs 8+ chars, an uppercase, a number, and a symbol');
-        return false;
-      }
-    }
-    if (step === 1 && !biometricsComplete) {
-      toast.error('Complete all biometric fields');
-      return false;
-    }
-    return true;
-  };
+  const verify = (value = code) => run(async () => {
+    const { data } = await api.post('/auth/phone/verify', { phone, code: value });
+    if (!data.isNew) return signedIn(data);
+    setSignupToken(data.signupToken);
+    setStep('about');
+  });
 
-  const addMedication = () => {
-    if (!medicationName.trim()) {
-      toast.error('Add a medication name first');
+  const register = () => run(async () => {
+    const { data } = await api.post('/auth/phone/register', {
+      signupToken,
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      dateOfBirth: isoDob(day, month, year),
+      emergencyContact: { name: contactName.trim(), phone: contactPhone },
+      bloodType,
+      allergies: hasAllergies ? allergies : [],
+      medications: hasMeds ? meds : [],
+      conditions: hasConditions ? conditions : [],
+      consent,
+    });
+    signedIn(data);
+  });
+
+  const emailSignIn = () => run(async () => {
+    const { data } = await api.post('/auth/login', { email: email.trim(), password });
+    if (['eso', 'admin', 'dispatcher'].includes(data.user.role)) {
+      toast.error(t('This account is for the Vitalis desktop console.'));
       return;
     }
-    setMedications((current) => [...current, { name: medicationName.trim(), dosage: medicationDosage.trim() || undefined, isActive: true }]);
-    setMedicationName('');
-    setMedicationDosage('');
+    signedIn(data);
+  });
+
+  const back = () => {
+    if (step === 'code' || step === 'email') setStep('phone');
+    else if (step === 'passport') setStep('about');
+    else if (step === 'about') setStep('phone'); // token stays valid 30 min; re-verify is cheap
+    else router.back();
   };
 
-  const addAllergy = () => {
-    if (!allergyName.trim()) {
-      toast.error('Add an allergen first');
-      return;
-    }
-    setAllergies((current) => [...current, { allergen: allergyName.trim(), severity: allergySeverity }]);
-    setAllergyName('');
-  };
+  const aboutDone = firstName.trim() && lastName.trim() && isoDob(day, month, year)
+    && contactName.trim() && isE164(contactPhone) && contactPhone !== phone;
+  const answered = (has: boolean | null, n: number) => has === false || (has === true && n > 0);
+  const passportDone = consent && bloodType !== null
+    && answered(hasAllergies, allergies.length) && answered(hasMeds, meds.length) && answered(hasConditions, conditions.length);
 
-  const addVaccine = () => {
-    if (!vaccineName.trim()) {
-      toast.error('Add a vaccine name first');
-      return;
-    }
-    if (vaccineDate.trim() && (!isoDateRule.test(vaccineDate.trim()) || Number.isNaN(Date.parse(`${vaccineDate.trim()}T00:00:00.000Z`)))) {
-      toast.error('Use YYYY-MM-DD for the vaccine date');
-      return;
-    }
-    setVaccines((current) => [
-      ...current,
-      {
-        name: vaccineName.trim(),
-        provider: vaccineProvider.trim() || undefined,
-        date: vaccineDate.trim() ? new Date(`${vaccineDate.trim()}T00:00:00.000Z`).toISOString() : undefined,
-      },
-    ]);
-    setVaccineName('');
-    setVaccineProvider('');
-    setVaccineDate('');
-  };
+  const screens: Record<Step, { title: string; subtitle: string; body: ReactNode; cta: ReactNode }> = {
+    phone: {
+      title: t('Your phone number'),
+      subtitle: t("We'll text you a 6-digit code. There is no password to remember."),
+      body: (
+        <>
+          <Field
+            label={t("Mobile number")}
+            value={phoneRaw}
+            onChangeText={setPhoneRaw}
+            placeholder="069 123 4567"
+            keyboardType="phone-pad"
+            autoComplete="tel"
+            textContentType="telephoneNumber"
+            autoFocus
+          />
+        </>
+      ),
+      cta: <Button size="lg" style={styles.primaryButton} onPress={sendCode} loading={busy} disabled={!isE164(phone)}>{t("Send code")}</Button>,
+    },
+    code: {
+      title: t('Enter the code'),
+      subtitle: t('Sent by SMS to {phone}.', { phone }),
+      body: (
+        <>
+          <Input
+            value={code}
+            onChangeText={(v) => {
+              const digits = v.replace(/\D/g, '').slice(0, 6);
+              setCode(digits);
+              if (digits.length === 6) void verify(digits);
+            }}
+            keyboardType="number-pad"
+            autoComplete="sms-otp"
+            textContentType="oneTimeCode"
+            maxLength={6}
+            autoFocus
+            accessibilityLabel={t('6-digit code')}
+            style={styles.codeInput}
+          />
+          <Button variant="ghost" onPress={sendCode} disabled={resendIn > 0 || busy}>
+            {resendIn > 0 ? t('Send a new code in {n} s', { n: resendIn }) : t('Send a new code')}
+          </Button>
+        </>
+      ),
+      cta: <Button size="lg" style={styles.primaryButton} onPress={() => verify()} loading={busy} disabled={code.length !== 6}>{t("Continue")}</Button>,
+    },
+    about: {
+      title: t('About you'),
+      subtitle: t('Paramedics see this when you call for help. Step 1 of 2.'),
+      body: (
+        <>
+          <View style={styles.doubleRow}>
+            <Field grow={1} label={t("First name")} value={firstName} onChangeText={setFirstName} autoComplete="given-name" textContentType="givenName" />
+            <Field grow={1} label={t("Last name")} value={lastName} onChangeText={setLastName} autoComplete="family-name" textContentType="familyName" />
+          </View>
+          <Text style={styles.label}>{t("Date of birth")}</Text>
+          <View style={styles.doubleRow}>
+            <Field grow={1} label={t("Day")} hideLabel value={day} onChangeText={(v) => setDay(v.replace(/\D/g, '').slice(0, 2))} placeholder={t("DD")} keyboardType="number-pad" />
+            <Field grow={1} label={t("Month")} hideLabel value={month} onChangeText={(v) => setMonth(v.replace(/\D/g, '').slice(0, 2))} placeholder={t("MM")} keyboardType="number-pad" />
+            <Field label={t("Year")} hideLabel value={year} onChangeText={(v) => setYear(v.replace(/\D/g, '').slice(0, 4))} placeholder={t("YYYY")} keyboardType="number-pad" grow={1.6} />
+          </View>
+          {day && month && year.length === 4 && !isoDob(day, month, year) ? (
+            <Text style={styles.error}>{t("That date doesn't exist. Check the day and month.")}</Text>
+          ) : null}
+          <Text style={[styles.label, { marginTop: 8 }]}>{t("Emergency contact")}</Text>
+          <Text style={styles.hint}>{t("Someone we can call if you can't answer.")}</Text>
+          <Field label={t("Their name")} value={contactName} onChangeText={setContactName} />
+          <Field label={t("Their phone")} value={contactPhoneRaw} onChangeText={setContactPhoneRaw} placeholder="069 123 4567" keyboardType="phone-pad" />
+          {contactPhoneRaw && contactPhone === phone ? (
+            <Text style={styles.error}>{t("Use someone else's number, not your own.")}</Text>
+          ) : null}
+        </>
+      ),
+      cta: <Button size="lg" style={styles.primaryButton} onPress={() => setStep('passport')} disabled={!aboutDone}>{t("Continue")}</Button>,
+    },
+    passport: {
+      title: t('Your Bio Passport'),
+      subtitle: t('Answer each question. “I don’t know” and “None” are good answers; a guess is not. Step 2 of 2.'),
+      body: (
+        <>
+          <Question title={t("Blood type")}>
+            <View style={styles.chipWrap}>
+              {BLOOD_TYPES.map((b) => <Chip key={b} label={b} active={bloodType === b} onPress={() => setBloodType(b)} />)}
+              <Chip label={t("I don't know")} active={bloodType === 'unknown'} onPress={() => setBloodType('unknown')} />
+            </View>
+          </Question>
 
-  const addStringItem = (
-    value: string,
-    label: string,
-    setter: Dispatch<SetStateAction<string[]>>,
-    reset: () => void
-  ) => {
-    const normalized = value.trim();
-    if (!normalized) {
-      toast.error(`Add a ${label} first`);
-      return;
-    }
-    setter((current) => (current.includes(normalized) ? current : [...current, normalized]));
-    reset();
-  };
+          <YesNo title={t("Allergies")} has={hasAllergies} setHas={setHasAllergies}>
+            <ItemEditor
+              items={allergies.map((a) => `${a.allergen} (${severityLabels[a.severity].toLowerCase()})`)}
+              onRemove={(i) => setAllergies(allergies.filter((_, j) => j !== i))}
+              placeholder={t("e.g. Penicillin")}
+              withSeverity
+              onAdd={(allergen, severity) => setAllergies([...allergies, { allergen, severity: severity! }])}
+            />
+          </YesNo>
 
-  const stepAction = async () => {
-    if (mode === 'login') {
-      await submitLogin();
-      return;
-    }
-    if (!validateCurrentStep()) return;
-    if (step < 2) {
-      setStep((current) => (current + 1) as Step);
-      return;
-    }
-    await submitRegister();
+          <YesNo title={t("Medication you take regularly")} has={hasMeds} setHas={setHasMeds}>
+            <ItemEditor
+              items={meds.map((m) => m.name)}
+              onRemove={(i) => setMeds(meds.filter((_, j) => j !== i))}
+              placeholder={t("e.g. Salbutamol inhaler")}
+              onAdd={(name) => setMeds([...meds, { name }])}
+            />
+          </YesNo>
+
+          <YesNo title={t("Conditions")} has={hasConditions} setHas={setHasConditions}>
+            <ItemEditor
+              items={conditions}
+              onRemove={(i) => setConditions(conditions.filter((_, j) => j !== i))}
+              placeholder={t("e.g. Asthma, diabetes, epilepsy")}
+              onAdd={(name) => setConditions([...conditions, name])}
+            />
+          </YesNo>
+
+          {/* Health data needs explicit consent (Albanian data-protection law, GDPR-style). */}
+          <Pressable
+            style={styles.consentRow}
+            onPress={() => setConsent(c => !c)}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: consent }}
+          >
+            <View style={[styles.consentBox, consent && styles.consentBoxOn]}>
+              {consent ? <Check size={16} color="#fff" /> : null}
+            </View>
+            <Text style={styles.consentText}>
+              {t('I agree that Vitalis stores my health information and shows it to responders and dispatchers when I send an SOS.')}{' '}
+              <Text style={styles.consentLink} onPress={() => void Linking.openURL(PRIVACY_URL)} accessibilityRole="link">
+                {t('Privacy policy')}
+              </Text>
+            </Text>
+          </Pressable>
+        </>
+      ),
+      cta: <Button size="lg" style={styles.primaryButton} onPress={register} loading={busy} disabled={!passportDone}>{t("Create account")}</Button>,
+    },
+    email: {
+      title: t('Sign in with email'),
+      subtitle: t('For accounts created with an email address.'),
+      body: (
+        <>
+          <Field label={t("Email")} value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" autoComplete="email" textContentType="emailAddress" />
+          <Field label={t("Password")} value={password} onChangeText={setPassword} secureTextEntry autoComplete="current-password" textContentType="password" />
+        </>
+      ),
+      cta: <Button size="lg" style={styles.primaryButton} onPress={emailSignIn} loading={busy} disabled={!email.trim() || !password}>{t("Sign in")}</Button>,
+    },
   };
+  const s = screens[step];
+  const signingUp = step === 'about' || step === 'passport';
 
   return (
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -309,67 +311,50 @@ export default function Login() {
           keyboardShouldPersistTaps="handled"
         >
           <Animated.View entering={FadeInDown.duration(320)} style={styles.heroHeader}>
-            <Pressable
-              onPress={() => {
-                if (mode === 'register' && step > 0) {
-                  setStep((current) => (current - 1) as Step);
-                  return;
-                }
-                router.replace('/');
-              }}
-              style={styles.backBtn}
-            >
+            <Pressable onPress={back} style={styles.backBtn} accessibilityRole="button" accessibilityLabel={t('Back')}>
               <ArrowLeft size={18} color="#fff" />
             </Pressable>
             <View style={styles.brandPill}>
-              <Heart size={12} color="#fff" fill="#fff" />
+              <Logo size={18} />
               <Text style={styles.brandPillText}>VITALIS</Text>
             </View>
             <View style={styles.headerSpacer} />
           </Animated.View>
 
           <Animated.View entering={FadeIn.delay(60).duration(360)} style={styles.heroCopy}>
-            <Text style={styles.eyebrow}>{mode === 'login' ? 'Secure sign in' : 'Guided registration'}</Text>
-            <Text style={styles.title}>
-              {mode === 'login' ? 'Welcome back.' : 'Create your\nmedical passport.'}
-            </Text>
-            <Text style={styles.subtitle}>{helperText}</Text>
+            <Text style={styles.eyebrow}>{signingUp ? t('Guided registration') : t('Secure sign in')}</Text>
+            <Text style={styles.title}>{s.title}</Text>
+            <Text style={styles.subtitle}>{s.subtitle}</Text>
           </Animated.View>
 
           <Animated.View entering={FadeInDown.delay(100).duration(380)} style={styles.card}>
-            <View style={styles.modeSwitch}>
-              {(['login', 'register'] as Mode[]).map((entry) => {
-                const active = mode === entry;
-                return (
-                  <Pressable
-                    key={entry}
-                    onPress={() => switchMode(entry)}
-                    style={[styles.modeChip, active && styles.modeChipActive]}
-                  >
-                    <Text style={[styles.modeChipText, active && styles.modeChipTextActive]}>
-                      {entry === 'login' ? 'Sign in' : 'Register'}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-
-            {mode === 'register' ? (
-              <View style={styles.stepper}>
-                {[0, 1, 2].map((entry) => {
+            {step === 'phone' || step === 'email' ? (
+              <View style={styles.modeSwitch}>
+                {(['phone', 'email'] as const).map((entry) => {
                   const active = step === entry;
-                  const done = step > entry;
+                  return (
+                    <Pressable key={entry} onPress={() => setStep(entry)} style={[styles.modeChip, active && styles.modeChipActive]}>
+                      <Text style={[styles.modeChipText, active && styles.modeChipTextActive]}>
+                        {entry === 'phone' ? t('Phone') : t('Email')}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : null}
+
+            {signingUp ? (
+              <View style={styles.stepper}>
+                {(['about', 'passport'] as const).map((entry, i) => {
+                  const active = step === entry;
+                  const done = step === 'passport' && entry === 'about';
                   return (
                     <View key={entry} style={styles.stepperItem}>
                       <View style={[styles.stepDot, active && styles.stepDotActive, done && styles.stepDotDone]}>
-                        {done ? (
-                          <Check size={12} color="#fff" />
-                        ) : (
-                          <Text style={[styles.stepDotText, active && styles.stepDotTextActive]}>{entry + 1}</Text>
-                        )}
+                        {done ? <Check size={12} color="#fff" /> : <Text style={[styles.stepDotText, active && styles.stepDotTextActive]}>{i + 1}</Text>}
                       </View>
                       <Text style={[styles.stepLabel, active && styles.stepLabelActive]}>
-                        {entry === 0 ? 'Identity' : entry === 1 ? 'Biometrics' : 'Medical'}
+                        {entry === 'about' ? t('About you') : t('Bio Passport')}
                       </Text>
                     </View>
                   );
@@ -377,195 +362,12 @@ export default function Login() {
               </View>
             ) : null}
 
-            {mode === 'login' ? (
-              <View style={styles.form}>
-                <View style={styles.field}>
-                  <Label>Email</Label>
-                  <Input value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} autoComplete="email" />
-                </View>
-                <View style={styles.field}>
-                  <Label>Password</Label>
-                  <Input value={password} onChangeText={setPassword} secureTextEntry autoCorrect={false} />
-                </View>
-
-                <View style={styles.actions}>
-                  <View style={styles.ctaBubble}>
-                    <Button size="lg" onPress={() => void stepAction()} loading={loading} disabled={!canContinue} style={styles.primaryButton}>
-                      Sign in
-                    </Button>
-                  </View>
-                  <Pressable onPress={() => switchMode('register')} style={styles.secondaryLink}>
-                    <Text style={styles.secondaryLinkText}>Need a new account? Register</Text>
-                  </Pressable>
-                </View>
+            <View style={styles.form}>
+              {s.body}
+              <View style={styles.actions}>
+                {s.cta}
               </View>
-            ) : (
-              <Animated.View key={`step-${step}`} entering={FadeInRight.duration(220)} exiting={FadeOutLeft.duration(180)}>
-                <View style={styles.form}>
-                  {step === 0 ? (
-                    <>
-                      <View style={styles.doubleRow}>
-                        <View style={[styles.field, styles.half]}>
-                          <Label>First name</Label>
-                          <Input value={firstName} onChangeText={setFirstName} placeholder="Jane" autoCapitalize="words" />
-                        </View>
-                        <View style={[styles.field, styles.half]}>
-                          <Label>Last name</Label>
-                          <Input value={lastName} onChangeText={setLastName} placeholder="Doe" autoCapitalize="words" />
-                        </View>
-                      </View>
-                      <View style={styles.field}>
-                        <Label>Email</Label>
-                        <Input value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} autoComplete="email" />
-                      </View>
-                      <View style={styles.field}>
-                        <Label>Password</Label>
-                        <Input value={password} onChangeText={setPassword} secureTextEntry autoCorrect={false} />
-                      </View>
-                      <Card style={styles.helperCard}>
-                        <View style={styles.helperRow}>
-                          <ShieldCheck size={18} color={colors.primary} />
-                          <Text style={styles.helperTitle}>Password requirements</Text>
-                        </View>
-                        <Text style={styles.helperBody}>Use at least 8 characters, one uppercase letter, one number, and one symbol.</Text>
-                      </Card>
-                      <View style={styles.actions}>
-                        <View style={styles.ctaBubble}>
-                          <Button size="lg" onPress={() => void stepAction()} loading={loading} disabled={!canContinue} style={styles.primaryButton}>
-                            Continue
-                          </Button>
-                        </View>
-                        <Pressable onPress={() => switchMode('login')} style={styles.secondaryLink}>
-                          <Text style={styles.secondaryLinkText}>Already have an account? Sign in</Text>
-                        </Pressable>
-                      </View>
-                    </>
-                  ) : null}
-
-                  {step === 1 ? (
-                    <>
-                      <View style={styles.doubleRow}>
-                        <View style={[styles.field, styles.half]}>
-                          <Label>Age</Label>
-                          <Input value={age} onChangeText={setAge} keyboardType="number-pad" placeholder="29" />
-                        </View>
-                        <View style={[styles.field, styles.half]}>
-                          <Label>Blood type</Label>
-                          <View style={styles.chipWrap}>
-                            {BLOOD_TYPES.map((entry) => {
-                              const active = bloodType === entry;
-                              return (
-                                <Pressable key={entry} onPress={() => setBloodType(entry)} style={[styles.smallChip, active && styles.smallChipActive]}>
-                                  <Text style={[styles.smallChipText, active && styles.smallChipTextActive]}>{entry}</Text>
-                                </Pressable>
-                              );
-                            })}
-                          </View>
-                        </View>
-                      </View>
-                      <View style={styles.doubleRow}>
-                        <View style={[styles.field, styles.half]}>
-                          <Label>Height (cm)</Label>
-                          <Input value={heightCm} onChangeText={setHeightCm} keyboardType="decimal-pad" placeholder="172" />
-                        </View>
-                        <View style={[styles.field, styles.half]}>
-                          <Label>Weight (kg)</Label>
-                          <Input value={weightKg} onChangeText={setWeightKg} keyboardType="decimal-pad" placeholder="68" />
-                        </View>
-                      </View>
-                      <View style={styles.field}>
-                        <Label>Gender</Label>
-                        <View style={styles.chipWrap}>
-                          {GENDERS.map((entry) => {
-                            const active = gender === entry.value;
-                            return (
-                              <Pressable key={entry.value} onPress={() => setGender(entry.value)} style={[styles.choiceChip, active && styles.choiceChipActive]}>
-                                <Text style={[styles.choiceChipText, active && styles.choiceChipTextActive]}>{entry.label}</Text>
-                              </Pressable>
-                            );
-                          })}
-                        </View>
-                      </View>
-                      <View style={styles.actions}>
-                        <View style={styles.ctaBubble}>
-                          <Button size="lg" onPress={() => void stepAction()} loading={loading} disabled={!canContinue} style={styles.primaryButton}>
-                            Continue
-                          </Button>
-                        </View>
-                        <Pressable onPress={() => switchMode('login')} style={styles.secondaryLink}>
-                          <Text style={styles.secondaryLinkText}>Already have an account? Sign in</Text>
-                        </Pressable>
-                      </View>
-                    </>
-                  ) : null}
-
-                  {step === 2 ? (
-                    <>
-                      <FieldGroup title="Medications">
-                        <View style={styles.doubleRow}>
-                          <Input style={styles.flexInput} value={medicationName} onChangeText={setMedicationName} placeholder="Medication name" />
-                          <Input style={styles.flexInput} value={medicationDosage} onChangeText={setMedicationDosage} placeholder="Dose or schedule" />
-                        </View>
-                        <Button variant="outline" size="sm" onPress={addMedication} style={styles.inlineButton}>Add medication</Button>
-                        <ChipList items={medications.map((item) => `${item.name}${item.dosage ? ` - ${item.dosage}` : ''}`)} onRemove={(index) => setMedications((current) => current.filter((_, itemIndex) => itemIndex !== index))} />
-                      </FieldGroup>
-
-                      <FieldGroup title="Allergies">
-                        <Input value={allergyName} onChangeText={setAllergyName} placeholder="Allergen" />
-                        <View style={styles.chipWrap}>
-                          {(['mild', 'moderate', 'severe'] as Severity[]).map((entry) => {
-                            const active = allergySeverity === entry;
-                            return (
-                              <Pressable key={entry} onPress={() => setAllergySeverity(entry)} style={[styles.smallChip, active && styles.smallChipActive]}>
-                                <Text style={[styles.smallChipText, active && styles.smallChipTextActive]}>{entry}</Text>
-                              </Pressable>
-                            );
-                          })}
-                        </View>
-                        <Button variant="outline" size="sm" onPress={addAllergy} style={styles.inlineButton}>Add allergy</Button>
-                        <ChipList items={allergies.map((item) => `${item.allergen} - ${item.severity}`)} onRemove={(index) => setAllergies((current) => current.filter((_, itemIndex) => itemIndex !== index))} />
-                      </FieldGroup>
-
-                      <FieldGroup title="Vaccines">
-                        <Input value={vaccineName} onChangeText={setVaccineName} placeholder="Vaccine name" />
-                        <Input value={vaccineProvider} onChangeText={setVaccineProvider} placeholder="Provider or clinic" />
-                        <View style={styles.doubleRow}>
-                          <Input style={styles.flexInput} value={vaccineDate} onChangeText={setVaccineDate} autoCapitalize="none" autoCorrect={false} placeholder="Date (YYYY-MM-DD)" />
-                          <Button variant="outline" size="sm" onPress={addVaccine} style={styles.dateButton}>Add</Button>
-                        </View>
-                        <ChipList items={vaccines.map((item) => [item.name, item.provider, item.date ? item.date.slice(0, 10) : undefined].filter(Boolean).join(' - '))} onRemove={(index) => setVaccines((current) => current.filter((_, itemIndex) => itemIndex !== index))} />
-                      </FieldGroup>
-
-                      <FieldGroup title="Illnesses or chronic conditions">
-                        <View style={styles.doubleRow}>
-                          <Input style={styles.flexInput} value={illnessInput} onChangeText={setIllnessInput} placeholder="Add condition" />
-                          <Button variant="outline" size="sm" onPress={() => addStringItem(illnessInput, 'condition', setIllnesses, () => setIllnessInput(''))} style={styles.dateButton}>Add</Button>
-                        </View>
-                        <ChipList items={illnesses} onRemove={(index) => setIllnesses((current) => current.filter((_, itemIndex) => itemIndex !== index))} />
-                      </FieldGroup>
-
-                      <FieldGroup title="Disabilities or accessibility needs">
-                        <View style={styles.doubleRow}>
-                          <Input style={styles.flexInput} value={disabilityInput} onChangeText={setDisabilityInput} placeholder="Add disability or need" />
-                          <Button variant="outline" size="sm" onPress={() => addStringItem(disabilityInput, 'need', setDisabilities, () => setDisabilityInput(''))} style={styles.dateButton}>Add</Button>
-                        </View>
-                        <ChipList items={disabilities} onRemove={(index) => setDisabilities((current) => current.filter((_, itemIndex) => itemIndex !== index))} />
-                      </FieldGroup>
-                      <View style={styles.actions}>
-                        <View style={styles.ctaBubble}>
-                          <Button size="lg" onPress={() => void stepAction()} loading={loading} disabled={!canContinue} style={styles.primaryButton}>
-                            Create secure account
-                          </Button>
-                        </View>
-                        <Pressable onPress={() => switchMode('login')} style={styles.secondaryLink}>
-                          <Text style={styles.secondaryLinkText}>Already have an account? Sign in</Text>
-                        </Pressable>
-                      </View>
-                    </>
-                  ) : null}
-                </View>
-              </Animated.View>
-            )}
+            </View>
           </Animated.View>
         </ScrollView>
       </SafeAreaView>
@@ -573,7 +375,30 @@ export default function Login() {
   );
 }
 
-function FieldGroup({ title, children }: { title: string; children: React.ReactNode }) {
+/** `grow` only for fields laid out side by side in a row. */
+function Field({ label, hideLabel, grow, ...props }: { label: string; hideLabel?: boolean; grow?: number } & TextInputProps) {
+  return (
+    <View style={[styles.field, grow ? { flex: grow } : null]}>
+      {hideLabel ? null : <Label>{label}</Label>}
+      <Input accessibilityLabel={label} {...props} />
+    </View>
+  );
+}
+
+function Chip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[styles.choiceChip, active && styles.choiceChipActive]}
+      accessibilityRole="radio"
+      accessibilityState={{ selected: active }}
+    >
+      <Text style={[styles.choiceChipText, active && styles.choiceChipTextActive]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function Question({ title, children }: { title: string; children: ReactNode }) {
   return (
     <View style={styles.fieldGroup}>
       <Text style={styles.groupTitle}>{title}</Text>
@@ -582,20 +407,65 @@ function FieldGroup({ title, children }: { title: string; children: React.ReactN
   );
 }
 
-function ChipList({ items, onRemove }: { items: string[]; onRemove: (index: number) => void }) {
-  if (!items.length) return null;
+function YesNo({ title, has, setHas, children }: { title: string; has: boolean | null; setHas: (v: boolean) => void; children: ReactNode }) {
   return (
-    <View style={styles.chipWrap}>
-      {items.map((item, index) => (
-        <Pressable key={`${item}-${index}`} onPress={() => onRemove(index)} style={styles.tokenChip}>
-          <Text style={styles.tokenChipText}>{item}</Text>
-        </Pressable>
-      ))}
+    <Question title={title}>
+      <View style={styles.chipWrap}>
+        <Chip label={t('None')} active={has === false} onPress={() => setHas(false)} />
+        <Chip label={t('Yes')} active={has === true} onPress={() => setHas(true)} />
+      </View>
+      {has ? children : null}
+    </Question>
+  );
+}
+
+function ItemEditor({ items, onRemove, onAdd, placeholder, withSeverity }: {
+  items: string[];
+  onRemove: (i: number) => void;
+  onAdd: (text: string, severity?: Severity) => void;
+  placeholder: string;
+  withSeverity?: boolean;
+}) {
+  const [text, setText] = useState('');
+  const [severity, setSeverity] = useState<Severity | null>(null);
+  const ready = text.trim() && (!withSeverity || severity);
+  const add = () => {
+    if (!ready) return;
+    onAdd(text.trim(), severity ?? undefined);
+    setText('');
+    setSeverity(null);
+  };
+  return (
+    <View style={{ gap: 10 }}>
+      {items.length ? (
+        <View style={styles.chipWrap}>
+          {items.map((item, i) => (
+            <Pressable key={`${item}-${i}`} onPress={() => onRemove(i)} style={styles.tokenChip} accessibilityRole="button" accessibilityLabel={t('Remove {item}', { item })}>
+              <Text style={styles.tokenChipText}>{item}</Text>
+              <X size={12} color={colors.primaryStrong} />
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+      <Input value={text} onChangeText={setText} placeholder={placeholder} onSubmitEditing={add} returnKeyType="done" accessibilityLabel={placeholder} />
+      {withSeverity && text.trim() ? (
+        <View style={styles.chipWrap}>
+          {SEVERITIES.map((sv) => (
+            <Chip key={sv} label={severityLabels[sv]} active={severity === sv} onPress={() => setSeverity(sv)} />
+          ))}
+        </View>
+      ) : null}
+      <Button variant="outline" onPress={add} disabled={!ready}>{items.length ? t('Add another') : t('Add')}</Button>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  // New sign-in steps (phone code, validation lines) in the same look.
+  label: { fontSize: 14, fontWeight: '500', color: colors.foreground },
+  hint: { color: colors.mutedForeground, fontSize: 13, marginTop: -8 },
+  error: { color: colors.destructive, fontSize: 13 },
+  codeInput: { height: 64, fontSize: 30, letterSpacing: 12, textAlign: 'center', fontVariant: ['tabular-nums'] },
   root: { flex: 1, backgroundColor: colors.background },
   heroBackdrop: {
     position: 'absolute',
@@ -677,8 +547,6 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.74)',
     fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
   },
   title: {
     color: '#fff',
@@ -698,6 +566,14 @@ const styles = StyleSheet.create({
     gap: 16,
     ...shadows.floating,
   },
+  consentRow: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', paddingVertical: 8 },
+  consentBox: {
+    width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: colors.border,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: colors.card, marginTop: 1,
+  },
+  consentBoxOn: { backgroundColor: colors.primary, borderColor: colors.primary },
+  consentText: { flex: 1, color: colors.foreground, fontSize: 14, lineHeight: 20 },
+  consentLink: { color: colors.primaryStrong, fontWeight: '700', textDecorationLine: 'underline' },
   modeSwitch: {
     flexDirection: 'row',
     gap: 8,
@@ -836,18 +712,8 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 6,
   },
-  ctaBubble: {
-    alignSelf: 'center',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    borderRadius: radius.full,
-    backgroundColor: colors.primary,
-  },
   primaryButton: {
-    width: 236,
-    backgroundColor: colors.primaryStrong,
-    borderRadius: radius.full,
+    alignSelf: 'stretch',
   },
   secondaryLink: {
     alignItems: 'center',

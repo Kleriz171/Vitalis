@@ -9,3 +9,8 @@ build/
 *.log
 .vscode/
 .idea/
+backups/
+data/osrm/
+*.tsbuildinfo
+.claude/settings.local.json
+.shots/

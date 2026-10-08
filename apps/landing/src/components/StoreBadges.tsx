@@ -1,84 +1,34 @@
-import { motion } from 'framer-motion';
 import { Apple, Play } from 'lucide-react';
-import { cn } from '../lib/cn';
 
-type Props = {
-  className?: string;
-  iosHref?: string;
-  androidHref?: string;
-  size?: 'sm' | 'md';
-};
+// Set these once the apps are live in the stores. Until then the buttons say so honestly.
+const IOS = import.meta.env.VITE_APP_STORE_URL as string | undefined;
+const ANDROID = import.meta.env.VITE_PLAY_STORE_URL as string | undefined;
 
-const sizes = {
-  sm: { h: 'h-11', label: 'text-[10px]', store: 'text-sm', icon: 18, gap: 'gap-2.5', px: 'px-3.5' },
-  md: { h: 'h-14', label: 'text-[11px]', store: 'text-base', icon: 22, gap: 'gap-3', px: 'px-4' },
-} as const;
+export const StoreBadges = ({ dark = false }: { dark?: boolean }) => (
+  <div className="flex flex-wrap gap-3">
+    <Badge href={IOS} icon={<Apple size={22} fill="currentColor" strokeWidth={0} />} top="Download on the" store="App Store" dark={dark} />
+    <Badge href={ANDROID} icon={<Play size={20} fill="currentColor" strokeWidth={0} />} top="Get it on" store="Google Play" dark={dark} />
+  </div>
+);
 
-export const StoreBadges = ({
-  className,
-  iosHref = '#',
-  androidHref = '#',
-  size = 'md',
-}: Props) => {
-  const s = sizes[size];
-  return (
-    <div className={cn('flex flex-wrap items-center gap-3', className)}>
-      <Badge
-        href={iosHref}
-        size={s}
-        label="Download on the"
-        store="App Store"
-        icon={<Apple size={s.icon} fill="currentColor" strokeWidth={0} />}
-        ariaLabel="Download Vitalis on the App Store"
-      />
-      <Badge
-        href={androidHref}
-        size={s}
-        label="Get it on"
-        store="Google Play"
-        icon={<Play size={s.icon} fill="currentColor" strokeWidth={0} />}
-        ariaLabel="Get Vitalis on Google Play"
-      />
-    </div>
+const Badge = ({ href, icon, top, store, dark }: { href?: string; icon: React.ReactNode; top: string; store: string; dark: boolean }) => {
+  const cls = [
+    'inline-flex items-center gap-3 h-14 pl-4 pr-5 rounded-xl transition-transform',
+    dark ? 'bg-white text-ink' : 'bg-ink text-white',
+    href ? 'hover:-translate-y-0.5 active:translate-y-0' : 'opacity-90 cursor-default',
+  ].join(' ');
+  const body = (
+    <>
+      {icon}
+      <span className="flex flex-col leading-tight text-left">
+        <span className="text-xs opacity-80">{href ? top : 'Coming soon to'}</span>
+        <span className="text-lg font-semibold -mt-0.5">{store}</span>
+      </span>
+    </>
+  );
+  return href ? (
+    <a href={href} className={cls} target="_blank" rel="noreferrer" aria-label={`${top} ${store}`}>{body}</a>
+  ) : (
+    <span className={cls} aria-label={`Coming soon to ${store}`}>{body}</span>
   );
 };
-
-const Badge = ({
-  href,
-  size,
-  label,
-  store,
-  icon,
-  ariaLabel,
-}: {
-  href: string;
-  size: (typeof sizes)[keyof typeof sizes];
-  label: string;
-  store: string;
-  icon: React.ReactNode;
-  ariaLabel: string;
-}) => (
-  <motion.a
-    href={href}
-    aria-label={ariaLabel}
-    target={href.startsWith('http') ? '_blank' : undefined}
-    rel={href.startsWith('http') ? 'noreferrer' : undefined}
-    whileHover={{ y: -2 }}
-    whileTap={{ y: 0, scale: 0.98 }}
-    transition={{ type: 'spring', stiffness: 400, damping: 22 }}
-    className={cn(
-      'group inline-flex items-center rounded-xl bg-foreground text-background select-none',
-      'shadow-[0_8px_24px_-12px_hsl(200_25%_12%/0.45)] ring-1 ring-foreground/10',
-      'hover:shadow-[0_14px_32px_-12px_hsl(200_25%_12%/0.55)] transition-shadow',
-      size.h,
-      size.gap,
-      size.px,
-    )}
-  >
-    <span className="shrink-0">{icon}</span>
-    <span className="flex flex-col leading-tight text-left">
-      <span className={cn('opacity-80', size.label)}>{label}</span>
-      <span className={cn('font-semibold tracking-tight', size.store)}>{store}</span>
-    </span>
-  </motion.a>
-);

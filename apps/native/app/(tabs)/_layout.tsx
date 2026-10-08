@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
-import { Home as HomeIcon, Droplets, Stethoscope, Users, UserCircle, GraduationCap } from 'lucide-react-native';
+import { Home as HomeIcon, Droplets, Stethoscope, UserCircle, GraduationCap } from 'lucide-react-native';
 import { colors, radius, shadows } from '@/lib/theme';
+import { t } from '@/lib/i18n';
 
 export default function TabLayout() {
   return (
@@ -26,12 +27,13 @@ export default function TabLayout() {
         tabBarItemStyle: { borderRadius: radius.lg, marginHorizontal: 4 },
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginTop: 2 },
       }}>
-      <Tabs.Screen name="home" options={{ title: 'Home', tabBarIcon: ({ color }) => <HomeIcon size={22} color={color} /> }} />
-      <Tabs.Screen name="blood" options={{ title: 'Supply', tabBarIcon: ({ color }) => <Droplets size={22} color={color} /> }} />
-      <Tabs.Screen name="doctors" options={{ title: 'Doctors', tabBarIcon: ({ color }) => <Stethoscope size={22} color={color} /> }} />
-      <Tabs.Screen name="community" options={{ title: 'Community', tabBarIcon: ({ color }) => <Users size={22} color={color} /> }} />
-      <Tabs.Screen name="training" options={{ title: 'Training', tabBarIcon: ({ color }) => <GraduationCap size={22} color={color} /> }} />
-      <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: ({ color }) => <UserCircle size={22} color={color} /> }} />
+      <Tabs.Screen name="home" options={{ title: t('Home'), tabBarIcon: ({ color }) => <HomeIcon size={22} color={color} /> }} />
+      <Tabs.Screen name="blood" options={{ title: t('Supply'), tabBarIcon: ({ color }) => <Droplets size={22} color={color} /> }} />
+      <Tabs.Screen name="doctors" options={{ title: t('Doctors'), tabBarIcon: ({ color }) => <Stethoscope size={22} color={color} /> }} />
+      {/* Five tabs max (HIG); Community is reached from Home. */}
+      <Tabs.Screen name="community" options={{ href: null, title: t('Community') }} />
+      <Tabs.Screen name="training" options={{ title: t('Training'), tabBarIcon: ({ color }) => <GraduationCap size={22} color={color} /> }} />
+      <Tabs.Screen name="profile" options={{ title: t('Profile'), tabBarIcon: ({ color }) => <UserCircle size={22} color={color} /> }} />
     </Tabs>
   );
 }

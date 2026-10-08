@@ -1,4 +1,4 @@
-// Soft teal on warm off-white — must mirror apps/web tokens.
+// Soft teal on warm off-white — must mirror apps/desktop tokens.
 // Web defines these as HSL CSS vars; we materialize the same values here:
 //   --primary:    173 80% 40%  → #14A897
 //   --background: 36  33% 97%  → #F7F5F0
