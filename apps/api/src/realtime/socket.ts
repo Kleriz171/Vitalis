@@ -6,7 +6,6 @@ import { normalizeRole } from '../models/User';
 import { isRevoked } from '../middleware/auth';
 import { logger } from '../config/logger';
 import { Emergency } from '../models/Emergency';
-import { registerWebRTC } from './webrtc';
 import { registerDrones, registerOperatorDroneControls } from './drones';
 
 let io: Server;
@@ -103,13 +102,6 @@ export const initSocket = (server: http.Server) => {
       io.to('dispatchers').emit('responder:location', payload);
     });
 
-    socket.on('wearable:pulse', (msg: any) => {
-      const bpm = Number(msg?.bpm);
-      if (!Number.isFinite(bpm) || bpm < 0 || bpm > 300) return;
-      io.to('dispatchers').emit('wearable:pulse', { userId: user.id, bpm, at: Date.now() });
-    });
-
-    registerWebRTC(socket, io, user);
     if (OPERATOR_ROLES.includes(user.role)) registerOperatorDroneControls(socket, user);
 
     socket.on('disconnect', () => logger.info(`socket disconnect ${user.id}`));

@@ -1,5 +1,0 @@
-{
-  "app": { "name": "Vitalis", "tagline": "Πρόσβαση επιχειρησιακού κέντρου" },
-  "auth": { "signIn": "Είσοδος", "email": "Email", "password": "Κωδικός" },
-  "citizen": { "sos": "SOS", "broadcasting": "ΕΚΠΟΜΠΗ…" }
-}

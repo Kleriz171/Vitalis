@@ -4,16 +4,17 @@ When someone collapses, Vitalis calls the nearest certified responder, sends a s
 
 Built for Tirana first. Emergency numbers: ambulance **127**, general **112**.
 
-## The four parts
+## The parts
 
 | Part | Folder | Who uses it | Run |
 |---|---|---|---|
-| Mobile app | `apps/native` (Expo, iOS + Android) | Citizens and responders | `npm run dev:native` |
-| Desktop console | `apps/web` (+ Tauri shell) | Dispatchers and admins | `npm run dev:web` → :5173 |
+| Mobile app | [`apps/native`](apps/native/README.md) (Expo, iOS + Android) | Citizens and responders | `npm run dev:native` |
+| Watch apps | [`apps/watch`](apps/watch/README.md) (Wear OS + Apple Watch) | Citizens: SOS and heart check from the wrist | see [`apps/watch`](apps/watch/README.md) |
+| Desktop console | [`apps/desktop`](apps/desktop/README.md) (React + Tauri shell) | Dispatchers and admins | `npm run dev:desktop` → :5173 |
 | Website | `apps/landing` | Public: download links, certificate check | `npm run dev:landing` → :5175 |
 | Drones | `apps/drone` | Runs next to the drone | `npm run dev:drone` |
 
-All four talk to one API: `apps/api` (Express, MongoDB, Socket.io) on :4000.
+All of them talk to one API: [`apps/api`](apps/api/README.md) (Express, MongoDB, Socket.io) on :4000.
 
 ## How an SOS works
 
@@ -35,7 +36,7 @@ cp .env.example .env          # set JWT_ACCESS / JWT_REFRESH (32+ chars) at leas
 npm install
 npm run seed                  # wipes the DB and loads demo data (refuses in production)
 npm run dev:api
-npm run dev:web               # console
+npm run dev:desktop           # console in the browser
 npm run dev:landing           # website
 npm run dev:native            # mobile, scan the QR with Expo Go
 ```
@@ -66,26 +67,16 @@ brew install ffmpeg            # optional: live camera in the console
 
 The Tello has no GPS, so autonomous routes are measured moves from the take-off spot (`forward 200`, `cw 90`, …). Manual flight uses W A S D and the arrow keys in the console. Safety rules run on the bridge itself: no take-off under 30% battery, land if the API link drops, hover when you let go of the controls, land after 60 s without input.
 
-## Watch app (Wear OS)
+## Watch apps
 
-`apps/watch` is a small standalone Wear OS app (Kotlin, Compose for Wear OS): hold-to-SOS with a 3-second cancel, the SOS's live status (responder, arrival time, cancel), Call 127, the Medical ID from the Bio Passport, and a background heart check. A resting heart rate that stays at 150+ or at 40 or below (35 or below asleep) for about 4 minutes asks "Are you OK?"; no answer in 30 s sends a priority-1 SOS. Exercise and readings without skin contact never count. These limits are a starting point and still need medical review.
-
-Pairing: the watch shows a 6-digit code, and you type it in the phone app under Profile → Watch. The watch then holds a key that can only send and cancel its SOS, read its status and read the Medical ID (`/api/watch`).
-
-```bash
-cd apps/watch
-./gradlew testDebugUnitTest assembleDebug -PapiUrl=http://10.0.2.2:4000/api   # emulator → API on this Mac
-adb install -r -g app/build/outputs/apk/debug/app-debug.apk
-```
-
-Needs JDK 17 or 21 and the Android SDK (`local.properties` → `sdk.dir`). Set `-PapiUrl=https://<api>/api` for real watches.
+`apps/watch` holds the Wear OS app (`wearos/`, Kotlin) and the Apple Watch app (`watchos/`, Swift). Both have the same screens, rules and design: hold-to-SOS with a 3-second cancel, the SOS's live status, Call 127, the Medical ID, and a background heart check that asks "Are you OK?" and sends an SOS if nobody answers. A watch pairs with a 6-digit code typed in the phone app (Profile → Watch) and gets a key limited to its own SOS and Medical ID. Spec, build steps and the shared rules: [`apps/watch/README.md`](apps/watch/README.md).
 
 ## Desktop app
 
-`apps/web/src-tauri` wraps the console as an installable app. Install Rust once (`curl https://sh.rustup.rs -sSf | sh`), then:
+`apps/desktop/src-tauri` wraps the console as an installable app. Install Rust once (`curl https://sh.rustup.rs -sSf | sh`), then:
 
 ```bash
-npm run desktop:build -w @vitalis/web     # .dmg / .app on macOS, .msi / .exe on Windows
+npm run desktop:build -w @vitalis/desktop    # .dmg / .app on macOS, .msi / .exe on Windows
 ```
 
 Set `VITE_API_URL` and `VITE_SOCKET_URL` to your production API before building.

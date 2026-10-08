@@ -1,1 +1,1 @@
-{"root":["./src/app.tsx","./src/verify.tsx","./src/main.tsx","./src/components/logo.tsx","./src/components/storebadges.tsx"],"version":"5.9.3"}
+{"root":["./src/app.tsx","./src/privacy.tsx","./src/track.tsx","./src/verify.tsx","./src/main.tsx","./src/components/logo.tsx","./src/components/storebadges.tsx"],"version":"5.9.3"}

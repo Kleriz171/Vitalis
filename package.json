@@ -3,18 +3,17 @@
   "private": true,
   "version": "0.1.0",
   "workspaces": [
-    "apps/*",
-    "packages/*"
+    "apps/*"
   ],
   "scripts": {
     "dev:api": "npm run dev -w @vitalis/api",
-    "dev:web": "npm run dev -w @vitalis/web",
+    "dev:desktop": "npm run dev -w @vitalis/desktop",
     "dev:landing": "npm run dev -w @vitalis/landing",
     "dev:native": "npm run start -w @vitalis/native",
     "dev:iphone": "cd apps/native && IP=$(ipconfig getifaddr en0 || ipconfig getifaddr en1) && echo \"Expo Go → scan the QR that just opened, or Enter URL manually: exp://$IP:8081\" && npx -y qrcode -w 600 -o \"$TMPDIR/vitalis-expo-go.png\" \"exp://$IP:8081\" && open \"$TMPDIR/vitalis-expo-go.png\" && EXPO_PUBLIC_API_URL=http://$IP:4000/api REACT_NATIVE_PACKAGER_HOSTNAME=$IP npx expo start --go --clear",
     "dev:ios": "npm run ios -w @vitalis/native",
     "seed": "npm run seed -w @vitalis/api",
-    "build": "npm run build -w @vitalis/api && npm run build -w @vitalis/web && npm run build -w @vitalis/landing",
+    "build": "npm run build -w @vitalis/api && npm run build -w @vitalis/desktop && npm run build -w @vitalis/landing",
     "dev:drone": "npm run start -w @vitalis/drone",
     "dev:drone:sim": "npm run sim -w @vitalis/drone",
     "check:security": "npx tsx apps/api/scripts/security-check.ts",
@@ -36,8 +35,5 @@
     "react-native": "0.86.3",
     "react-native-reanimated": "4.5.1",
     "react-native-worklets": "0.10.1"
-  },
-  "dependencies": {
-    "framer-motion": "^12.38.0"
   }
 }

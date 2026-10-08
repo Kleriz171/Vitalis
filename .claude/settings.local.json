@@ -50,7 +50,27 @@
       "Bash(git stash *)",
       "Bash(git commit *)",
       "Bash(start *)",
-      "Bash(git restore *)"
+      "Bash(git restore *)",
+      "Bash(git -C /Users/aleks/Vitalis status --short)",
+      "Bash(git -C /Users/aleks/Vitalis log --oneline -2)",
+      "Bash(git mv *)",
+      "Bash(awk -F: '{print $1}')",
+      "Bash(perl -pi -e 's/\\\\n?[ \\\\t]*icon=\\\\{<Text style=\\\\{styles\\\\.heroEmoji\\\\}>.*?<\\\\/Text>\\\\}\\\\n/\\\\n/' app/community.tsx)",
+      "Bash(python3 -)",
+      "Bash(lsof -iTCP -sTCP:LISTEN -nP)",
+      "Bash(ps -o command= -p 54751)",
+      "Bash(python3 -c ' *)",
+      "Bash(sed *)",
+      "Bash(grep *)",
+      "Bash(API_URL=http://localhost:4150 npx tsx apps/api/scripts/security-check.ts)",
+      "Bash(npx tsx *)",
+      "Bash(API_URL=http://localhost:4150 npx tsx apps/api/scripts/push-check.ts)",
+      "Bash(python3 -c \"import json,sys;d=json.load\\(sys.stdin\\);print\\('SQ:',d['title'],'|',d['lessons'][2]['title'],'|',d['quiz'][1]['prompt'], d['quiz'][1]['choices']\\)\")",
+      "Bash(python3 *)",
+      "Bash(git reset *)",
+      "Bash(git ls-tree *)",
+      "Bash(awk '{print $6,$7,$8,$9}')",
+      "Bash(git worktree *)"
     ]
   }
 }

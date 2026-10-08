@@ -7,7 +7,7 @@ export const env = {
   jwtRefresh: process.env.JWT_REFRESH ?? 'dev-refresh',
   accessTtl: process.env.ACCESS_TTL ?? '15m',
   refreshTtl: process.env.REFRESH_TTL ?? '7d',
-  corsOrigin: process.env.CORS_ORIGIN ?? 'http://localhost:5173,http://localhost:5174',
+  corsOrigin: process.env.CORS_ORIGIN ?? 'http://localhost:5173,http://localhost:5175', // console, website
   nodeEnv: process.env.NODE_ENV ?? 'development',
   // Public website (apps/landing): certificate QR codes link to its /verify page.
   publicWebUrl: process.env.PUBLIC_WEB_URL || 'http://localhost:5175',

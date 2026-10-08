@@ -26,7 +26,7 @@ jobs:
       - name: Typecheck app
         run: npx tsc --noEmit -p apps/native
       - name: Build web console and landing
-        run: npm run build -w @vitalis/web && npm run build -w @vitalis/landing
+        run: npm run build -w @vitalis/desktop && npm run build -w @vitalis/landing
       - name: Unit checks
         run: |
           npm run check:i18n

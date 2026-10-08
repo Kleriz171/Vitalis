@@ -33,14 +33,16 @@ services:
       retries: 3
     depends_on: [mongo]
 
-  web:
-    build: ./apps/web
+  # The desktop console's web build, for operators who use it in a browser.
+  console:
+    build:
+      context: ./apps/desktop
+      # Vite bakes these in at build time; changing them needs `docker compose build console`.
+      args:
+        VITE_API_URL: ${CONSOLE_API_URL:-http://localhost:4000/api}
+        VITE_SOCKET_URL: ${CONSOLE_SOCKET_URL:-http://localhost:4000}
     restart: unless-stopped
     ports: ['5173:5173']
-    environment:
-      - VITE_API_URL=http://localhost:4000/api
-      - VITE_SOCKET_URL=http://localhost:4000
-      - VITE_MAPBOX_TOKEN=${MAPBOX_TOKEN}
     depends_on: [api]
 
   # Nightly gzip dump of the database into ./backups, keeping 14 days.

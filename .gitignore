@@ -11,3 +11,6 @@ build/
 .idea/
 backups/
 data/osrm/
+*.tsbuildinfo
+.claude/settings.local.json
+.shots/
