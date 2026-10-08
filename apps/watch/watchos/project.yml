@@ -1,0 +1,57 @@
+# Generates VitalisWatch.xcodeproj: `xcodegen` in this folder (brew install xcodegen).
+name: VitalisWatch
+options:
+  bundleIdPrefix: dev.vitalis
+  deploymentTarget:
+    watchOS: "10.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: 0.1.0
+    CURRENT_PROJECT_VERSION: 1
+targets:
+  Vitalis:
+    type: application
+    platform: watchOS
+    sources: [Vitalis]
+    info:
+      path: Vitalis/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: Vitalis
+        WKApplication: true
+        WKWatchOnly: true
+        VitalisAPIURL: $(VITALIS_API_URL)
+        CFBundleLocalizations: [en, sq]
+        NSLocationWhenInUseUsageDescription: Vitalis sends your location with an SOS so help can find you.
+        NSHealthShareUsageDescription: Vitalis watches your resting heart rate and asks if you are OK when it stays dangerously high or low.
+        NSHealthUpdateUsageDescription: Only used in development builds to simulate a heart reading.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+    entitlements:
+      path: Vitalis/Resources/Vitalis.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+        com.apple.developer.healthkit.background-delivery: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.vitalis.watch
+        # Where the API lives. The simulator shares the Mac's network, so localhost works there.
+        VITALIS_API_URL: http://localhost:4000/api
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_STYLE: Automatic
+  VitalisTests:
+    type: bundle.unit-test
+    platform: watchOS
+    sources: [VitalisTests]
+    dependencies:
+      - target: Vitalis
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  Vitalis:
+    build:
+      targets:
+        Vitalis: all
+    test:
+      targets: [VitalisTests]

@@ -65,12 +65,12 @@ jobs:
           name: e2e-logs
           path: ${{ runner.temp }}/e2e-logs
 
-  watch:
+  wearos:
     # Wear OS app: heart-check unit tests and a debug build (the runner ships the Android SDK).
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: apps/watch
+        working-directory: apps/watch/wearos
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
