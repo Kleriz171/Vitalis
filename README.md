@@ -1,3 +1,5 @@
+<img src="brand/logo-tile.png" alt="Vitalis logo" width="96">
+
 # Vitalis
 
 When someone collapses, Vitalis calls the nearest certified responder, sends a second one for the closest defibrillator, and coaches the caller through CPR until help arrives. Dispatchers watch every call, responder and AED live; a drone can be dispatched from the same console.
@@ -26,6 +28,10 @@ All of them talk to one API: [`apps/api`](apps/api/README.md) (Express, MongoDB,
 6. The console shows it all live and flags calls with no responder after 60 seconds.
 
 Taking the CPR or AED course in the app turns a citizen into a responder.
+
+## Logo and app icons
+
+`brand/logo-source.png` is the logo as designed. `python3 scripts/brand-assets.py` builds every icon and logo file from it (app icons for iOS, Android, both watches and the desktop installers, favicons, in-app tiles) and writes them where each app expects them. After changing the logo, run it, then the `npx tauri icon` line it prints in its header, and commit the results.
 
 ## Getting started
 

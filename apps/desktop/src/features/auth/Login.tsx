@@ -1,4 +1,3 @@
-import { Heart } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -10,6 +9,7 @@ import { Label } from '../../components/ui/label';
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { pushToast } from '../../components/toast/toast';
 import { ConvergeMap } from '../../components/widgets/ConvergeMap';
+import { Logo } from '../../components/ui/logo';
 
 // The console is for emergency services operators ('eso'); older sessions may still say dispatcher/admin.
 const OPERATOR_ROLES = ['eso', 'dispatcher', 'admin'];
@@ -113,9 +113,7 @@ export const Login = () => {
 
 const Brand = ({ dark = false }: { dark?: boolean }) => (
   <div className="flex items-center gap-2.5">
-    <div className="w-9 h-9 rounded-xl bg-[hsl(var(--teal))] grid place-items-center text-white">
-      <Heart size={20} weight="fill" />
-    </div>
+    <Logo size={36} />
     <div className="leading-none">
       <div className={`text-[20px] font-extrabold tracking-[-0.02em] ${dark ? 'text-foreground' : 'text-white'}`}>Vitalis</div>
       <div className={`text-[12px] mt-0.5 ${dark ? 'text-muted-foreground' : 'text-white/65'}`}>Command</div>

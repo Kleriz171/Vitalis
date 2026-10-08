@@ -35,6 +35,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.vitalis.watch
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         # Where the API lives. The simulator shares the Mac's network, so localhost works there.
         VITALIS_API_URL: http://localhost:4000/api
         GENERATE_INFOPLIST_FILE: NO

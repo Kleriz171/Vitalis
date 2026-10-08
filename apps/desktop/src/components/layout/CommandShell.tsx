@@ -1,7 +1,7 @@
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-  Siren, FirstAidKit, ChartBar, FilePdf, SignOut, Heart, UsersThree, type Icon,
+  Siren, FirstAidKit, ChartBar, FilePdf, SignOut, UsersThree, type Icon,
 } from '@phosphor-icons/react';
 import { Tile } from '../ui/tile';
 import { Digits } from '../ui/digits';
@@ -13,6 +13,7 @@ import { RootState, logout } from '../../store';
 import { socket } from '../../realtime/socket';
 import { cn } from '../../lib/utils';
 import { exportPdf } from '../../lib/exportPdf';
+import { Logo } from '../ui/logo';
 
 /** Four sections named for what operators do; a section with several pages shows them as tabs. */
 type Section = { label: string; icon: Icon; to: string; tabs?: { to: string; label: string }[] };
@@ -80,9 +81,7 @@ export const CommandShell = () => {
     // The green frame (sidebar + top bar) with the work sheet laid on it.
     <div className="h-screen grid grid-rows-[56px_1fr] grid-cols-[232px_1fr] frame-texture text-sidebar-foreground print:block print:h-auto">
       <div className="flex items-center gap-2.5 px-5 print:hidden">
-        <div className="w-9 h-9 rounded-xl bg-[hsl(var(--teal))] grid place-items-center text-white shadow-[0_6px_16px_-6px_hsl(173_79%_37%/0.8)]">
-          <Heart size={20} weight="fill" />
-        </div>
+        <Logo size={36} className="shadow-[0_6px_16px_-6px_hsl(173_79%_20%/0.8)] rounded-[9px]" />
         <div className="leading-none">
           <div className="text-[18px] font-extrabold tracking-[-0.02em] text-white">Vitalis</div>
           <div className="text-[12px] text-sidebar-foreground/65 mt-0.5">Command</div>

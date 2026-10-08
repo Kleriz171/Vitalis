@@ -42,7 +42,7 @@ object HeartAlert {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         nm.notify(NOTIFICATION, Notification.Builder(context, CHANNEL)
-            .setSmallIcon(R.drawable.ic_launcher)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(context.getString(R.string.are_you_ok))
             .setContentText(context.getString(R.string.alert_text, bpm))
             .setStyle(Notification.BigTextStyle().bigText(context.getString(R.string.alert_text, bpm)))

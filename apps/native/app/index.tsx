@@ -4,8 +4,9 @@ import { StatusBar } from 'expo-status-bar';
 import { Redirect, useRouter } from 'expo-router';
 import { useSelector } from 'react-redux';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
-import { Heart, HeartPulse, MapPin, Phone, QrCode, Siren } from 'lucide-react-native';
+import { HeartPulse, MapPin, Phone, QrCode, Siren } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
+import { Logo } from '@/components/ui/Logo';
 import { Group, Row } from '@/components/ui/List';
 import { RootState } from '@/lib/store';
 import { colors, radius } from '@/lib/theme';
@@ -51,9 +52,7 @@ export default function Onboarding() {
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           <Animated.View entering={FadeIn.duration(320)} style={styles.brandRow}>
-            <View style={styles.brandMark}>
-              <Heart size={16} color="#fff" fill="#fff" />
-            </View>
+            <Logo size={32} />
             <Text style={styles.brandText}>VITALIS</Text>
           </Animated.View>
 
@@ -113,14 +112,6 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   scroll: { flexGrow: 1, paddingHorizontal: 16, paddingBottom: 24, gap: 20 },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingTop: 12 },
-  brandMark: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.16)',
-  },
   brandText: { color: '#fff', fontSize: 15, fontWeight: '800', letterSpacing: 2.4 },
   hero: { gap: 8, paddingTop: 28, paddingBottom: 8 },
   title: { color: '#fff', fontSize: 32, lineHeight: 38, fontWeight: '800', letterSpacing: -0.5 },

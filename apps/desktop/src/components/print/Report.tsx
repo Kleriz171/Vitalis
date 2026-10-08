@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react';
 import { useSelector } from 'react-redux';
-import { Heart, type Icon } from '@phosphor-icons/react';
+import { type Icon } from '@phosphor-icons/react';
 import type { RootState } from '../../store';
 import { cn } from '../../lib/utils';
+import { Logo } from '../ui/logo';
 
 /**
  * The paper version of a page, shown only when printing (Export PDF): a designed report in the
@@ -34,7 +35,7 @@ export const Report = ({ title, period, meta = [], children }: { title: string; 
         </svg>
         <div className="relative flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <span className="w-8 h-8 rounded-[10px] grid place-items-center" style={{ background: C.teal }}><Heart size={18} weight="fill" /></span>
+            <Logo size={32} />
             <span className="text-[13pt] font-extrabold tracking-[-0.01em]">Vitalis</span>
             <span className="text-[9pt] text-white/60 ml-1">Command · Tirana</span>
           </div>
@@ -52,7 +53,7 @@ export const Report = ({ title, period, meta = [], children }: { title: string; 
       <div className="mt-6 space-y-6">{children}</div>
 
       <footer className="mt-10 flex items-center justify-between border-t pt-3 text-[7.5pt]" style={{ borderColor: C.line, color: C.muted }}>
-        <span className="flex items-center gap-1.5"><Heart size={10} weight="fill" color={C.teal} /> Vitalis Command · {title}</span>
+        <span className="flex items-center gap-1.5"><Logo size={12} /> Vitalis Command · {title}</span>
         <span>Generated from live data at the time of export</span>
       </footer>
     </article>

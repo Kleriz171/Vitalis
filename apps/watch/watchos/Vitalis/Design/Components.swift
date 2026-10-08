@@ -81,10 +81,9 @@ extension View { func rise(_ shown: Bool, _ order: Int) -> some View { modifier(
 
 struct BrandMark: View {
     var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "heart.fill").font(.system(size: 11, weight: .bold)).foregroundStyle(.white)
-                .frame(width: 20, height: 20).background(RoundedRectangle(cornerRadius: 6).fill(Color.vitalisTeal))
-            Text("Vitalis").font(.system(size: 14, weight: .heavy))
+        HStack(spacing: 7) {
+            Image("Logo").resizable().frame(width: 24, height: 24).accessibilityHidden(true)
+            Text("Vitalis").font(.system(size: 15, weight: .heavy))
         }
     }
 }

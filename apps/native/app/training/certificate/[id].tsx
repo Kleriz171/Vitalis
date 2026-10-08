@@ -7,6 +7,7 @@ import { toast } from 'sonner-native';
 import { AppScreen } from '@/components/AppScreen';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { Logo } from '@/components/ui/Logo';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { api } from '@/lib/api';
 import { colors, radius } from '@/lib/theme';
@@ -68,6 +69,7 @@ export default function CertificateScreen() {
         <Skeleton style={{ height: 320, borderRadius: radius.xl }} />
       ) : (
         <Card style={styles.cert}>
+          <Logo size={48} />
           <Text style={styles.brand}>{t('VITALIS · FIRST AID TRAINING')}</Text>
           <Text style={styles.title}>{t('This certifies completion of')}</Text>
           <Text style={styles.badge}>{cert.badgeLabel}</Text>

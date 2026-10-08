@@ -5,10 +5,11 @@ import { StatusBar } from 'expo-status-bar';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useDispatch } from 'react-redux';
-import { ArrowLeft, Check, Heart, X } from 'lucide-react-native';
+import { ArrowLeft, Check, X } from 'lucide-react-native';
 import { toast } from 'sonner-native';
 
 import { Button } from '@/components/ui/Button';
+import { Logo } from '@/components/ui/Logo';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { api, PRIVACY_URL } from '@/lib/api';
@@ -314,7 +315,7 @@ export default function SignIn() {
               <ArrowLeft size={18} color="#fff" />
             </Pressable>
             <View style={styles.brandPill}>
-              <Heart size={12} color="#fff" fill="#fff" />
+              <Logo size={18} />
               <Text style={styles.brandPillText}>VITALIS</Text>
             </View>
             <View style={styles.headerSpacer} />

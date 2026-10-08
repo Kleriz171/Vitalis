@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Disclosure as Section, Group, Row } from '@/components/ui/List';
 import { Input } from '@/components/ui/Input';
+import { Logo } from '@/components/ui/Logo';
 import { RootState, setSession, setTraining } from '@/lib/store';
 import type { TrainingCertification, TrainingEnrollment } from '@/lib/store';
 import { colors, radius } from '@/lib/theme';
@@ -455,7 +456,10 @@ export default function Profile() {
         showsVerticalScrollIndicator={false}
       >
         <Animated.View entering={FadeInDown.duration(280)} style={styles.passportBodyCard}>
-          <Text style={styles.passportBrand}>VITALIS · {t('Bio Passport').toUpperCase()}</Text>
+          <View style={styles.passportBrandRow}>
+            <Logo size={22} />
+            <Text style={styles.passportBrand}>VITALIS · {t('Bio Passport').toUpperCase()}</Text>
+          </View>
           <Text style={styles.passportName}>{passport?.profile.name ?? profile?.user.name ?? t('Citizen')}</Text>
           <Text style={styles.passportMeta}>
             {passport?.profile.bloodType ?? profile?.user.bloodType ?? t('Unknown blood type')} · {genderLabels[passport?.profile.gender ?? profile?.user.gender ?? ''] ?? t('Profile pending')}
@@ -926,6 +930,7 @@ const styles = StyleSheet.create({
     gap: 6,
     alignItems: 'center',
   },
+  passportBrandRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   passportBrand: {
     color: 'rgba(255,255,255,0.82)',
     fontSize: 12,
