@@ -1,46 +1,104 @@
-@import url('https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    /* Vitalis teal, committed: the hero is drenched in the brand's deep teal. */
-    --ink: 190 40% 10%;
+    --ink: 174 26% 10%;          /* #13201F */
+    --paper: 43 26% 95%;         /* #F7F5F0, the apps' sheet */
+    --muted: 176 8% 36%;         /* #556362, 5.7:1 on paper */
+    --sos: 0 72% 58%;            /* #E14545 */
+    --border: 40 14% 87%;
     --teal-deep: 175 76% 20%;
     --teal: 173 80% 36%;
     --teal-soft: 170 55% 88%;
-    --paper: 170 20% 98%;
-    --sos: 0 72% 51%;
-    --muted: 185 12% 38%;
-    --border: 180 12% 88%;
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
     color-scheme: light;
   }
 
-  html { scroll-behavior: smooth; }
+  html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
   body {
     @apply antialiased;
     background: hsl(var(--paper));
     color: hsl(var(--ink));
     font-family: 'Schibsted Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-kerning: normal;
   }
   h1, h2, h3 { text-wrap: balance; }
-  p { text-wrap: pretty; }
-  :focus-visible { outline: 3px solid hsl(var(--teal-soft)); outline-offset: 3px; border-radius: 6px; }
+  p, li, dd { text-wrap: pretty; }
+  :focus-visible { outline: 3px solid #9FE3D8; outline-offset: 3px; border-radius: 6px; }
+  .bg-paper :focus-visible, .bg-white :focus-visible { outline-color: #0C5D57; }
 }
 
-@layer utilities {
-  .rise { animation: rise 700ms cubic-bezier(0.16, 1, 0.3, 1) both; }
-  .rise-2 { animation-delay: 90ms; }
-  .rise-3 { animation-delay: 180ms; }
-  .rise-phone { animation: rise-phone 900ms cubic-bezier(0.16, 1, 0.3, 1) 120ms both; }
+@layer components {
+  /* Type scale, ~1.33 steps. Display caps at 6rem. */
+  .hero-title { font-size: clamp(2.6rem, 1.5rem + 4.4vw, 5.75rem); font-weight: 800; line-height: 0.98; letter-spacing: -0.035em; max-width: 12ch; }
+  .beat-title { font-size: clamp(2rem, 1.3rem + 2.9vw, 4.25rem); font-weight: 800; line-height: 1.02; letter-spacing: -0.03em; max-width: 15ch; }
+  .section-title { font-size: clamp(2.25rem, 1.4rem + 3.2vw, 4.5rem); font-weight: 800; line-height: 1.02; letter-spacing: -0.035em; }
+  .final-title { font-size: clamp(2.8rem, 1.5rem + 5.2vw, 6rem); font-weight: 800; line-height: 0.96; letter-spacing: -0.04em; }
+
+  /* Story text sits in the panel under the city on phones, over it on large screens. */
+  .beat { position: absolute; left: 1.25rem; right: 1.25rem; top: 0.25rem; will-change: opacity, transform; }
+  @media (min-width: 640px) { .beat { left: 2rem; right: 2rem; } }
+  @media (min-width: 1024px) { .beat { right: auto; max-width: 46rem; } }
+
+  .city-label { will-change: transform; pointer-events: none; }
+  .city-label::after {
+    content: ''; position: absolute; left: 50%; bottom: -5px; width: 10px; height: 10px;
+    background: inherit; transform: translateX(-50%) rotate(45deg); border-radius: 2px;
+  }
+
+  .phone { border-radius: 2.6rem; background: hsl(var(--ink)); padding: 0.55rem; box-shadow: 0 40px 80px -40px rgba(7, 63, 58, 0.55); }
+  .phone img { display: block; width: 100%; height: auto; border-radius: 2.1rem; }
+
+  .watch-face { box-shadow: 0 0 0 10px #0d1716, 0 0 0 11px rgba(255, 255, 255, 0.08), 0 40px 70px -30px rgba(0, 0, 0, 0.7); }
+
+  .step-dot {
+    display: grid; place-items: center; width: 3rem; height: 3rem; border-radius: 9999px;
+    background: #0C5D57; color: #fff; font-weight: 800; font-size: 1.125rem; position: relative; z-index: 1;
+    box-shadow: 0 0 0 8px hsl(var(--paper));
+  }
+  @media (min-width: 1024px) {
+    .steps::before {
+      content: ''; position: absolute; left: 1.5rem; right: 0; top: 1.5rem; height: 2px;
+      background: linear-gradient(90deg, #0C5D57, #0E8B7F 70%, rgba(14, 139, 127, 0));
+      transform-origin: left;
+    }
+  }
+
+  .scroll-cue { width: 18px; height: 28px; border: 2px solid rgba(255, 255, 255, 0.55); border-radius: 10px; position: relative; }
+  .scroll-cue::after {
+    content: ''; position: absolute; left: 50%; top: 5px; width: 3px; height: 6px; border-radius: 2px;
+    background: #fff; transform: translateX(-50%); animation: cue 1.8s var(--ease-out) infinite;
+  }
 }
 
-@keyframes rise { from { opacity: 0; transform: translateY(14px); } }
-@keyframes rise-phone { from { opacity: 0; transform: translateY(40px) rotate(-2deg); } }
+/* ---- Motion ---- */
+.rise { animation: rise 900ms var(--ease-out) both; }
+.rise-2 { animation-delay: 120ms; }
+.rise-3 { animation-delay: 240ms; }
+.city-in { animation: city-in 1400ms var(--ease-out) both; }
+@keyframes rise { from { opacity: 0; transform: translateY(22px); filter: blur(6px); } }
+@keyframes city-in { from { opacity: 0; transform: scale(1.04); } }
+@keyframes cue { 0% { opacity: 0; transform: translate(-50%, 0); } 30% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, 10px); } }
+
+/* Scroll-linked entrances where supported; everything is fully visible without them. */
+@supports (animation-timeline: view()) {
+  .phone-rise { animation: phone-in linear both; animation-timeline: view(); animation-range: entry 0% cover 40%; }
+  .phone-rise-late { animation-range: entry 10% cover 50%; }
+  .lift { animation: lift linear both; animation-timeline: view(); animation-range: entry 0% cover 45%; }
+  .lift-late { animation-range: entry 10% cover 55%; }
+  @media (min-width: 1024px) {
+    .steps::before { animation: draw linear both; animation-timeline: view(); animation-range: entry 20% cover 55%; }
+  }
+}
+@keyframes phone-in { from { transform: translateY(90px) rotate(-3deg); } }
+@keyframes lift { from { transform: translateY(70px); } }
+@keyframes draw { from { transform: scaleX(0); } }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .rise, .rise-phone { animation: fade 300ms ease both; }
+  .rise, .city-in { animation: fade 300ms ease both; }
+  .phone-rise, .lift, .steps::before, .scroll-cue::after { animation: none !important; }
 }
 @keyframes fade { from { opacity: 0; } }

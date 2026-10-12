@@ -4,7 +4,9 @@
  *   node scripts/screenshot.mjs /profile profile 1600          → .shots/profile.png (390 wide, 1600 tall)
  *   CLICK="Ilaçet" node scripts/screenshot.mjs /profile open   → taps the element with that exact text first
  * Env: EMAIL/PASS (default demo account), APP, API, WAIT (ms), GEO="lat,lng" (fake location),
- *      WIDTH (desktop width, e.g. 1440 for the web console), PDF=1 (save the printed page as .pdf, PAGES="1-2" for some pages).
+ *      WIDTH (desktop width, e.g. 1440 for the web console), PDF=1 (save the printed page as .pdf, PAGES="1-2" for some pages),
+ *      SCROLLY="0,900,40%" (one shot per scroll position, name-0.png …; SETTLE=ms to wait after each scroll),
+ *      REDUCED=1 (prefers-reduced-motion: reduce).
  */
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -35,6 +37,7 @@ if (process.env.GEO) {
   await send('Browser.grantPermissions', { permissions: ['geolocation'] });
   await send('Emulation.setGeolocationOverride', { latitude, longitude, accuracy: 20 });
 }
+if (process.env.REDUCED) await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
 await send('Emulation.setDeviceMetricsOverride', { width: Number(process.env.WIDTH ?? 390), height: Number(height), deviceScaleFactor: process.env.WIDTH ? 1 : 2, mobile: !process.env.WIDTH });
 if (process.env.EMAIL !== '') {
   const login = await (await fetch(`${API}/auth/login`, {
@@ -63,6 +66,16 @@ if (process.env.PDF) {
   // What "Export PDF" produces: the page through its print styles.
   const pdf = await send('Page.printToPDF', { preferCSSPageSize: true, printBackground: true, pageRanges: process.env.PAGES ?? '' });
   writeFileSync(`.shots/${name}.pdf`, Buffer.from(pdf.result.data, 'base64'));
+} else if (process.env.SCROLLY) {
+  // Several shots down one page: SCROLLY="0,900,40%" (pixels, or % of the scrollable height) → name-0.png, name-1.png, …
+  const stops = process.env.SCROLLY.split(',');
+  for (const [i, stop] of stops.entries()) {
+    const y = stop.endsWith('%') ? `(document.documentElement.scrollHeight - innerHeight) * ${parseFloat(stop) / 100}` : Number(stop);
+    await send('Runtime.evaluate', { expression: `document.documentElement.style.scrollBehavior = 'auto'; window.scrollTo(0, ${y})` });
+    await sleep(Number(process.env.SETTLE ?? 1200));
+    const shot = await send('Page.captureScreenshot', { format: 'png' });
+    writeFileSync(`.shots/${name}-${i}.png`, Buffer.from(shot.result.data, 'base64'));
+  }
 } else {
   const shot = await send('Page.captureScreenshot', { format: 'png' });
   writeFileSync(`.shots/${name}.png`, Buffer.from(shot.result.data, 'base64'));

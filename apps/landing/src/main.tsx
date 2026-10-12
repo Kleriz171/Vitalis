@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { App } from './App';
+import { Home } from './home/Home';
+import { LangProvider } from './i18n';
 import { Verify } from './Verify';
 import { Track } from './Track';
 import { Privacy } from './Privacy';
@@ -16,6 +17,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     {verifyToken ? <Verify token={decodeURIComponent(verifyToken)} />
       : trackToken ? <Track token={decodeURIComponent(trackToken)} />
       : /^\/privacy\/?$/.test(window.location.pathname) ? <Privacy />
-      : <App />}
+      : <LangProvider><Home /></LangProvider>}
   </React.StrictMode>,
 );
