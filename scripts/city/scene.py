@@ -8,11 +8,14 @@ from mathutils import Vector
 argv = sys.argv[sys.argv.index('--') + 1:]
 GEO, OUT = argv[0], argv[1]
 TEST = int(argv[argv.index('--test') + 1]) if '--test' in argv else None
-SIZE = int(argv[argv.index('--size') + 1]) if '--size' in argv else 1600   # width; frames are 16:10
-ENGINE = argv[argv.index('--engine') + 1] if '--engine' in argv else 'EEVEE'
+SIZE = int(argv[argv.index('--size') + 1]) if '--size' in argv else 2560   # width; frames are 16:10
+ENGINE = argv[argv.index('--engine') + 1] if '--engine' in argv else 'CYCLES'
+SAMPLES = int(argv[argv.index('--samples') + 1]) if '--samples' in argv else 64
 FRAMES = 96
 RADIUS = 820          # the city fades into the page colour beyond this
 
+import os
+os.makedirs(OUT, exist_ok=True)
 geo = json.load(open(GEO))
 story = geo['story']
 
@@ -112,9 +115,10 @@ def ribbons(name, lines, mat, z):
             n = Vector((-d.y, d.x, 0)).normalized() * (w / 2)
             vs = [bm.verts.new((v.x, v.y, z)) for v in (a + n, b + n, b - n, a - n)]
             bm.faces.new(vs)
-            # round joint
-            c = bmesh.ops.create_circle(bm, cap_ends=True, radius=w / 2, segments=8)
-            bmesh.ops.translate(bm, verts=c['verts'], vec=(b.x, b.y, z))
+            # round joints on the wide roads only (on footpaths they show as dots)
+            if w >= 9:
+                c = bmesh.ops.create_circle(bm, cap_ends=True, radius=w / 2, segments=12)
+                bmesh.ops.translate(bm, verts=c['verts'], vec=(b.x, b.y, z + 0.004))
     return mesh_object(name, bm, mat)
 
 
@@ -145,7 +149,69 @@ for b in geo['buildings']:
     top = [e for e in r['geom'] if isinstance(e, bmesh.types.BMVert)]
     bmesh.ops.translate(bm, verts=top, vec=(0, 0, b['h']))
 bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-mesh_object('buildings', bm, material('clay', CLAY, rough=0.7))
+city = mesh_object('buildings', bm, material('clay', CLAY, rough=0.62))
+# Each building a hair different in tone, like a real model city; soft bevelled edges catch the light.
+nt = city.data.materials[0].node_tree
+geo_rand = nt.nodes.new('ShaderNodeNewGeometry')
+tone = nt.nodes.new('ShaderNodeMix'); tone.data_type = 'RGBA'
+tone.inputs['A'].default_value = hexrgb(CLAY); tone.inputs['B'].default_value = hexrgb('#E7E3DA')
+fac = nt.nodes.new('ShaderNodeMath'); fac.operation = 'MULTIPLY'; fac.inputs[1].default_value = 0.8
+nt.links.new(geo_rand.outputs['Random Per Island'], fac.inputs[0])
+nt.links.new(fac.outputs[0], tone.inputs['Factor'])
+nt.links.new(tone.outputs['Result'], nt.nodes['Principled BSDF'].inputs['Base Color'])
+bev = city.modifiers.new('bevel', 'BEVEL'); bev.width = 0.45; bev.segments = 2; bev.limit_method = 'ANGLE'
+bev.harden_normals = True
+
+
+# ---------- trees: in the parks and along the boulevards ----------
+import random
+rng = random.Random(7)
+
+
+def in_poly(x, y, poly):
+    hit = False
+    for (x1, y1), (x2, y2) in zip(poly, poly[1:] + poly[:1]):
+        if (y1 > y) != (y2 > y) and x < (x2 - x1) * (y - y1) / (y2 - y1 + 1e-9) + x1: hit = not hit
+    return hit
+
+
+spots = []
+for poly in geo['parks']:
+    if not any(inside(q) for q in poly): continue
+    xs, ys = [q[0] for q in poly], [q[1] for q in poly]
+    x = min(xs)
+    while x < max(xs):
+        y = min(ys)
+        while y < max(ys):
+            px, py = x + rng.uniform(-4, 4), y + rng.uniform(-4, 4)
+            if inside((px, py), RADIUS) and in_poly(px, py, poly) and rng.random() < 0.8: spots.append((px, py))
+            y += 13
+        x += 13
+for line in geo['roads']:
+    if line['w'] < 11: continue
+    pts = line['p']
+    for a, b in zip(pts, pts[1:]):
+        a, b = Vector((a[0], a[1], 0)), Vector((b[0], b[1], 0)); d = b - a
+        if d.length < 1 or not inside(a, RADIUS): continue
+        n = Vector((-d.y, d.x, 0)).normalized() * (line['w'] / 2 + 3)
+        for k in range(int(d.length // 15)):
+            c = a + d * ((k + 0.5) * 15 / d.length)
+            for side in (n, -n): spots.append((c.x + side.x, c.y + side.y))
+bm = bmesh.new()
+for x, y in spots:
+    r = rng.uniform(3.2, 5.4); h = rng.uniform(3.0, 4.5)
+    crown = bmesh.ops.create_icosphere(bm, subdivisions=2, radius=r)
+    bmesh.ops.scale(bm, vec=(1, 1, rng.uniform(0.85, 1.15)), verts=crown['verts'])
+    bmesh.ops.translate(bm, verts=crown['verts'], vec=(x, y, h + r * 0.8))
+trees = mesh_object('trees', bm, material('canopy', '#2B8A68', rough=0.85))
+for poly in trees.data.polygons: poly.use_smooth = True
+nt = trees.data.materials[0].node_tree
+geo_rand = nt.nodes.new('ShaderNodeNewGeometry')
+tone = nt.nodes.new('ShaderNodeMix'); tone.data_type = 'RGBA'
+tone.inputs['A'].default_value = hexrgb('#2B8A68'); tone.inputs['B'].default_value = hexrgb('#4FA883')
+nt.links.new(geo_rand.outputs['Random Per Island'], tone.inputs['Factor'])
+nt.links.new(tone.outputs['Result'], nt.nodes['Principled BSDF'].inputs['Base Color'])
+print(len(spots), 'trees')
 
 
 # ---------- story ----------
@@ -164,6 +230,10 @@ def route(name, pts, color, start, end, z=4.0):
     ob = bpy.data.objects.new(name, cu); scene.collection.objects.link(ob)
     cu.materials.append(material(name + '-m', color, emission=color, strength=1.6, fade=False))
     keys(cu, 'bevel_factor_end', [(1, 0.0), (start, 0.0), (end, 1.0)])
+    halo = cu.copy(); halo.bevel_depth = 11; halo.materials.clear()
+    halo.materials.append(material(name + '-halo', color, emission=color, strength=0.9, fade=False, alpha=0.22))
+    hob = bpy.data.objects.new(name + '-halo', halo); scene.collection.objects.link(hob)
+    keys(halo, 'bevel_factor_end', [(1, 0.0), (start, 0.0), (end, 1.0)])
     # the runner: a bright dot at the head of the line
     dot = bpy.data.objects.new(name + '-dot', bpy.data.meshes.new(name + '-dot'))
     bm = bmesh.new(); bmesh.ops.create_uvsphere(bm, u_segments=24, v_segments=12, radius=11)
@@ -215,12 +285,14 @@ for i in range(3):
 ax, ay = story['aed']
 aed = bpy.data.objects.new('aed', bpy.data.meshes.new('aed'))
 bm = bmesh.new()
-bmesh.ops.create_cube(bm, size=1.0)
-bmesh.ops.scale(bm, vec=(20, 20, 34), verts=bm.verts)
-bmesh.ops.translate(bm, verts=bm.verts, vec=(0, 0, 17))
+bmesh.ops.create_cone(bm, cap_ends=True, segments=32, radius1=8, radius2=8, depth=26)
+bmesh.ops.translate(bm, verts=bm.verts, vec=(0, 0, 13))
+cap = bmesh.ops.create_uvsphere(bm, u_segments=32, v_segments=16, radius=8)
+bmesh.ops.translate(bm, verts=cap['verts'], vec=(0, 0, 26))
 bm.to_mesh(aed.data); bm.free(); scene.collection.objects.link(aed)
 aed.location = (ax, ay, 0)
-aed.data.materials.append(material('aed-m', R2, emission=R2, strength=1.6, fade=False))
+aed.data.materials.append(material('aed-m', R2, emission=R2, strength=1.2, fade=False))
+for poly in aed.data.polygons: poly.use_smooth = True
 keys(aed, 'scale', [(1, (0, 0, 0)), (44, (0, 0, 0)), (50, (1, 1, 1))])
 
 # routes: responder 1 draws 28->66, runner 2 draws 44->88 (via the defibrillator)
@@ -243,14 +315,20 @@ for ob in (cam, target):
 # ---------- light & world ----------
 world = bpy.data.worlds.new('world'); scene.world = world
 world.use_nodes = True
-world.node_tree.nodes['Background'].inputs['Color'].default_value = hexrgb(PAGE)
-world.node_tree.nodes['Background'].inputs['Strength'].default_value = 1.0
+wn = world.node_tree.nodes
+bg_page = wn['Background']; bg_page.inputs['Color'].default_value = hexrgb(PAGE); bg_page.inputs['Strength'].default_value = 1.0
+bg_sky = wn.new('ShaderNodeBackground'); bg_sky.inputs['Color'].default_value = hexrgb('#CFE8E2'); bg_sky.inputs['Strength'].default_value = 0.55
+lp = wn.new('ShaderNodeLightPath'); mixw = wn.new('ShaderNodeMixShader')
+world.node_tree.links.new(lp.outputs['Is Camera Ray'], mixw.inputs['Fac'])
+world.node_tree.links.new(bg_sky.outputs['Background'], mixw.inputs[1])
+world.node_tree.links.new(bg_page.outputs['Background'], mixw.inputs[2])
+world.node_tree.links.new(mixw.outputs['Shader'], wn['World Output'].inputs['Surface'])
 sun = bpy.data.objects.new('sun', bpy.data.lights.new('sun', 'SUN'))
-sun.data.energy = 3.4; sun.data.color = hexrgb('#FFF1E2')[:3]; sun.data.angle = math.radians(3)
+sun.data.energy = 3.6; sun.data.color = hexrgb('#FFF0DE')[:3]; sun.data.angle = math.radians(2.2)
 sun.rotation_euler = (math.radians(62), 0, math.radians(-38))
 scene.collection.objects.link(sun)
 fill = bpy.data.objects.new('fill', bpy.data.lights.new('fill', 'SUN'))
-fill.data.energy = 0.7; fill.data.color = hexrgb('#9FE3D8')[:3]
+fill.data.energy = 0.35; fill.data.color = hexrgb('#9FE3D8')[:3]
 fill.rotation_euler = (math.radians(50), 0, math.radians(150))
 scene.collection.objects.link(fill)
 
@@ -262,11 +340,15 @@ r.image_settings.file_format = 'PNG'
 r.film_transparent = False
 if ENGINE == 'CYCLES':
     r.engine = 'CYCLES'
-    scene.cycles.samples = 48
+    scene.cycles.samples = SAMPLES
+    scene.cycles.use_adaptive_sampling = True
     scene.cycles.use_denoising = True
+    scene.cycles.max_bounces = 6
+    r.use_persistent_data = True
     prefs = bpy.context.preferences.addons['cycles'].preferences
-    prefs.compute_device_type = 'METAL'; prefs.get_devices()
-    for d in prefs.devices: d.use = True
+    prefs.compute_device_type = 'METAL'; prefs.refresh_devices()
+    for d in prefs.devices: d.use = d.type != 'CPU'
+    print('cycles devices:', [(d.name, d.type, d.use) for d in prefs.devices])
     scene.cycles.device = 'GPU'
 else:
     for eng in ('BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT'):

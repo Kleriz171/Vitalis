@@ -1,34 +1,35 @@
 import { useLang } from '../i18n';
 
-/** Caller and responder side by side: the same app on both ends of an emergency. */
+/** Caller and responder, rendered in Blender with the real screens in the visitor's language. */
 export const AppSection = () => {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   return (
-    <section className="bg-paper text-ink py-24 sm:py-32 lg:py-40 overflow-hidden">
-      <div className="mx-auto max-w-7xl px-5 sm:px-8 grid gap-16 lg:grid-cols-[1fr_1.05fr] lg:gap-20 items-center">
-        <div>
-          <h2 className="section-title max-w-[16ch]">{t.app.title}</h2>
-          <p className="mt-6 max-w-[46ch] text-lg text-muted leading-relaxed">{t.app.lead}</p>
-          <dl className="mt-12 grid gap-x-10 gap-y-8 sm:grid-cols-2">
-            {t.app.features.map((f) => (
-              <div key={f.title} className="border-t border-ink/15 pt-5">
-                <dt className="text-lg font-bold leading-snug">{f.title}</dt>
-                <dd className="mt-2 text-muted leading-relaxed">{f.body}</dd>
-              </div>
-            ))}
-          </dl>
+    <section className="bg-paper text-ink pt-24 sm:pt-32 lg:pt-40 pb-20 sm:pb-28 overflow-hidden">
+      <div className="mx-auto max-w-7xl px-5 sm:px-8">
+        <div className="grid gap-10 lg:grid-cols-[1fr_1.15fr] lg:gap-12 items-center">
+          <div>
+            <h2 className="section-title max-w-[15ch]">{t.app.title}</h2>
+            <p className="mt-6 max-w-[44ch] text-lg text-muted leading-relaxed">{t.app.lead}</p>
+            <p className="mt-8 flex gap-6 text-sm font-semibold text-muted">
+              <span><span className="mr-2 inline-block h-2 w-2 rounded-full bg-sos align-middle" />{t.app.callerCaption}</span>
+              <span><span className="mr-2 inline-block h-2 w-2 rounded-full bg-green align-middle" />{t.app.responderCaption}</span>
+            </p>
+          </div>
+          <img
+            src={`/renders/phones-${lang}.webp`}
+            width={1800} height={1800} loading="lazy" decoding="async"
+            alt={`${t.app.callerAlt} ${t.app.responderAlt}`}
+            className="phone-rise -mx-6 w-[calc(100%+3rem)] max-w-none sm:mx-0 sm:w-full sm:max-w-[720px] lg:justify-self-end"
+          />
         </div>
-
-        <div className="relative mx-auto grid w-full max-w-[560px] grid-cols-2 items-start gap-5 sm:gap-8">
-          <figure className="phone-rise">
-            <div className="phone"><img src="/screen-sos.png" width={780} height={1688} loading="lazy" alt={t.app.callerAlt} /></div>
-            <figcaption className="mt-4 text-sm font-semibold text-muted">{t.app.callerCaption}</figcaption>
-          </figure>
-          <figure className="phone-rise phone-rise-late mt-16 sm:mt-24">
-            <div className="phone"><img src="/screen-responder.png" width={780} height={1688} loading="lazy" alt={t.app.responderAlt} /></div>
-            <figcaption className="mt-4 text-sm font-semibold text-muted">{t.app.responderCaption}</figcaption>
-          </figure>
-        </div>
+        <dl className="mt-14 lg:mt-6 grid gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
+          {t.app.features.map((f) => (
+            <div key={f.title} className="border-t border-ink/15 pt-5">
+              <dt className="text-lg font-bold leading-snug">{f.title}</dt>
+              <dd className="mt-2 text-muted leading-relaxed">{f.body}</dd>
+            </div>
+          ))}
+        </dl>
       </div>
     </section>
   );

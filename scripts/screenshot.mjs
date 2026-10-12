@@ -6,7 +6,7 @@
  * Env: EMAIL/PASS (default demo account), APP, API, WAIT (ms), GEO="lat,lng" (fake location),
  *      WIDTH (desktop width, e.g. 1440 for the web console), PDF=1 (save the printed page as .pdf, PAGES="1-2" for some pages),
  *      SCROLLY="0,900,40%" (one shot per scroll position, name-0.png …; SETTLE=ms to wait after each scroll),
- *      REDUCED=1 (prefers-reduced-motion: reduce).
+ *      REDUCED=1 (prefers-reduced-motion: reduce), LOCAL="lang=en" (localStorage set before loading).
  */
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -47,6 +47,12 @@ if (process.env.EMAIL !== '') {
   await send('Page.navigate', { url: `${APP}/` });
   await sleep(2500);
   await send('Runtime.evaluate', { expression: `localStorage.setItem('at', ${JSON.stringify(login.accessToken)}); localStorage.setItem('rt', ${JSON.stringify(login.refreshToken)}); localStorage.setItem('user', ${JSON.stringify(JSON.stringify(login.user))});` });
+}
+if (process.env.LOCAL) {
+  // Extra localStorage before the page loads, e.g. LOCAL="lang=en" for the app's language.
+  if (process.env.EMAIL === '') { await send('Page.navigate', { url: `${APP}/` }); await sleep(2500); }
+  const pairs = process.env.LOCAL.split(';').map((kv) => kv.split('='));
+  await send('Runtime.evaluate', { expression: pairs.map(([k, v]) => `localStorage.setItem(${JSON.stringify(k)}, ${JSON.stringify(v)})`).join(';') });
 }
 await send('Page.navigate', { url: APP + route });
 await sleep(Number(process.env.WAIT ?? 7000));

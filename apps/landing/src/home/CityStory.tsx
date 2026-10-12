@@ -42,7 +42,9 @@ export const CityStory = () => {
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
     const conn = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
     const narrow = window.innerWidth < 900;
-    const width = (narrow ? window.innerWidth * 1.2 : window.innerWidth) * Math.min(devicePixelRatio, 2) > 1100 ? 1600 : 1000;
+    // Pick the frame set that covers the screen's real pixels (Retina desktops need the 2560 set).
+    const need = (narrow ? window.innerWidth * 1.6 : window.innerWidth) * Math.min(devicePixelRatio, 2);
+    const width = need > 1800 ? 2560 : need > 1100 ? 1600 : 1000;
     const images: (HTMLImageElement | undefined)[] = [];
     let cancelled = false, lastDrawn = -1, lastBeat = -1, raf = 0;
 
@@ -71,7 +73,7 @@ export const CityStory = () => {
     // Cover-fit with a focal point, so phones keep the action in view.
     const fit = () => {
       const cw = st.clientWidth, ch = st.clientHeight;
-      const s = Math.max(cw / 1600, ch / 1000), dw = 1600 * s, dh = 1000 * s;
+      const s = Math.max(cw / 16, ch / 10), dw = 16 * s, dh = 10 * s;   // frames are 16:10 at every size
       const fx = narrow ? 0.64 : 0.5;
       const ox = Math.min(0, Math.max(cw - dw, cw / 2 - fx * dw)), oy = (ch - dh) / 2;
       return { cw, ch, dw, dh, ox, oy };
