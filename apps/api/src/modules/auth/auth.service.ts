@@ -186,7 +186,7 @@ export const authService = {
       { upsert: true },
     );
     await sendSms(phone, `Vitalis code: ${code}. It expires in 10 minutes. Never share it with anyone.`);
-    // Dev without an SMS provider: hand the code back so the app and checks can proceed.
+    // No SMS provider (dev or DEMO_MODE): hand the code back; the app signs straight in with it.
     return smsIsFake() ? { sent: true, devCode: code } : { sent: true };
   },
 

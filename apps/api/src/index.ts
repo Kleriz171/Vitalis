@@ -20,6 +20,7 @@ async function main() {
   const server = http.createServer(app);
   initSocket(server);
   server.listen(env.port, () => logger.info(`API on :${env.port}`));
+  if (env.demoMode) logger.warn('DEMO_MODE is on: phone sign-in needs no SMS code. Test demos only.');
   startRedispatch();
   startCheckInSweep();
 }

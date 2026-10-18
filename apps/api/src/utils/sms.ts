@@ -7,8 +7,8 @@ const twilio = {
   from: process.env.TWILIO_FROM ?? '',
 };
 
-/** True when codes are only logged (dev without a provider). Never true in production. */
-export const smsIsFake = () => !twilio.sid && env.nodeEnv !== 'production';
+/** True when texts are only logged: no provider, and dev or DEMO_MODE. Real production never fakes. */
+export const smsIsFake = () => !twilio.sid && (env.nodeEnv !== 'production' || env.demoMode);
 
 export async function sendSms(to: string, body: string) {
   if (twilio.sid && twilio.token && twilio.from) {

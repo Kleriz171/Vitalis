@@ -18,6 +18,9 @@ export const env = {
   // demo is used only outside production; for launch, self-host OSRM with the Albania extract
   // (free) and set OSRM_URL. Empty = straight-line estimate.
   osrmUrl: process.env.OSRM_URL ?? (process.env.NODE_ENV === 'production' ? '' : 'https://router.project-osrm.org'),
+  // Test demos only: with no SMS provider, phone sign-in hands the code straight back and the
+  // app skips the code step, so anyone can sign in as any number. Never set for real users.
+  demoMode: process.env.DEMO_MODE === 'true',
 };
 
 if (env.nodeEnv === 'production') {
@@ -25,4 +28,5 @@ if (env.nodeEnv === 'production') {
   if (weak(env.jwtAccess) || weak(env.jwtRefresh)) {
     throw new Error('JWT_ACCESS and JWT_REFRESH must be set to strong secrets (32+ chars) in production');
   }
+  if (!process.env.MONGO_URI) throw new Error('MONGO_URI must be set in production');
 }

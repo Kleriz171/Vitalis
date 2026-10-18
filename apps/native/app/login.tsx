@@ -90,20 +90,24 @@ export default function SignIn() {
     router.replace('/(tabs)/home');
   };
 
-  const sendCode = () => run(async () => {
-    const { data } = await api.post('/auth/phone/start', { phone });
-    setResendAt(Date.now() + RESEND_SECONDS * 1000);
-    setNow(Date.now());
-    setCode(__DEV__ && data.devCode ? data.devCode : '');
-    setStep('code');
-  });
-
-  const verify = (value = code) => run(async () => {
+  const checkCode = async (value: string) => {
     const { data } = await api.post('/auth/phone/verify', { phone, code: value });
     if (!data.isNew) return signedIn(data);
     setSignupToken(data.signupToken);
     setStep('about');
+  };
+
+  const sendCode = () => run(async () => {
+    const { data } = await api.post('/auth/phone/start', { phone });
+    // The server has no SMS provider (dev or a test demo) and handed the code back: skip the code step.
+    if (data.devCode) return checkCode(data.devCode);
+    setResendAt(Date.now() + RESEND_SECONDS * 1000);
+    setNow(Date.now());
+    setCode('');
+    setStep('code');
   });
+
+  const verify = (value = code) => run(() => checkCode(value));
 
   const register = () => run(async () => {
     const { data } = await api.post('/auth/phone/register', {

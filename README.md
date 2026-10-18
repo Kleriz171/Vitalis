@@ -100,6 +100,17 @@ API_URL=http://localhost:4000 npm run check:drones     # needs the bridge in sim
 
 `apps/landing` is a static build (`npm run build -w @vitalis/landing`). Configure the host to serve `index.html` for `/verify/*` so certificate QR codes work, and set `PUBLIC_WEB_URL` on the API to the site's origin. Set `VITE_APP_STORE_URL` / `VITE_PLAY_STORE_URL` once the apps are published; until then the buttons read "Coming soon".
 
+## Test demo on Render (free)
+
+`render.yaml` sets up the API on Render's free plan with `DEMO_MODE=true`: phone sign-in skips the SMS code, so no SMS provider is needed (and anyone can sign in as any number; demos only).
+
+1. **Database**: create a free M0 cluster on MongoDB Atlas, add a database user, allow access from anywhere (`0.0.0.0/0`, Render's free plan has no fixed IP), and copy the connection string with `/vitalis` before the `?`.
+2. **Demo data**: `MONGO_URI="<atlas string>" npm run seed` from this laptop.
+3. **Deploy**: push the branch, then Render → New → Blueprint → this repo and branch, and paste the Atlas string as `MONGO_URI`.
+4. **App**: set `EXPO_PUBLIC_API_URL=https://<service>.onrender.com/api` in `apps/native/.env` and restart Metro with `--clear`.
+
+The free plan sleeps after 15 minutes without traffic and takes about a minute to wake: open `https://<service>.onrender.com/health` shortly before a demo. To send real codes later, set the `TWILIO_*` values and remove `DEMO_MODE`.
+
 ## Running the API in production
 
 `docker compose up -d` starts MongoDB (loopback only), the API (`NODE_ENV=production`, Docker health check on `/health`), the console and a nightly backup.
