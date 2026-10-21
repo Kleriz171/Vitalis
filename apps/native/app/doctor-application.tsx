@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import { ArrowLeft, FileText, Stethoscope, Upload } from 'lucide-react-native';
@@ -9,12 +9,14 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
+import { Segmented } from '@/components/ui/List';
 import { api } from '@/lib/api';
 import { colors, radius } from '@/lib/theme';
 import { apiError, t } from '@/lib/i18n';
 
 export default function DoctorApplication() {
   const router = useRouter();
+  const [profession, setProfession] = useState<'doctor' | 'nurse'>('doctor');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -43,6 +45,7 @@ export default function DoctorApplication() {
     setSubmitting(true);
     try {
       const form = new FormData();
+      form.append('profession', profession);
       form.append('fullName', fullName);
       form.append('email', email);
       form.append('phone', phone);
@@ -67,11 +70,11 @@ export default function DoctorApplication() {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
       <AppScreen
         tone="info"
         eyebrow={t('Care providers')}
-        title={t('Apply to join as a doctor')}
+        title={t('Apply as a doctor or nurse')}
         subtitle={t('Submit your credentials. An administrator reviews every application.')}
         icon={<Stethoscope size={22} color="#fff" />}
         action={
@@ -81,11 +84,16 @@ export default function DoctorApplication() {
         }
       >
         <ScrollView contentContainerStyle={{ gap: 14, paddingBottom: 32 }}>
+          <Segmented
+            options={[{ key: 'doctor' as const, label: t('Doctor') }, { key: 'nurse' as const, label: t('Nurse') }]}
+            value={profession}
+            onChange={setProfession}
+          />
           <Card style={styles.card}>
-            <View style={styles.field}><Label>{t('Full name')}</Label><Input value={fullName} onChangeText={setFullName} placeholder={t('Dr. Jane Doe')} /></View>
+            <View style={styles.field}><Label>{t('Full name')}</Label><Input value={fullName} onChangeText={setFullName} placeholder={profession === 'doctor' ? t('Dr. Jane Doe') : t('Jane Doe')} /></View>
             <View style={styles.field}><Label>{t('Email')}</Label><Input value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" placeholder={t('you@example.com')} /></View>
             <View style={styles.field}><Label>{t('Phone (with country code, used for WhatsApp)')}</Label><Input value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="+355691234567" /></View>
-            <View style={styles.field}><Label>{t('Specialty')}</Label><Input value={specialty} onChangeText={setSpecialty} placeholder={t('Cardiology')} /></View>
+            <View style={styles.field}><Label>{t('Specialty')}</Label><Input value={specialty} onChangeText={setSpecialty} placeholder={profession === 'doctor' ? t('Cardiology') : t('Emergency nursing')} /></View>
             <View style={styles.field}><Label>{t('Years of experience')}</Label><Input value={yearsExperience} onChangeText={setYearsExperience} keyboardType="number-pad" placeholder="8" /></View>
             <View style={styles.field}><Label>{t('Bio')}</Label><Input value={bio} onChangeText={setBio} multiline placeholder={t('Tell us about your practice, training, focus areas.')} style={styles.textarea} /></View>
           </Card>

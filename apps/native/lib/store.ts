@@ -113,6 +113,8 @@ export interface TrainingCertification {
   score: number;
   issuedAt: string;
   expiresAt: string;
+  number?: string;
+  revoked?: boolean;
   shareToken: string;
 }
 

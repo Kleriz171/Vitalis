@@ -126,7 +126,7 @@ export default function Profile() {
   const certifications = useSelector((state: RootState) => state.training.certifications);
   const [now] = useState(Date.now); // screen-open time is precise enough for expiry
   const activeCertifications = useMemo(
-    () => certifications.filter((c) => new Date(c.expiresAt).getTime() > now),
+    () => certifications.filter((c) => !c.revoked && new Date(c.expiresAt).getTime() > now),
     [certifications, now]
   );
 

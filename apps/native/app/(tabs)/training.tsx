@@ -92,7 +92,7 @@ export default function Training() {
 
   const [now] = useState(Date.now);
   const activeCerts = useMemo(
-    () => trainingState.certifications.filter((c) => new Date(c.expiresAt).getTime() > now),
+    () => trainingState.certifications.filter((c) => !c.revoked && new Date(c.expiresAt).getTime() > now),
     [trainingState.certifications, now]
   );
 

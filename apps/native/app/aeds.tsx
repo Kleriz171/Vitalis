@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Linking, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { toast } from 'sonner-native';
-import { ArrowLeft, Navigation, Plus, ShieldCheck, Zap } from 'lucide-react-native';
+import { ArrowLeft, MapPinOff, Navigation, Plus, ShieldCheck, TriangleAlert, WifiOff, Zap } from 'lucide-react-native';
+import { File, Paths } from 'expo-file-system';
 
 import { AppScreen } from '@/components/AppScreen';
 import { Button } from '@/components/ui/Button';
@@ -14,7 +15,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { api } from '@/lib/api';
 import { formatDistance, LngLat, openDirections } from '@/lib/geo';
 import { colors, radius } from '@/lib/theme';
-import { apiError, t } from '@/lib/i18n';
+import { apiError, locale, t } from '@/lib/i18n';
 
 interface AedItem {
   id: string;
@@ -23,6 +24,7 @@ interface AedItem {
   access: '24h' | 'business_hours' | 'restricted';
   coordinates: LngLat;
   verified: boolean;
+  status?: 'ok' | 'needs_check' | 'out_of_service';
   distanceM?: number;
 }
 
@@ -32,6 +34,18 @@ const ACCESS_LABEL: Record<AedItem['access'], string> = {
   restricted: t('Ask staff for access'),
 };
 
+const STATUS_LABEL = { needs_check: t('Problem reported'), out_of_service: t('Out of service') };
+
+// The last list, kept on the phone: in a basement or a dead zone the nearest devices still show.
+type Saved = { at: number; here: LngLat; items: AedItem[] };
+const savedFile = () => new File(Paths.document, 'aeds.json');
+const save = (s: Saved) => {
+  try { const f = savedFile(); if (!f.exists) f.create(); f.write(JSON.stringify(s)); } catch {}
+};
+const readSaved = (): Saved | null => {
+  try { const f = savedFile(); return f.exists ? JSON.parse(f.textSync()) : null; } catch { return null; }
+};
+
 export default function AedsScreen() {
   const router = useRouter();
   const [items, setItems] = useState<AedItem[]>([]);
@@ -39,22 +53,44 @@ export default function AedsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reporting, setReporting] = useState(false);
+  const [problemFor, setProblemFor] = useState<AedItem | null>(null);
+  const [notice, setNotice] = useState<{ kind: 'location' } | { kind: 'nofix' } | { kind: 'offline'; at: number } | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
+    setNotice(null);
     try {
       const perm = await Location.requestForegroundPermissionsAsync();
-      if (perm.status !== 'granted') {
-        setError(t('Turn on location to find the defibrillators closest to you.'));
+      // A recent fix answers at once; a fresh one gets 10 s. Indoors a phone may never get one,
+      // and a skeleton that never ends is worse than the full list.
+      const pos = perm.status !== 'granted' ? null
+        : (await Location.getLastKnownPositionAsync({ maxAge: 5 * 60_000 }))
+          ?? await Promise.race([
+            Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+            new Promise<null>(resolve => setTimeout(() => resolve(null), 10_000)),
+          ]);
+      if (!pos) {
+        // Still useful without a location: every registered device, by name.
+        const { data } = await api.get<AedItem[]>('/aeds');
+        setHere(null);
+        setItems([...data].sort((a, b) => a.name.localeCompare(b.name)));
+        setNotice({ kind: perm.status !== 'granted' ? 'location' : 'nofix' });
         return;
       }
-      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       const coords: LngLat = [pos.coords.longitude, pos.coords.latitude];
       setHere(coords);
       const { data } = await api.get('/aeds', { params: { lng: coords[0], lat: coords[1] } });
       setItems(data);
+      save({ at: Date.now(), here: coords, items: data });
     } catch (err: any) {
-      setError(apiError(err, 'Could not load defibrillators. Pull to retry.'));
+      const saved = err?.response ? null : readSaved(); // no answer at all = offline
+      if (saved) {
+        setHere(null); // reporting needs a live fix
+        setItems(saved.items);
+        setNotice({ kind: 'offline', at: saved.at });
+      } else {
+        setError(apiError(err, 'Could not load defibrillators. Pull to retry.'));
+      }
     } finally {
       setLoading(false);
     }
@@ -76,6 +112,41 @@ export default function AedsScreen() {
       }
       scrollProps={{ refreshControl: <RefreshControl refreshing={false} onRefresh={load} tintColor={colors.primary} /> }}
     >
+      {problemFor ? (
+        <ProblemForm aed={problemFor} onDone={sent => {
+          setProblemFor(null);
+          if (sent) void load();
+        }} />
+      ) : null}
+
+      {notice ? (
+        <Group>
+          {notice.kind === 'location' ? (
+            <Row
+              first
+              icon={<MapPinOff size={18} color={colors.warning} />}
+              title={t('Location is off')}
+              summary={t('Showing every registered defibrillator. Turn location on to see the nearest first.')}
+              onPress={() => void Linking.openSettings()}
+            />
+          ) : notice.kind === 'nofix' ? (
+            <Row
+              first
+              icon={<MapPinOff size={18} color={colors.warning} />}
+              title={t('Could not find your location')}
+              summary={t('Showing every registered defibrillator. Pull down to try again.')}
+            />
+          ) : (
+            <Row
+              first
+              icon={<WifiOff size={18} color={colors.warning} />}
+              title={t('Offline')}
+              summary={t('List saved on {date}. Distances are from where you were then.', { date: new Date(notice.at).toLocaleString(locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) })}
+            />
+          )}
+        </Group>
+      ) : null}
+
       {reporting && here ? (
         <ReportForm here={here} onDone={created => {
           setReporting(false);
@@ -93,16 +164,20 @@ export default function AedsScreen() {
           <Button variant="outline" onPress={() => { setLoading(true); void load(); }}>{t('Try again')}</Button>
         </Group>
       ) : (
-        <Group title={items.length ? t('Nearest first') : undefined}>
+        <Group title={items.length ? (here || notice?.kind === 'offline' ? t('Nearest first') : t('All defibrillators')) : undefined}>
           {items.length === 0 ? (
             <Empty icon={Zap} title={t('None registered within 10 km')} description={t('If you know where one hangs, report it. A dispatcher verifies each entry.')} />
           ) : items.map((a, index) => (
             <Row
               key={a.id}
               first={index === 0}
-              icon={a.verified ? <ShieldCheck size={18} color={colors.success} /> : <Zap size={18} color={colors.warning} />}
+              icon={a.status && a.status !== 'ok'
+                ? <TriangleAlert size={18} color={colors.destructive} />
+                : a.verified ? <ShieldCheck size={18} color={colors.success} /> : <Zap size={18} color={colors.warning} />}
               title={a.name}
-              summary={[a.distanceM != null ? formatDistance(a.distanceM) : null, ACCESS_LABEL[a.access], a.verified ? null : t('Unverified'), a.placement].filter(Boolean).join(' · ')}
+              summary={[a.status && a.status !== 'ok' ? STATUS_LABEL[a.status] : null, a.distanceM != null ? formatDistance(a.distanceM) : null, ACCESS_LABEL[a.access], a.verified ? null : t('Unverified'), a.placement].filter(Boolean).join(' · ')}
+              onPress={() => setProblemFor(a)}
+              accessibilityLabel={t('Report a problem with {place}', { place: a.name })}
               right={
                 <IconButton
                   icon={<Navigation size={18} color={colors.primaryStrong} />}
@@ -112,6 +187,7 @@ export default function AedsScreen() {
               }
             />
           ))}
+          {items.length ? <Text style={styles.hint}>{t('Tap a defibrillator to report a problem with it.')}</Text> : null}
           {!reporting && here ? (
             <Row
               icon={<Plus size={18} color={colors.primary} />}
@@ -123,6 +199,47 @@ export default function AedsScreen() {
         </Group>
       )}
     </AppScreen>
+  );
+}
+
+const PROBLEMS = [t('Missing'), t('Locked away'), t('Broken')];
+
+function ProblemForm({ aed, onDone }: { aed: AedItem; onDone: (sent: boolean) => void }) {
+  const [reason, setReason] = useState(PROBLEMS[0]);
+  const [details, setDetails] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const submit = async () => {
+    setSaving(true);
+    try {
+      await api.post(`/aeds/${aed.id}/problem`, { note: [reason, details.trim()].filter(Boolean).join(': ').slice(0, 240) });
+      toast.success(t('Thanks, reported'), { description: t('Helpers are not sent there until it is checked.') });
+      onDone(true);
+    } catch (err: any) {
+      toast.error(t('Could not report'), { description: apiError(err, 'Try again.') });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card style={styles.form}>
+      <Text style={styles.formTitle}>{t('A problem with {place}', { place: aed.name })}</Text>
+      <View style={styles.segment}>
+        {PROBLEMS.map(p => (
+          <Pressable key={p} onPress={() => setReason(p)} style={[styles.segItem, reason === p && styles.segItemOn]}
+            accessibilityRole="radio" accessibilityState={{ selected: reason === p }}>
+            <Text style={[styles.segText, reason === p && styles.segTextOn]}>{p}</Text>
+          </Pressable>
+        ))}
+      </View>
+      <Text style={styles.label}>{t('Details (optional)')}</Text>
+      <TextInput value={details} onChangeText={setDetails} placeholder={t('e.g. Cabinet empty since Monday')} placeholderTextColor={colors.mutedForeground} style={styles.input} maxLength={200} />
+      <View style={styles.formActions}>
+        <Button variant="ghost" onPress={() => onDone(false)} style={{ flex: 1 }}>{t('Cancel')}</Button>
+        <Button onPress={submit} loading={saving} style={{ flex: 1 }}>{t('Report')}</Button>
+      </View>
+    </Card>
   );
 }
 
@@ -196,4 +313,5 @@ const styles = StyleSheet.create({
   segText: { color: colors.mutedForeground, fontSize: 14, fontWeight: '600' },
   segTextOn: { color: colors.foreground },
   formActions: { flexDirection: 'row', gap: 10, marginTop: 8 },
+  hint: { color: colors.mutedForeground, fontSize: 12, textAlign: 'center', paddingVertical: 8 },
 });

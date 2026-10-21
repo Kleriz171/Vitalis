@@ -30,6 +30,17 @@ export const openDirections = (to: LngLat, label: string) => {
   );
 };
 
+/**
+ * Opens a maps app on a place search, or the browser when none answers. No canOpenURL check first:
+ * on Android 11+ it can say no with Google Maps and Chrome installed.
+ */
+export const openMapSearch = (query: string) => {
+  const q = encodeURIComponent(query);
+  const web = `https://www.google.com/maps/search/?api=1&query=${q}`;
+  const url = Platform.select({ ios: `maps://?q=${q}`, android: `geo:0,0?q=${q}`, default: web })!;
+  return Linking.openURL(url).catch(() => Linking.openURL(web));
+};
+
 /** Local Albanian formats (069…, 69…, 355…) and 00-prefixed numbers → E.164. */
 export const toE164 = (raw: string) => {
   let d = raw.replace(/[^\d+]/g, '');

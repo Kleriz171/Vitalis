@@ -10,6 +10,7 @@ import { Empty } from '@/components/ui/Empty';
 import { Group, IconButton, Row, Segmented } from '@/components/ui/List';
 import { colors, radius } from '@/lib/theme';
 import { t } from '@/lib/i18n';
+import { openMapSearch } from '@/lib/geo';
 
 interface EmergencyNumber {
   id: string;
@@ -66,16 +67,10 @@ export default function SOSModal() {
     void load();
   }, []);
 
-  const openDirections = async (hospital: Hospital) => {
-    const target = hospital.address || hospital.name;
-    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(target)}`;
-    const supported = await Linking.canOpenURL(url);
-    if (!supported) {
-      toast.error(t('Maps unavailable'), { description: t('No map app is available on this device.') });
-      return;
-    }
-    await Linking.openURL(url);
-  };
+  // By name and address: the stored pins are demo data until the hospital list is verified.
+  const openDirections = (hospital: Hospital) =>
+    openMapSearch([hospital.name, hospital.address].filter(Boolean).join(', ')).catch(() =>
+      toast.error(t('Maps unavailable'), { description: t('No map app is available on this device.') }));
 
   return (
     <AppScreen

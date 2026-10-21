@@ -152,8 +152,8 @@ export default function CourseDetail() {
           title={t('Final quiz')}
           summary={
             allLessonsDone
-              ? t('You unlocked the {badge} quiz.', { badge: course.badgeLabel })
-              : tn(remainingLessons, '1 lesson left before you can start.', '{n} lessons left before you can start.')
+              ? t('You unlocked the {badge} quiz. Pass it to get your certificate.', { badge: course.badgeLabel })
+              : tn(remainingLessons, '1 lesson left, then the quiz that earns your certificate.', '{n} lessons left, then the quiz that earns your certificate.')
           }
           onPress={quizOpen ? () => router.push({ pathname: '/training/quiz/[slug]', params: { slug: course.slug } } as never) : undefined}
         />

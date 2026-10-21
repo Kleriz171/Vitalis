@@ -183,8 +183,8 @@ export default function Doctors() {
         <Row
           first
           icon={<UserPlus size={18} color={colors.info} />}
-          title={t('Are you a doctor?')}
-          summary={t('Apply to join Vitalis — upload your specialty certification for admin review.')}
+          title={t('Are you a doctor or nurse?')}
+          summary={t('Apply to answer SOS calls: upload your certification and an operator reviews it.')}
           onPress={() => router.push('/doctor-application')}
         />
       </Group>
