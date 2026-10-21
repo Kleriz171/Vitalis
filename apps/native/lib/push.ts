@@ -40,7 +40,8 @@ async function ensureAndroidChannels() {
  * Push needs a real device and an EAS project id (run `eas init` once).
  */
 export async function registerForPush() {
-  if (Platform.OS === 'web' || !Device.isDevice) return null;
+  // iOS simulators can't get tokens; Android emulators with Play services can.
+  if (Platform.OS === 'web' || (Platform.OS === 'ios' && !Device.isDevice)) return null;
   await ensureAndroidChannels();
   let { status } = await Notifications.getPermissionsAsync();
   if (status !== 'granted') status = (await Notifications.requestPermissionsAsync({ ios: { allowAlert: true, allowSound: true, allowCriticalAlerts: true } })).status;
