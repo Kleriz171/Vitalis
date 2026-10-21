@@ -41,3 +41,6 @@ app-example
 # generated native folders
 /ios
 /android
+
+# Firebase client config for local builds (Android push); kept out of the public repo.
+/google-services.json
