@@ -1,10 +1,13 @@
-import { Drop, Siren, User, ArrowLeft, CalendarBlank, Certificate, Heart, IdentificationCard, Pill, Pulse, Stethoscope, Syringe, Warning } from '@phosphor-icons/react';
-import { useEffect, useState } from 'react';
+import { Drop, Siren, User, UserMinus, ArrowLeft, CalendarBlank, Certificate, Heart, IdentificationCard, Pill, Pulse, Stethoscope, Syringe, Warning } from '@phosphor-icons/react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../../api/client';
 import { KPI } from '../../components/widgets/KPI';
 import { PageHeader } from '../../components/layout/CommandShell';
 import { Panel, Row as ListRow, Chip } from '../../components/ui/list';
+import { Button } from '../../components/ui/button';
+import { pushToast } from '../../components/toast/toast';
+import { roleLabel } from '../../lib/roles';
 
 interface UserDetail {
   user: {
@@ -31,9 +34,11 @@ interface UserDetail {
   conditions: Array<{ _id: string; name: string; notes?: string }>;
   disabilities: Array<{ _id: string; name: string; notes?: string }>;
   emergencies: Array<{ _id: string; type: string; priority: number; status: string; createdAt: string; description?: string; etaSeconds?: number }>;
-  certifications: Array<{ _id: string; badgeLabel: string; score: number; issuedAt: string; expiresAt: string }>;
+  certifications: Array<{ _id: string; badgeLabel: string; score: number; issuedAt: string; expiresAt: string; revokedAt?: string }>;
   enrollments: Array<{ _id: string; lastScore?: number; attempts: number; completedAt?: string }>;
 }
+
+const RESPONDER_ROLES = ['student_responder', 'doctor', 'nurse'];
 
 const fmt = (iso?: string) => iso ? new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
 
@@ -41,28 +46,60 @@ export const UserDetail = () => {
   const { id } = useParams<{ id: string }>();
   const [data, setData] = useState<UserDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     if (!id) return;
     api.get<UserDetail>(`/admin/users/${id}`).then(r => setData(r.data)).finally(() => setLoading(false));
   }, [id]);
+  useEffect(load, [load]);
+
+  // Both take effect at once: SOS alerts and going on duty follow the role in the database.
+  const act = async (question: string, request: () => Promise<unknown>, done: string) => {
+    if (!window.confirm(question)) return;
+    setBusy(true);
+    try {
+      await request();
+      pushToast({ tone: 'success', title: done });
+      load();
+    } catch (err: any) {
+      pushToast({ tone: 'error', title: 'Could not change this', body: err?.response?.data?.error });
+    } finally {
+      setBusy(false);
+    }
+  };
+  const removeResponder = () => act(
+    'Remove responder status? Their CPR and AED certificates are revoked, they go off duty and stop receiving SOS calls. The account stays.',
+    () => api.post(`/admin/users/${id}/remove-responder`),
+    'Responder status removed',
+  );
+  const revoke = (c: UserDetail['certifications'][number]) => act(
+    `Revoke "${c.badgeLabel}"? Its QR code will show as revoked, and passing the quiz again will not restore it.`,
+    () => api.post(`/training/certifications/${c._id}/revoke`, {}),
+    'Certificate revoked',
+  );
 
   if (loading) return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;
   if (!data) return <div className="p-8 text-sm text-muted-foreground">User not found.</div>;
 
   const u = data.user;
-  const activeCerts = data.certifications.filter(c => new Date(c.expiresAt).getTime() > Date.now());
+  const activeCerts = data.certifications.filter(c => !c.revokedAt && new Date(c.expiresAt).getTime() > Date.now());
 
   return (
     <>
       <PageHeader icon={IdentificationCard}
         title={u.name}
-        subtitle={`${u.phone ?? u.email ?? 'No contact'} · ${u.role === 'eso' ? 'Operator' : u.role.replace('_', ' ')}`}
-        actions={
+        subtitle={`${u.phone ?? u.email ?? 'No contact'} · ${roleLabel(u.role)}`}
+        actions={<>
+          {RESPONDER_ROLES.includes(u.role) ? (
+            <button onClick={removeResponder} disabled={busy} className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-white/[0.12] text-white text-sm font-medium hover:bg-white/[0.2] transition-colors disabled:opacity-60">
+              <UserMinus size={15} /> Remove responder status
+            </button>
+          ) : null}
           <Link to="/command/admin/users" className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-white/[0.12] text-white text-sm font-medium hover:bg-white/[0.2] transition-colors">
             <ArrowLeft size={14} /> Back to users
           </Link>
-        }
+        </>}
       />
       <div className="p-6 space-y-5">
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 stagger">
@@ -126,11 +163,14 @@ export const UserDetail = () => {
 
         <Panel title={`Training certificates · ${data.certifications.length}`}>
           {data.certifications.length ? data.certifications.map(c => {
-            const active = new Date(c.expiresAt).getTime() > Date.now();
+            const active = !c.revokedAt && new Date(c.expiresAt).getTime() > Date.now();
             return (
               <ListRow key={c._id} icon={Certificate} tone={active ? 'mint' : 'teal'} title={c.badgeLabel}
-                summary={`Score ${c.score}% · Issued ${fmt(c.issuedAt)} · Expires ${fmt(c.expiresAt)}`}
-                right={<Chip tone={active ? 'teal' : 'muted'}>{active ? 'Active' : 'Expired'}</Chip>} />
+                summary={`Score ${c.score}% · Issued ${fmt(c.issuedAt)} · ${c.revokedAt ? `Revoked ${fmt(c.revokedAt)}` : `Expires ${fmt(c.expiresAt)}`}`}
+                right={<>
+                  <Chip tone={active ? 'teal' : 'muted'}>{c.revokedAt ? 'Revoked' : active ? 'Active' : 'Expired'}</Chip>
+                  {active ? <Button size="sm" variant="ghost" className="rounded-lg text-muted-foreground hover:text-destructive" onClick={() => revoke(c)} disabled={busy}>Revoke</Button> : null}
+                </>} />
             );
           }) : <p className="px-5 py-4 text-sm text-muted-foreground">No certificates earned.</p>}
         </Panel>

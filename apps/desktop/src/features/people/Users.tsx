@@ -13,6 +13,7 @@ import { Label } from '../../components/ui/label';
 import { pushToast } from '../../components/toast/toast';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../store';
+import { roleLabel } from '../../lib/roles';
 
 interface AdminUser {
   _id: string;
@@ -155,7 +156,7 @@ export const Users = () => {
                 title={<Link to={`/command/admin/users/${u._id}`} className="hover:underline underline-offset-2">{u.name}</Link>}
                 summary={u.email}
                 right={<>
-                  <Chip tone={u.role === 'eso' ? 'teal' : 'muted'}>{u.role === 'eso' ? 'Operator' : <span className="capitalize">{u.role.replace('_', ' ')}</span>}</Chip>
+                  <Chip tone={u.role === 'eso' ? 'teal' : 'muted'}>{roleLabel(u.role)}</Chip>
                   <Link to={`/command/admin/users/${u._id}`}><Button variant="outline" size="sm" className="rounded-lg">View</Button></Link>
                   {u._id !== me?.id ? <Button variant="ghost" size="sm" className="rounded-lg text-muted-foreground hover:text-destructive" onClick={() => remove(u._id)}>Remove</Button> : null}
                 </>}

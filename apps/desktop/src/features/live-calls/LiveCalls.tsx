@@ -19,6 +19,7 @@ import { timeAgo, shortId, formatEta } from '../../lib/format';
 import { cn } from '../../lib/utils';
 import type { MapAed, MapResponder } from '../../components/map/MapView';
 import { TYPE_LABEL } from '../../components/map/MapView';
+import { roleLabel } from '../../lib/roles';
 
 const MapView = lazy(() => import('../../components/map/MapView'));
 
@@ -490,7 +491,7 @@ const IncidentPanel = ({ incident, onClose, onChanged }: { incident: Emergency; 
             <section>
               <h3 className="text-[13px] font-medium text-muted-foreground">Responders</h3>
               <ul className="mt-2 space-y-2 text-[14px]">
-                <li className="flex items-center gap-2"><span className={cn('w-2 h-2 rounded-full', h.responder ? 'bg-[hsl(var(--teal))]' : 'bg-muted-foreground/40')} />{h.responder ? <><span className="font-medium">{h.responder.name}</span><span className="text-muted-foreground capitalize">{h.responder.role.replace('_', ' ')}</span></> : 'No responder yet'}</li>
+                <li className="flex items-center gap-2"><span className={cn('w-2 h-2 rounded-full', h.responder ? 'bg-[hsl(var(--teal))]' : 'bg-muted-foreground/40')} />{h.responder ? <><span className="font-medium">{h.responder.name}</span><span className="text-muted-foreground">{roleLabel(h.responder.role)}</span></> : 'No responder yet'}</li>
                 {incident.type === 'cardiac' && (
                   <li className="flex items-center gap-2"><span className={cn('w-2 h-2 rounded-full', h.aedRunner ? 'bg-[hsl(var(--teal))]' : 'bg-muted-foreground/40')} />{h.aedRunner ? <><span className="font-medium">{h.aedRunner.name}</span><span className="text-muted-foreground">fetching a defibrillator{h.aed ? ` from ${h.aed.name}` : ''}</span></> : 'No defibrillator runner yet'}</li>
                 )}

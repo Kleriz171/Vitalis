@@ -14,6 +14,7 @@ interface DoctorApp {
   fullName: string;
   email: string;
   phone: string;
+  profession?: 'doctor' | 'nurse';
   specialty: string;
   yearsExperience: number;
   bio: string;
@@ -73,7 +74,7 @@ export const DoctorApplications = () => {
 
   return (
     <>
-      <PageHeader icon={IdentificationCard} title="Doctor applications" subtitle="Check a doctor's certificate before they appear in the app." />
+      <PageHeader icon={IdentificationCard} title="Applications" subtitle="Check a doctor's or nurse's certificate before they can answer SOS calls." />
       <div className="p-6 space-y-5">
         <div className="flex items-center gap-1 rounded-xl bg-card border border-border p-1 shadow-sm w-fit" role="tablist">
           {(['pending', 'approved', 'rejected', 'all'] as const).map(f => (
@@ -102,7 +103,7 @@ export const DoctorApplications = () => {
                 </span>
                 <div className="min-w-0 flex-1">
                   <h3 className="text-[18px] font-extrabold tracking-[-0.02em] truncate">{a.fullName}</h3>
-                  <p className="text-[14px] text-muted-foreground">{a.specialty} · <span className="num">{a.yearsExperience}</span> years</p>
+                  <p className="text-[14px] text-muted-foreground">{a.profession === 'nurse' ? 'Nurse' : 'Doctor'} · {a.specialty} · <span className="num">{a.yearsExperience}</span> years</p>
                 </div>
                 <Chip tone={a.status === 'approved' ? 'teal' : a.status === 'rejected' ? 'sos' : 'amber'}>{a.status === 'pending' ? 'Waiting' : a.status[0].toUpperCase() + a.status.slice(1)}</Chip>
               </header>

@@ -62,6 +62,11 @@ if (process.env.CLICK) {
   await send('Runtime.evaluate', { expression: `([...document.querySelectorAll('button,[role=tab],[role=button],[role=link]')].find((e) => e.textContent.trim() === ${text}) ?? [...document.querySelectorAll('div,span')].find((e) => e.textContent.trim() === ${text}))?.click()` });
   await sleep(1500);
 }
+if (process.env.CLICKSEL) {
+  // A control without words (an icon button): CLICKSEL='[aria-label^="Edit"]'.
+  await send('Runtime.evaluate', { expression: `document.querySelector(${JSON.stringify(process.env.CLICKSEL)})?.click()` });
+  await sleep(1500);
+}
 if (process.env.SCROLL) {
   // Scroll every scrollable area to its end, like a finger would.
   await send('Runtime.evaluate', { expression: `[...document.querySelectorAll('*')].filter((e) => e.scrollHeight > e.clientHeight + 4 && getComputedStyle(e).overflowY !== 'visible').forEach((e) => { e.scrollTop = e.scrollHeight; })` });

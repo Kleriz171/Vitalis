@@ -26,7 +26,7 @@ const SECTIONS: Section[] = [
   ] },
   { label: 'People', icon: UsersThree, to: '/command/admin/users', tabs: [
     { to: '/command/admin/users', label: 'Users' },
-    { to: '/command/admin/doctor-applications', label: 'Doctor applications' },
+    { to: '/command/admin/doctor-applications', label: 'Applications' },
   ] },
   { label: 'Reports', icon: ChartBar, to: '/command/analytics', tabs: [
     { to: '/command/analytics', label: 'Overview' },

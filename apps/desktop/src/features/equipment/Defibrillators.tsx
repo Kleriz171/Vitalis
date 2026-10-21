@@ -1,7 +1,7 @@
-import { BatteryWarning, Clock, MagnifyingGlass, ShieldCheck, ShieldWarning, Trash } from '@phosphor-icons/react';
+import { BatteryWarning, Clock, MagnifyingGlass, PencilSimple, ShieldCheck, ShieldWarning, Trash } from '@phosphor-icons/react';
 import { Defibrillator } from '../../components/ui/aed-icon';
 import { KPI } from '../../components/widgets/KPI';
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../../api/client';
 import { Chip, Panel, Row } from '../../components/ui/list';
 import { Button } from '../../components/ui/button';
@@ -18,6 +18,8 @@ interface Aed {
   coordinates: [number, number];
   padsExpireAt?: string;
   verified: boolean;
+  status: 'ok' | 'needs_check' | 'out_of_service';
+  problem?: string;
 }
 
 type Filter = 'all' | 'unverified' | 'expiring' | '24h';
@@ -25,6 +27,9 @@ const FILTERS: [Filter, string][] = [['all', 'All'], ['unverified', 'Needs revie
 const MapView = lazy(() => import('../../components/map/MapView'));
 
 const ACCESS: Record<Aed['access'], string> = { '24h': '24 hours', business_hours: 'Business hours', restricted: 'Staff access' };
+const STATUS: Record<Aed['status'], string> = { ok: 'In service', needs_check: 'Problem reported', out_of_service: 'Out of service' };
+// Unconfirmed reports and devices with a problem: dispatch never sends a helper to either.
+const needsReview = (a: Aed) => !a.verified || a.status !== 'ok';
 
 export const Defibrillators = () => {
   const [items, setItems] = useState<Aed[]>([]);
@@ -33,6 +38,7 @@ export const Defibrillators = () => {
   const [query, setQuery] = useState('');
   const [focus, setFocus] = useState<Aed | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [editing, setEditing] = useState<Aed | null>(null);
 
   useEffect(() => {
     api.get('/aeds').then(r => setItems(r.data)).catch(() => {}).finally(() => setLoading(false));
@@ -41,14 +47,14 @@ export const Defibrillators = () => {
   const soon = (iso?: string) => !!iso && new Date(iso).getTime() - Date.now() < 60 * 86400000;
   const counts = {
     all: items.length,
-    unverified: items.filter(a => !a.verified).length,
+    unverified: items.filter(needsReview).length,
     expiring: items.filter(a => soon(a.padsExpireAt)).length,
     '24h': items.filter(a => a.access === '24h').length,
   };
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
     return items
-      .filter(a => filter === 'all' || (filter === 'unverified' ? !a.verified : filter === 'expiring' ? soon(a.padsExpireAt) : a.access === '24h'))
+      .filter(a => filter === 'all' || (filter === 'unverified' ? needsReview(a) : filter === 'expiring' ? soon(a.padsExpireAt) : a.access === '24h'))
       .filter(a => !q || `${a.name} ${a.placement ?? ''}`.toLowerCase().includes(q));
   }, [items, filter, query]);
 
@@ -57,7 +63,7 @@ export const Defibrillators = () => {
     try {
       const { data } = await api.post(`/aeds/${a.id}/verify`);
       setItems(prev => prev.map(x => (x.id === a.id ? data : x)));
-      pushToast({ tone: 'success', title: 'Verified', body: a.name });
+      pushToast({ tone: 'success', title: a.verified ? 'Back in service' : 'Verified', body: a.name });
     } catch (err: any) {
       pushToast({ tone: 'error', title: 'Could not verify', body: err?.response?.data?.error });
     } finally {
@@ -122,12 +128,13 @@ export const Defibrillators = () => {
             <Row
               key={a.id}
               icon={Defibrillator}
-              tone={a.verified ? 'teal' : 'sos'}
+              tone={needsReview(a) ? 'sos' : 'teal'}
               onClick={() => setFocus(a)}
               active={focus?.id === a.id}
               title={a.name}
               summary={a.placement ?? 'No placement notes'}
               meta={<>
+                {a.status !== 'ok' ? <Chip tone="sos">{STATUS[a.status]}{a.problem ? `: ${a.problem}` : ''}</Chip> : null}
                 <Chip>{ACCESS[a.access]}</Chip>
                 <Chip tone={soon(a.padsExpireAt) ? 'sos' : 'muted'}>
                   Pads {a.padsExpireAt ? new Date(a.padsExpireAt).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }) : 'unknown'}
@@ -142,9 +149,12 @@ export const Defibrillators = () => {
                 </a>
               </>}
               right={<>
-                {a.verified
-                  ? <Chip tone="teal"><ShieldCheck size={14} weight="fill" /> Verified</Chip>
-                  : <Button size="sm" className="rounded-lg" onClick={() => verify(a)} disabled={busy === a.id}>Verify</Button>}
+                {needsReview(a)
+                  ? <Button size="sm" className="rounded-lg" onClick={() => verify(a)} disabled={busy === a.id}>{a.verified ? 'Back in service' : 'Verify'}</Button>
+                  : <Chip tone="teal"><ShieldCheck size={14} weight="fill" /> Verified</Chip>}
+                <Button size="icon-sm" variant="ghost" className="rounded-lg text-muted-foreground" onClick={() => setEditing(a)} disabled={busy === a.id} aria-label={`Edit ${a.name}`}>
+                  <PencilSimple size={17} />
+                </Button>
                 <Button size="icon-sm" variant="ghost" className="rounded-lg text-muted-foreground hover:text-destructive" onClick={() => remove(a)} disabled={busy === a.id} aria-label={`Remove ${a.name}`}>
                   <Trash size={17} />
                 </Button>
@@ -160,6 +170,73 @@ export const Defibrillators = () => {
           </div>
         </div>
       </div>
+      {editing ? <EditAed aed={editing} onClose={() => setEditing(null)} onSaved={a => { setItems(prev => prev.map(x => (x.id === a.id ? a : x))); setEditing(null); }} /> : null}
     </>
+  );
+};
+
+const field = 'w-full h-10 rounded-xl border border-border bg-card px-3 text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-ring/20 transition';
+
+/** Edit form in the browser's own modal dialog: focus trap, Escape to close, backdrop for free. */
+const EditAed = ({ aed, onClose, onSaved }: { aed: Aed; onClose: () => void; onSaved: (a: Aed) => void }) => {
+  const ref = useRef<HTMLDialogElement>(null);
+  const [form, setForm] = useState({
+    name: aed.name,
+    placement: aed.placement ?? '',
+    access: aed.access,
+    padsExpireAt: aed.padsExpireAt ? aed.padsExpireAt.slice(0, 10) : '',
+    status: aed.status,
+  });
+  const [saving, setSaving] = useState(false);
+  useEffect(() => { ref.current?.showModal(); }, []);
+  const set = (k: keyof typeof form) => (e: { target: { value: string } }) => setForm(f => ({ ...f, [k]: e.target.value }));
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const { data } = await api.patch(`/aeds/${aed.id}`, {
+        name: form.name,
+        placement: form.placement,
+        access: form.access,
+        status: form.status,
+        padsExpireAt: form.padsExpireAt ? new Date(`${form.padsExpireAt}T00:00:00Z`).toISOString() : null,
+      });
+      pushToast({ tone: 'success', title: 'Saved', body: data.name });
+      onSaved(data);
+    } catch (err: any) {
+      pushToast({ tone: 'error', title: 'Could not save', body: err?.response?.data?.error });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <dialog ref={ref} onClose={onClose} className="w-[min(480px,92vw)] rounded-[22px] border border-border bg-card p-0 text-foreground shadow-2xl backdrop:bg-[hsl(176_30%_10%/0.45)]">
+      <form onSubmit={save} className="p-6 space-y-4">
+        <h2 className="text-lg font-extrabold tracking-[-0.01em]">Edit defibrillator</h2>
+        <label className="block space-y-1.5"><span className="text-xs text-muted-foreground">Name</span>
+          <input required minLength={2} maxLength={120} value={form.name} onChange={set('name')} className={field} /></label>
+        <label className="block space-y-1.5"><span className="text-xs text-muted-foreground">Where exactly it hangs</span>
+          <input maxLength={240} value={form.placement} onChange={set('placement')} className={field} /></label>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block space-y-1.5"><span className="text-xs text-muted-foreground">Access</span>
+            <select value={form.access} onChange={set('access')} className={field}>
+              {Object.entries(ACCESS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select></label>
+          <label className="block space-y-1.5"><span className="text-xs text-muted-foreground">Pads expire</span>
+            <input type="date" value={form.padsExpireAt} onChange={set('padsExpireAt')} className={field} /></label>
+        </div>
+        <label className="block space-y-1.5"><span className="text-xs text-muted-foreground">Status</span>
+          <select value={form.status} onChange={set('status')} className={field}>
+            {Object.entries(STATUS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select></label>
+        <p className="text-xs text-muted-foreground">Helpers are only sent to verified devices that are in service with pads in date.</p>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button type="button" variant="ghost" className="rounded-xl" onClick={() => ref.current?.close()}>Cancel</Button>
+          <Button type="submit" className="rounded-xl" disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
+        </div>
+      </form>
+    </dialog>
   );
 };
