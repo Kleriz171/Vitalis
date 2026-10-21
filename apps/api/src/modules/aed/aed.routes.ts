@@ -66,6 +66,11 @@ const problemSchema = z.object({ note: z.string().trim().min(2).max(240) });
 // Anyone who finds a device missing, broken or locked away flags it; dispatch skips it until checked.
 r.post('/:id/problem', validate(problemSchema), async (req: AuthReq, res, next) => {
   try {
+    // One person cannot take the whole registry out of dispatch: three open reports a day.
+    const today = { 'problem.reportedBy': req.user!.id, 'problem.reportedAt': { $gt: new Date(Date.now() - 864e5) } };
+    if (await Aed.countDocuments(today) >= 3) {
+      return res.status(429).json({ error: 'You have reported three problems today. A dispatcher is checking them.' });
+    }
     const a = await Aed.findByIdAndUpdate(
       req.params.id,
       { $set: { status: 'needs_check', problem: { note: req.body.note, reportedAt: new Date(), reportedBy: req.user!.id } } },

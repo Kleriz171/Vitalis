@@ -270,6 +270,7 @@ export const ui: Record<string, string> = {
   'Locked away': 'I mbyllur',
   'Broken': 'I prishur',
   'Helpers are not sent there until it is checked.': 'Ndihmësit nuk dërgohen atje derisa të kontrollohet.',
+  'You have reported three problems today. A dispatcher is checking them.': 'Keni raportuar tre probleme sot. Një dispeçer po i kontrollon.',
   'A problem with {place}': 'Një problem me {place}',
   'Details (optional)': 'Detaje (opsionale)',
   'e.g. Cabinet empty since Monday': 'p.sh. Kutia bosh që të hënën',

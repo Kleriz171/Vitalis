@@ -50,6 +50,14 @@ async function main() {
   assert.equal((await call('PATCH', '/biopassport/me', nurse.accessToken, { available: true })).status, 403);
   ok('responder status removed: the old token no longer puts them on duty');
 
+  // Problem reports take a device out of dispatch, so one person gets three a day.
+  const aeds = (await call('GET', '/aeds', citizen.accessToken)).data as any[];
+  for (const a of aeds.slice(0, 3)) {
+    assert.equal((await call('POST', `/aeds/${a.id}/problem`, citizen.accessToken, { note: 'Missing' })).status, 200);
+  }
+  assert.equal((await call('POST', `/aeds/${aeds[3].id}/problem`, citizen.accessToken, { note: 'Missing' })).status, 429);
+  ok('AED problem reports capped at three a day per person');
+
   console.log('\nAll role checks passed.');
 }
 
