@@ -56,7 +56,10 @@ On a physical phone set `EXPO_PUBLIC_API_URL=http://<your-laptop-LAN-ip>:4000/ap
 | `demo@vitalis.com` | `Demo1234!` | citizen (mobile) |
 | `doctor@vitalis.com` | `Doctor1!` | doctor (mobile, responder inbox) |
 | `nurse@vitalis.com` | `Nurse1!` | nurse (mobile, responder inbox) |
-| `aleks@vitalis.com` | see seed | emergency services operator (ESO): runs the console and administers it |
+| `responder@vitalis.com` | `Responder1!` | first responder with a CPR certificate (mobile, responder inbox) |
+| `aleks@vitalis.com` | see below | emergency services operator (ESO): runs the console and administers it |
+
+The operator sees every user's Medical ID, so its password is never in the repo for a remote database: on this machine the seed uses a fixed dev password (the checks sign in with it); for any other database set `SEED_OPERATOR_PASSWORD`, or the seed refuses to start.
 
 Change these before any real deployment. The console only shows demo-account shortcuts in development builds.
 
@@ -105,7 +108,7 @@ API_URL=http://localhost:4000 npm run check:drones     # needs the bridge in sim
 `render.yaml` sets up the API on Render's free plan with `DEMO_MODE=true`: phone sign-in skips the SMS code, so no SMS provider is needed (and anyone can sign in as any number; demos only).
 
 1. **Database**: create a free M0 cluster on MongoDB Atlas, add a database user, allow access from anywhere (`0.0.0.0/0`, Render's free plan has no fixed IP), and copy the connection string with `/vitalis` before the `?`.
-2. **Demo data**: `MONGO_URI="<atlas string>" npm run seed` from this laptop.
+2. **Demo data**: `MONGO_URI="<atlas string>" SEED_OPERATOR_PASSWORD="<a strong password>" npm run seed` from this laptop.
 3. **Deploy**: push the branch, then Render → New → Blueprint → this repo and branch, and paste the Atlas string as `MONGO_URI`.
 4. **App**: set `EXPO_PUBLIC_API_URL=https://<service>.onrender.com/api` in `apps/native/.env` and restart Metro with `--clear`.
 

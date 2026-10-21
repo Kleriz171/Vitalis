@@ -20,8 +20,13 @@ const RINGS_M = [5_000, 20_000];
 // Farthest an AED runner should detour for a device (metres from the patient).
 const AED_RADIUS_M = 1_500;
 
+// Only devices an operator confirmed, with pads in date: a runner sent to a rumour loses minutes.
 const nearestAed = (coords: [number, number]) =>
-  Aed.findOne(nearQuery(coords[0], coords[1], AED_RADIUS_M)).lean();
+  Aed.findOne({
+    ...nearQuery(coords[0], coords[1], AED_RADIUS_M),
+    verifiedAt: { $ne: null },
+    $or: [{ padsExpireAt: null }, { padsExpireAt: { $gt: new Date() } }],
+  }).lean();
 
 /** Texts the emergency contact a live link (landing /track/:token). Silent alarms never call this. */
 async function textTrackingLink(citizenId: string, token: string) {

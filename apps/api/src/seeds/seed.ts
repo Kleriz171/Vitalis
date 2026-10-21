@@ -85,6 +85,11 @@ const jitter = (c: [number, number], r = 0.03): [number, number] =>
 async function seed() {
   // The seed wipes every collection and creates accounts with known passwords.
   if (process.env.NODE_ENV === 'production') throw new Error('Refusing to seed a production database');
+  // One emergency services operator: runs dispatch and administers the console, so it sees every
+  // Medical ID. The known dev password is for a database on this machine only (checks use it).
+  const localDb = /^mongodb:\/\/(localhost|127\.0\.0\.1)[:/]/.test(process.env.MONGO_URI ?? 'mongodb://localhost/');
+  const operatorPassword = process.env.SEED_OPERATOR_PASSWORD || (localDb ? 'AlexNo11$' : '');
+  if (!operatorPassword) throw new Error('Set SEED_OPERATOR_PASSWORD to seed a database that is not on this machine');
   await connectDB();
 
   logger.info('Clearing collections…');
@@ -113,10 +118,10 @@ async function seed() {
   ]);
 
   logger.info('Seeding the operator + demo users…');
-  // One emergency services operator: runs dispatch and administers the console.
+  // The operator: see operatorPassword above.
   await User.create({
     email: 'aleks@vitalis.com',
-    password: 'AlexNo11$',
+    password: operatorPassword,
     firstName: 'Aleks',
     lastName: 'Operator',
     name: 'Aleks Operator',
@@ -396,6 +401,39 @@ async function seed() {
       score: 88,
       issuedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
       expiresAt: new Date(Date.now() + (365 - 14) * 24 * 60 * 60 * 1000),
+      shareToken: randomBytes(12).toString('hex'),
+    });
+  }
+
+  // A ready first responder for testing: what a citizen becomes after passing the CPR course.
+  const cprCourse = seededCourses.find((c) => c.slug === 'cpr-adult');
+  if (cprCourse) {
+    logger.info('Seeding the test first responder…');
+    const responder = await User.create({
+      email: 'responder@vitalis.com',
+      password: 'Responder1!',
+      firstName: 'Test',
+      lastName: 'Responder',
+      name: 'Test Responder',
+      role: 'student_responder',
+      available: false,
+    });
+    await Enrollment.create({
+      user: responder._id,
+      course: cprCourse._id,
+      completedLessonIds: cprCourse.lessons?.map((l: any) => l._id) ?? [],
+      lastScore: 90,
+      attempts: 1,
+      completedAt: new Date(),
+    });
+    await Certification.create({
+      user: responder._id,
+      course: cprCourse._id,
+      courseSlug: cprCourse.slug,
+      badgeLabel: cprCourse.badgeLabel,
+      score: 90,
+      issuedAt: new Date(),
+      expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
       shareToken: randomBytes(12).toString('hex'),
     });
   }

@@ -203,6 +203,12 @@ r.post('/enrollments/:courseId/quiz', validate(quizSchema), async (req: AuthReq,
     ).lean();
     if (!course) return res.status(404).json({ error: 'Course not found' });
 
+    // Same rule as the app: every lesson first. Passing CPR or AED puts someone on SOS duty.
+    const progress = await Enrollment.findOne({ user: req.user!.id, course: course._id }).select('completedLessonIds').lean();
+    const done = new Set((progress?.completedLessonIds ?? []).map(String));
+    if ((course.lessons ?? []).some((l: any) => !done.has(String(l._id)))) {
+      return res.status(403).json({ error: 'Finish every lesson before the quiz' });
+    }
     const albanian = wantsAlbanian(req);
     const quiz: any[] = localize(course, albanian).quiz ?? [];
     if (!quiz.length) return res.status(400).json({ error: 'Course has no quiz' });
