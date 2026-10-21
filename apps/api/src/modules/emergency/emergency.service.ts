@@ -25,6 +25,7 @@ const nearestAed = (coords: [number, number]) =>
   Aed.findOne({
     ...nearQuery(coords[0], coords[1], AED_RADIUS_M),
     verifiedAt: { $ne: null },
+    status: { $nin: ['needs_check', 'out_of_service'] },
     $or: [{ padsExpireAt: null }, { padsExpireAt: { $gt: new Date() } }],
   }).lean();
 

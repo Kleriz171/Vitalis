@@ -3,7 +3,8 @@ import { z } from 'zod';
 import { User } from '../../models/User';
 import { Medication, Allergy, Vaccination, Appointment, Condition, Disability } from '../../models/HealthRecord';
 import { Emergency } from '../../models/Emergency';
-import { Certification, Enrollment } from '../../models/Training';
+import { Certification, Enrollment, RESPONDER_COURSES } from '../../models/Training';
+import { Doctor } from '../../models/Doctor';
 import { authRequired, AuthReq } from '../../middleware/auth';
 import { allow } from '../../middleware/rbac';
 import { validate } from '../../middleware/validate';
@@ -72,6 +73,22 @@ r.get('/users/:id', async (req, res, next) => {
       certifications,
       enrollments,
     });
+  } catch (e) { next(e); }
+});
+
+// Takes away responder powers but keeps the account: CPR/AED certificates revoked (so the quiz
+// cannot bring them back), doctors leave the directory, role back to citizen, off duty at once.
+r.post('/users/:id/remove-responder', async (req: AuthReq, res, next) => {
+  try {
+    const user = await User.findOne({ _id: req.params.id, role: { $in: ['student_responder', 'doctor', 'nurse'] } });
+    if (!user) return res.status(404).json({ error: 'No responder with this id' });
+    await Certification.updateMany(
+      { user: user._id, courseSlug: { $in: RESPONDER_COURSES }, revokedAt: null },
+      { $set: { revokedAt: new Date(), revokedReason: 'Responder status removed by an operator' } },
+    );
+    await Doctor.deleteMany({ user: user._id });
+    await User.updateOne({ _id: user._id }, { $set: { role: 'citizen', available: false } });
+    res.json({ role: 'citizen' });
   } catch (e) { next(e); }
 });
 

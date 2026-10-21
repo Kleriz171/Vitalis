@@ -176,6 +176,11 @@ async function main() {
   // An unconfirmed report right at the patient must never be the runner's device.
   const rumour = await call('POST', '/aeds', citizen.accessToken, { name: 'Unconfirmed test AED', access: '24h', coordinates: TIRANA });
   assert.equal(rumour.status, 201);
+  // A verified device someone reported broken is skipped too, until an operator checks it.
+  const nearby = (await call('GET', `/aeds?lng=${TIRANA[0]}&lat=${TIRANA[1]}`, citizen.accessToken)).data as any[];
+  const broken = nearby.find(a => a.verified)!;
+  const flagged = await call('POST', `/aeds/${broken.id}/problem`, citizen.accessToken, { note: 'Cabinet empty' });
+  assert.equal(flagged.data.status, 'needs_check');
   const arrest = await call('POST', '/emergencies', citizen.accessToken, { type: 'cardiac', priority: 1, coordinates: TIRANA });
   assert.equal(arrest.status, 201);
   const aId = arrest.data.emergency._id as string;
@@ -187,13 +192,14 @@ async function main() {
   assert.equal(second.data.myRole, 'aed');
   assert.ok(second.data.aed?.name, 'AED runner is given a device');
   assert.notEqual(second.data.aed.name, 'Unconfirmed test AED', 'runner sent only to a verified AED');
+  assert.notEqual(second.data.aed.name, broken.name, 'runner not sent to a device reported broken');
   const third = await call('POST', `/emergencies/${aId}/accept`, nurse.accessToken);
   assert.equal(third.status, 409);
   const wrongRunner = await call('PATCH', `/emergencies/${aId}/aed`, doctor.accessToken, { status: 'has_aed' });
   assert.equal(wrongRunner.status, 403);
   assert.equal((await call('PATCH', `/emergencies/${aId}/aed`, nurse.accessToken, { status: 'has_aed' })).status, 200);
   assert.equal((await call('PATCH', `/emergencies/${aId}/aed`, nurse.accessToken, { status: 'delivered' })).status, 200);
-  ok('cardiac call: primary + AED runner (verified AED only), AED status by runner only');
+  ok('cardiac call: primary + AED runner (verified, unreported AED only), AED status by runner only');
 
   // Passing CPR or AED makes a responder, so the quiz is graded only after every lesson.
   const shortcut = await call('POST', '/training/enrollments/cpr-adult/quiz', citizen.accessToken, { answers: [{ questionId: 'x', choiceIndex: 0 }] });

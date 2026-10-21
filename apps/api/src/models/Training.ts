@@ -54,15 +54,22 @@ const CertificationSchema = new Schema({
   issuedAt: { type: Date, default: Date.now },
   expiresAt: { type: Date, required: true },
   shareToken: { type: String, required: true, unique: true, index: true },
+  // Set by an operator. A revoked certificate stays revoked, even if the quiz is passed again.
+  revokedAt: Date,
+  revokedReason: { type: String, trim: true, maxlength: 240 },
 }, { timestamps: true });
 
 export const Certification = model('Certification', CertificationSchema);
+
+/** Readable number for people, e.g. VTL-2026-4F7A2C. The full share token is what verifies it. */
+export const certNumber = (c: { issuedAt?: Date | string; shareToken: string }) =>
+  `VTL-${new Date(c.issuedAt ?? Date.now()).getUTCFullYear()}-${c.shareToken.slice(0, 6).toUpperCase()}`;
 
 // A valid certificate in one of these lets a citizen go on duty as a responder.
 export const RESPONDER_COURSES = ['cpr-adult', 'aed-use'];
 
 export const hasResponderCertification = async (userId: string) =>
-  !!(await Certification.exists({ user: userId, courseSlug: { $in: RESPONDER_COURSES }, expiresAt: { $gt: new Date() } }));
+  !!(await Certification.exists({ user: userId, courseSlug: { $in: RESPONDER_COURSES }, expiresAt: { $gt: new Date() }, revokedAt: null }));
 
 export type CourseDoc = ReturnType<typeof Course['hydrate']>;
 export type EnrollmentDoc = ReturnType<typeof Enrollment['hydrate']>;

@@ -5,6 +5,8 @@ const DoctorApplicationSchema = new Schema({
   fullName: { type: String, required: true },
   email: { type: String, required: true },
   phone: { type: String, required: true },
+  // The role approval grants. Older applications have none and are doctors.
+  profession: { type: String, enum: ['doctor', 'nurse'], default: 'doctor' },
   specialty: { type: String, required: true },
   yearsExperience: { type: Number, required: true, min: 0 },
   bio: { type: String, required: true },

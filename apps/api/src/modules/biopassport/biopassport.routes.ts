@@ -84,9 +84,11 @@ const dutySchema = z.object({
 
 r.patch('/me', validate(dutySchema), async (req: AuthReq, res, next) => {
   try {
-    // Only clinicians or people with a valid CPR/AED certificate may receive SOS alerts.
+    // Only clinicians or people with a valid CPR/AED certificate may receive SOS alerts. The role is
+    // read from the database: an operator may have removed responder status minutes ago.
+    const current = req.body.available === true ? await User.findById(req.user!.id).select('role').lean() : null;
     if (req.body.available === true
-      && !['doctor', 'nurse'].includes(req.user!.role)
+      && !['doctor', 'nurse'].includes(current?.role ?? '')
       && !(await hasResponderCertification(req.user!.id))) {
       return res.status(403).json({ error: 'Complete the CPR or AED course to go on duty' });
     }

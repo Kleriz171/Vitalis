@@ -3,8 +3,9 @@ import { z } from 'zod';
 import { randomBytes } from 'crypto';
 import mongoose from 'mongoose';
 import { authRequired, AuthReq } from '../../middleware/auth';
+import { allow } from '../../middleware/rbac';
 import { validate } from '../../middleware/validate';
-import { Course, Enrollment, Certification, RESPONDER_COURSES } from '../../models/Training';
+import { Course, Enrollment, Certification, RESPONDER_COURSES, certNumber, hasResponderCertification } from '../../models/Training';
 import { User } from '../../models/User';
 import { generateQR } from '../../utils/qr';
 import { env } from '../../config/env';
@@ -80,6 +81,8 @@ const certToView = (c: any, albanian = false) => ({
   issuedAt: c.issuedAt,
   expiresAt: c.expiresAt,
   shareToken: c.shareToken,
+  number: certNumber(c),
+  revoked: !!c.revokedAt,
 });
 
 const enrollmentToView = (e: any) => ({
@@ -101,7 +104,9 @@ r.get('/certifications/verify/:token', async (req, res, next) => {
     const user: any = cert.user;
     const name = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.name || 'Vitalis citizen';
     res.json({
-      valid: new Date(cert.expiresAt).getTime() > Date.now(),
+      valid: !cert.revokedAt && new Date(cert.expiresAt).getTime() > Date.now(),
+      revoked: !!cert.revokedAt,
+      number: certNumber(cert),
       holderName: name,
       badgeLabel: cert.badgeLabel,
       courseSlug: cert.courseSlug,
@@ -235,12 +240,14 @@ r.post('/enrollments/:courseId/quiz', validate(quizSchema), async (req: AuthReq,
 
     let certification: any = null;
     let roleChanged = false;
-    if (passed && RESPONDER_COURSES.includes(course.slug)) {
+    // An operator revoked this certificate: passing again neither re-issues it nor makes a responder.
+    const revoked = passed && !!(await Certification.exists({ user: req.user!.id, course: course._id, revokedAt: { $ne: null } }));
+    if (passed && !revoked && RESPONDER_COURSES.includes(course.slug)) {
       // Training is the way into the responder network. Clients refresh their token to pick this up.
       const r = await User.updateOne({ _id: req.user!.id, role: 'citizen' }, { $set: { role: 'student_responder' } });
       roleChanged = r.modifiedCount > 0;
     }
-    if (passed) {
+    if (passed && !revoked) {
       const shareToken = randomBytes(12).toString('hex');
       certification = await Certification.findOneAndUpdate(
         { user: req.user!.id, course: course._id },
@@ -272,6 +279,7 @@ r.post('/enrollments/:courseId/quiz', validate(quizSchema), async (req: AuthReq,
         : review.map(({ questionId, correct }) => ({ questionId, correct })),
       enrollment: enrollmentToView(enrollment),
       certification: certification ? certToView(certification, albanian) : null,
+      revoked,
       roleChanged,
     });
   } catch (e) { next(e); }
@@ -292,6 +300,25 @@ r.get('/certifications/:id', async (req: AuthReq, res, next) => {
     const verifyUrl = `${env.publicWebUrl}/verify/${cert.shareToken}`;
     const qr = await generateQR({ url: verifyUrl, token: cert.shareToken });
     res.json({ ...certToView(cert, wantsAlbanian(req)), qr, verifyUrl });
+  } catch (e) { next(e); }
+});
+
+const revokeSchema = z.object({ reason: z.string().trim().max(240).optional() });
+
+// Operator revokes a certificate. Without another valid CPR or AED certificate the holder stops
+// being a responder at once: alerts follow the role in the database, not the one in their token.
+r.post('/certifications/:id/revoke', allow('eso'), validate(revokeSchema), async (req: AuthReq, res, next) => {
+  try {
+    const cert = await Certification.findOneAndUpdate(
+      { _id: req.params.id, revokedAt: null },
+      { $set: { revokedAt: new Date(), revokedReason: (req.body as z.infer<typeof revokeSchema>).reason } },
+      { new: true },
+    ).lean();
+    if (!cert) return res.status(409).json({ error: 'Certificate not found or already revoked' });
+    if (RESPONDER_COURSES.includes(cert.courseSlug) && !(await hasResponderCertification(String(cert.user)))) {
+      await User.updateOne({ _id: cert.user, role: 'student_responder' }, { $set: { role: 'citizen', available: false } });
+    }
+    res.json(certToView(cert));
   } catch (e) { next(e); }
 });
 

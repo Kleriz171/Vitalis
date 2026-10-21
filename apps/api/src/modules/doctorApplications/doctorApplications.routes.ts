@@ -24,6 +24,7 @@ const applicationSchema = z.object({
   fullName: z.string().trim().min(2).max(120),
   email: z.string().trim().email().max(200),
   phone: z.string().trim().min(5).max(40),
+  profession: z.enum(['doctor', 'nurse']).default('doctor'),
   specialty: z.string().trim().min(2).max(80),
   yearsExperience: z.coerce.number().int().min(0).max(70),
   bio: z.string().trim().min(10).max(2000),
@@ -43,6 +44,7 @@ const appToView = (a: any) => ({
   fullName: a.fullName,
   email: a.email,
   phone: a.phone,
+  profession: a.profession ?? 'doctor',
   specialty: a.specialty,
   yearsExperience: a.yearsExperience,
   bio: a.bio,
@@ -60,7 +62,7 @@ r.post('/', upload.single('certificate'), async (req: AuthReq, res, next) => {
   try {
     const parsed = applicationSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: 'All fields are required', issues: parsed.error.issues });
-    const { fullName, email, phone, specialty, yearsExperience, bio } = parsed.data;
+    const { fullName, email, phone, profession, specialty, yearsExperience, bio } = parsed.data;
     if (!req.file) return res.status(400).json({ error: 'Certificate PDF is required' });
     // Client-sent mimetype is not proof; real PDFs start with %PDF-.
     if (req.file.buffer.subarray(0, 5).toString('latin1') !== '%PDF-') {
@@ -85,6 +87,7 @@ r.post('/', upload.single('certificate'), async (req: AuthReq, res, next) => {
       fullName,
       email,
       phone,
+      profession,
       specialty,
       yearsExperience,
       bio,
@@ -141,17 +144,21 @@ r.post('/:id/approve', allow('eso'), async (req: AuthReq, res, next) => {
     );
     if (!app) return res.status(409).json({ error: 'Application not found or already reviewed' });
 
-    await Doctor.create({
-      user: app.user,
-      name: app.fullName,
-      specialty: app.specialty,
-      biography: app.bio,
-      experience: app.yearsExperience,
-      phone: app.phone,
-      availableOnline: true,
-    });
+    const profession = app.profession ?? 'doctor';
+    // The Doctors tab lists doctors only; nurses respond to SOS without a directory entry.
+    if (profession === 'doctor') {
+      await Doctor.create({
+        user: app.user,
+        name: app.fullName,
+        specialty: app.specialty,
+        biography: app.bio,
+        experience: app.yearsExperience,
+        phone: app.phone,
+        availableOnline: true,
+      });
+    }
     // Approval is what grants responder powers; never touch operator accounts.
-    await User.updateOne({ _id: app.user, role: { $in: ['citizen', 'blood_donor', 'student_responder'] } }, { $set: { role: 'doctor' } });
+    await User.updateOne({ _id: app.user, role: { $in: ['citizen', 'blood_donor', 'student_responder'] } }, { $set: { role: profession } });
     res.json(appToView(app));
   } catch (e) { next(e); }
 });

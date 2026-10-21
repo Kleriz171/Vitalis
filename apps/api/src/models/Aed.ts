@@ -11,6 +11,14 @@ const AedSchema = new Schema({
     coordinates: { type: [Number], required: true },
   },
   padsExpireAt: Date,
+  // ok = usable. needs_check = someone reported a problem; out_of_service = an operator confirmed one.
+  // Dispatch skips both until an operator verifies the device again.
+  status: { type: String, enum: ['ok', 'needs_check', 'out_of_service'], default: 'ok' },
+  problem: {
+    note: { type: String, trim: true, maxlength: 240 },
+    reportedAt: Date,
+    reportedBy: { type: Types.ObjectId, ref: 'User' },
+  },
   verifiedAt: Date,
   verifiedBy: { type: Types.ObjectId, ref: 'User' },
   reportedBy: { type: Types.ObjectId, ref: 'User' },
