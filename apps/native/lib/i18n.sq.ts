@@ -257,6 +257,7 @@ export const ui: Record<string, string> = {
   'If you know where one hangs, report it. A dispatcher verifies each entry.': 'Nëse dini ku ndodhet një, raportojeni. Një dispeçer e verifikon çdo regjistrim.',
   'Unverified': 'I paverifikuar',
   'Problem reported': 'Problem i raportuar',
+  'Hospital data © OpenStreetMap contributors. Phone numbers not yet confirmed.': 'Të dhënat e spitaleve © kontribuuesit e OpenStreetMap. Numrat e telefonit ende të pakonfirmuar.',
   'Out of service': 'Jashtë funksionit',
   'Showing every registered defibrillator. Turn location on to see the nearest first.': 'Po shfaqen të gjithë defibrilatorët e regjistruar. Aktivizoni vendndodhjen për të parë më të afërtit në krye.',
   'Offline': 'Pa internet',

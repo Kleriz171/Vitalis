@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import * as Location from 'expo-location';
 import { Heart, MapPin, Navigation, Phone, Shield, X } from 'lucide-react-native';
 import { toast } from 'sonner-native';
 import { api } from '@/lib/api';
@@ -47,7 +48,11 @@ export default function SOSModal() {
       try {
         const [numbersResponse, hospitalsResponse] = await Promise.allSettled([
           api.get('/emergencies/numbers'),
-          api.get('/emergencies/hospitals'),
+          // Nearest first if location is already allowed; never ask for it on the emergency screen.
+          Location.getForegroundPermissionsAsync()
+            .then(p => (p.granted ? Location.getLastKnownPositionAsync() : null))
+            .catch(() => null)
+            .then(pos => api.get('/emergencies/hospitals', { params: pos ? { lng: pos.coords.longitude, lat: pos.coords.latitude } : undefined })),
         ]);
 
         if (numbersResponse.status === 'fulfilled' && Array.isArray(numbersResponse.value.data)) {
@@ -148,6 +153,7 @@ export default function SOSModal() {
               }
             />
           ))}
+          <Text style={styles.credit}>{t('Hospital data © OpenStreetMap contributors. Phone numbers not yet confirmed.')}</Text>
         </Group>
       ) : (
         <Group>
@@ -159,6 +165,7 @@ export default function SOSModal() {
 }
 
 const styles = StyleSheet.create({
+  credit: { color: colors.mutedForeground, fontSize: 11, textAlign: 'center', paddingVertical: 8 },
   actions: { flexDirection: 'row', gap: 8 },
   closeBtn: {
     width: 40,

@@ -4,6 +4,7 @@ import { connectDB } from '../config/db';
 import { logger } from '../config/logger';
 import { User } from '../models/User';
 import { Hospital } from '../models/Hospital';
+import hospitalsAl from './hospitals.al.json';
 import { BloodRequest } from '../models/BloodRequest';
 import { BloodInventory } from '../models/BloodInventory';
 import { Doctor } from '../models/Doctor';
@@ -176,19 +177,24 @@ async function seed() {
     available: false,
   });
 
-  // Hospitals
+  // Hospitals: every one mapped in OpenStreetMap (scripts/hospitals-osm.py). Phone numbers as mapped,
+  // not yet confirmed by calling. Demo blood data sits at four large hospitals in Tirana.
   logger.info('Seeding hospitals…');
-  const hospitals = await Hospital.insertMany([
-    { name: 'Mother Teresa University Hospital', type: 'public', address: 'Rruga e Dibrës, Tirana', phone: '+355 4 222 2222', isOpen24h: true, location: { type: 'Point', coordinates: jitter(TIRANA) } },
-    { name: 'American Hospital 1', type: 'private', address: 'Rruga e Kavajës, Tirana', phone: '+355 4 240 1234', isOpen24h: true, location: { type: 'Point', coordinates: jitter(TIRANA) } },
-    { name: 'Hygeia Hospital', type: 'private', address: 'Rruga Janos Hunyadi, Tirana', phone: '+355 4 290 3000', isOpen24h: true, location: { type: 'Point', coordinates: jitter(TIRANA) } },
-    { name: 'Memorial Hospital', type: 'private', address: 'Rruga e Durrësit, Tirana', phone: '+355 4 232 4444', isOpen24h: false, location: { type: 'Point', coordinates: jitter(TIRANA) } },
-  ]);
+  const hospitals = await Hospital.insertMany(hospitalsAl.map(h => ({
+    name: h.name,
+    type: h.type as 'public' | 'private',
+    address: h.address,
+    phone: h.phone ?? undefined,
+    isOpen24h: h.isOpen24h,
+    location: { type: 'Point', coordinates: h.coordinates },
+  })));
+  const pick = (part: string) => hospitals.find(h => h.name.includes(part)) ?? hospitals[0];
+  const main = [pick('Nënë Teresa'), pick('Spitali Amerikan 1'), pick('Hygeia'), pick('Traumës')];
 
-  // Blood inventory: each hospital, each type
+  // Blood inventory: the four main hospitals, each type
   logger.info('Seeding blood inventory…');
   const inv: any[] = [];
-  for (const h of hospitals) {
+  for (const h of main) {
     for (const t of BLOOD_TYPES) {
       const available = Math.floor(Math.random() * 30);
       const needed = Math.random() < 0.25 ? available + Math.floor(Math.random() * 8) + 1 : 0;
@@ -200,10 +206,10 @@ async function seed() {
   // Blood requests
   logger.info('Seeding blood requests…');
   const requests = [
-    { hospital: hospitals[0]._id, patientName: 'Anonymous patient #A-204', bloodType: 'O-' as const, urgency: 'critical' as const, unitsNeeded: 4, reason: 'Emergency transfusion post-trauma' },
-    { hospital: hospitals[1]._id, patientName: 'Anonymous patient #B-118', bloodType: 'AB-' as const, urgency: 'urgent' as const, unitsNeeded: 2, reason: 'Scheduled surgery' },
-    { hospital: hospitals[2]._id, patientName: 'Anonymous patient #C-307', bloodType: 'A+' as const, urgency: 'normal' as const, unitsNeeded: 1, reason: 'Chronic anemia' },
-    { hospital: hospitals[0]._id, patientName: 'Anonymous patient #A-301', bloodType: 'B+' as const, urgency: 'urgent' as const, unitsNeeded: 3, reason: 'Postpartum hemorrhage' },
+    { hospital: main[0]._id, patientName: 'Anonymous patient #A-204', bloodType: 'O-' as const, urgency: 'critical' as const, unitsNeeded: 4, reason: 'Emergency transfusion post-trauma' },
+    { hospital: main[1]._id, patientName: 'Anonymous patient #B-118', bloodType: 'AB-' as const, urgency: 'urgent' as const, unitsNeeded: 2, reason: 'Scheduled surgery' },
+    { hospital: main[2]._id, patientName: 'Anonymous patient #C-307', bloodType: 'A+' as const, urgency: 'normal' as const, unitsNeeded: 1, reason: 'Chronic anemia' },
+    { hospital: main[0]._id, patientName: 'Anonymous patient #A-301', bloodType: 'B+' as const, urgency: 'urgent' as const, unitsNeeded: 3, reason: 'Postpartum hemorrhage' },
   ];
   await BloodRequest.insertMany(requests);
 
@@ -247,7 +253,7 @@ async function seed() {
       resourceType: 'Kidney',
       urgency: 'critical',
       quantityLabel: '1 matched donor',
-      facilityName: hospitals[0].name,
+      facilityName: main[0].name,
       notes: 'Recipient prepared and cross-match window is open.',
     },
     {
@@ -256,7 +262,7 @@ async function seed() {
       resourceType: 'Cornea',
       urgency: 'urgent',
       quantityLabel: '2 grafts',
-      facilityName: hospitals[1].name,
+      facilityName: main[1].name,
       notes: 'Needed for scheduled ophthalmic procedures this week.',
     },
     {
@@ -265,7 +271,7 @@ async function seed() {
       resourceType: 'Immunoglobulin IV',
       urgency: 'urgent',
       quantityLabel: '4 vials',
-      facilityName: hospitals[2].name,
+      facilityName: main[2].name,
       notes: 'Pediatric immunology case awaiting confirmation.',
     },
     {
@@ -274,7 +280,7 @@ async function seed() {
       resourceType: 'O- blood',
       urgency: 'critical',
       quantityLabel: '4 units',
-      facilityName: hospitals[0].name,
+      facilityName: main[0].name,
       notes: 'Transfer support requested for trauma stabilization.',
     },
   ]);
@@ -282,14 +288,14 @@ async function seed() {
   // Doctors
   logger.info('Seeding doctors…');
   const doctors = [
-    { name: 'Dr. Elena Hoxha', specialty: 'Cardiology', hospital: hospitals[0]._id, experience: 12, rating: 4.9, reviewCount: 142, priceConsultation: 4500, availableOnline: true, availableNow: true, phone: '+355691234567', biography: 'Interventional cardiologist with focus on acute coronary syndromes.' },
-    { name: 'Dr. Andi Berisha', specialty: 'Neurology', hospital: hospitals[1]._id, experience: 9, rating: 4.7, reviewCount: 88, priceConsultation: 5000, availableOnline: true, availableNow: false, phone: '+355691234567', biography: 'Headache and stroke specialist.' },
-    { name: 'Dr. Lorena Marku', specialty: 'Pediatrics', hospital: hospitals[2]._id, experience: 7, rating: 4.8, reviewCount: 201, priceConsultation: 3500, availableOnline: true, availableNow: true, phone: '+355691234567', biography: 'Pediatrician — newborn to adolescent care.' },
-    { name: 'Dr. Mark Gjoka', specialty: 'Orthopedics', hospital: hospitals[3]._id, experience: 15, rating: 4.6, reviewCount: 67, priceConsultation: 6000, availableOnline: false, availableNow: false, biography: 'Sports injuries and joint replacement.' },
-    { name: 'Dr. Sara Çela', specialty: 'Dermatology', hospital: hospitals[1]._id, experience: 8, rating: 4.9, reviewCount: 156, priceConsultation: 4000, availableOnline: true, availableNow: true, phone: '+355691234567', biography: 'Skin oncology and cosmetic dermatology.' },
-    { name: 'Dr. Petrit Doku', specialty: 'Endocrinology', hospital: hospitals[2]._id, experience: 11, rating: 4.7, reviewCount: 92, priceConsultation: 4500, availableOnline: true, availableNow: false, phone: '+355691234567', biography: 'Diabetes and thyroid disorders.' },
-    { name: 'Dr. Ina Lleshi', specialty: 'Gastroenterology', hospital: hospitals[0]._id, experience: 10, rating: 4.5, reviewCount: 54, priceConsultation: 5500, availableOnline: false, availableNow: false, biography: 'GI endoscopy and liver disease.' },
-    { name: 'Dr. Klodian Rama', specialty: 'Psychology', hospital: hospitals[1]._id, experience: 6, rating: 4.9, reviewCount: 178, priceConsultation: 3000, availableOnline: true, availableNow: true, phone: '+355691234567', biography: 'Anxiety, depression, CBT.' },
+    { name: 'Dr. Elena Hoxha', specialty: 'Cardiology', hospital: main[0]._id, experience: 12, rating: 4.9, reviewCount: 142, priceConsultation: 4500, availableOnline: true, availableNow: true, phone: '+355691234567', biography: 'Interventional cardiologist with focus on acute coronary syndromes.' },
+    { name: 'Dr. Andi Berisha', specialty: 'Neurology', hospital: main[1]._id, experience: 9, rating: 4.7, reviewCount: 88, priceConsultation: 5000, availableOnline: true, availableNow: false, phone: '+355691234567', biography: 'Headache and stroke specialist.' },
+    { name: 'Dr. Lorena Marku', specialty: 'Pediatrics', hospital: main[2]._id, experience: 7, rating: 4.8, reviewCount: 201, priceConsultation: 3500, availableOnline: true, availableNow: true, phone: '+355691234567', biography: 'Pediatrician — newborn to adolescent care.' },
+    { name: 'Dr. Mark Gjoka', specialty: 'Orthopedics', hospital: main[3]._id, experience: 15, rating: 4.6, reviewCount: 67, priceConsultation: 6000, availableOnline: false, availableNow: false, biography: 'Sports injuries and joint replacement.' },
+    { name: 'Dr. Sara Çela', specialty: 'Dermatology', hospital: main[1]._id, experience: 8, rating: 4.9, reviewCount: 156, priceConsultation: 4000, availableOnline: true, availableNow: true, phone: '+355691234567', biography: 'Skin oncology and cosmetic dermatology.' },
+    { name: 'Dr. Petrit Doku', specialty: 'Endocrinology', hospital: main[2]._id, experience: 11, rating: 4.7, reviewCount: 92, priceConsultation: 4500, availableOnline: true, availableNow: false, phone: '+355691234567', biography: 'Diabetes and thyroid disorders.' },
+    { name: 'Dr. Ina Lleshi', specialty: 'Gastroenterology', hospital: main[0]._id, experience: 10, rating: 4.5, reviewCount: 54, priceConsultation: 5500, availableOnline: false, availableNow: false, biography: 'GI endoscopy and liver disease.' },
+    { name: 'Dr. Klodian Rama', specialty: 'Psychology', hospital: main[1]._id, experience: 6, rating: 4.9, reviewCount: 178, priceConsultation: 3000, availableOnline: true, availableNow: true, phone: '+355691234567', biography: 'Anxiety, depression, CBT.' },
   ];
   await Doctor.insertMany(doctors);
 

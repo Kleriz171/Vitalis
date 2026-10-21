@@ -1,0 +1,1106 @@
+[
+ {
+  "name": "Spitali Isa Zllami Tropojë",
+  "type": "public",
+  "address": "Agim Ramadani, Bajram Curri",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   20.074712,
+   42.363496
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali i Ballshit",
+  "type": "public",
+  "address": "Zenel Hekali, Ballsh",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.730771,
+   40.596389
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Belsh Hospital",
+  "type": "public",
+  "address": "Belsh",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.888814,
+   40.979479
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali Rajonal - Berat",
+  "type": "public",
+  "address": "Berat",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.968563,
+   40.701937
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali Devoll",
+  "type": "public",
+  "address": "Bilisht",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   20.988008,
+   40.624695
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Qendra Shëndetësore",
+  "type": "public",
+  "address": "Rruga Spitalit, Bishnica",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   20.435308,
+   40.932478
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Urgjenca-Burrel",
+  "type": "public",
+  "address": "Ibrahim Temo 11, Burrel",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   20.012465,
+   41.613888
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Ambulanca Qendrore \"Dimal\"",
+  "type": "public",
+  "address": "Rruga \"Trifon Goga\", Dimal",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.877881,
+   40.772553
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Qëndra shëndetësore",
+  "type": "public",
+  "address": "Dimal",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.830486,
+   40.713802
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Kryqi i Kuq",
+  "type": "public",
+  "address": "Durrës",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.453455,
+   41.327616
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali Amerikan Durrës",
+  "type": "private",
+  "address": "Ahmet Ramzoti, Durrës",
+  "phone": "052 222 333",
+  "isOpen24h": false,
+  "coordinates": [
+   19.445852,
+   41.325777
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali Durres",
+  "type": "public",
+  "address": "Durrës",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.444042,
+   41.326488
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Kompleksi Spitalor Rajonal Elbasan",
+  "type": "public",
+  "address": "Elbasan",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   20.08259,
+   41.125237
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali Kolonjë Shaniko Jupasi",
+  "type": "public",
+  "address": "Rruga Dhori Qirjazi, Ersekë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   20.681321,
+   40.336888
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali Amerikan Fier",
+  "type": "private",
+  "address": "Rr Çameria, Fier",
+  "phone": "+35534 232 123",
+  "isOpen24h": false,
+  "coordinates": [
+   19.559935,
+   40.723695
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali Rajonal Fier",
+  "type": "public",
+  "address": "Fier",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.560714,
+   40.72389
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali Rajonal Memorial Fier",
+  "type": "public",
+  "address": "Fier",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.5554,
+   40.747141
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali Amerikan Gjirokastër",
+  "type": "private",
+  "address": "Rruga Zeman Haska, Gjirokastër",
+  "phone": "084820400",
+  "isOpen24h": false,
+  "coordinates": [
+   20.140463,
+   40.083058
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali Rajonal \"Omer Nishani\"",
+  "type": "public",
+  "address": "Gjirokastër",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   20.141931,
+   40.083934
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali Përgjithshëm Bashkiak Gramsh",
+  "type": "public",
+  "address": "Hamit Dollani, Gramsh",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   20.185994,
+   40.86587
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali i Himarës",
+  "type": "public",
+  "address": "Himarë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.744693,
+   40.101995
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Qendra shendetsore Shen Scalabrini",
+  "type": "public",
+  "address": "Juban",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.575508,
+   42.022934
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Farmaci",
+  "type": "public",
+  "address": "Kamëz",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.655277,
+   41.39462
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Klinika private Ana",
+  "type": "public",
+  "address": "Kamëz",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.652301,
+   41.397086
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Qender Dentare",
+  "type": "public",
+  "address": "Kamëz",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.655346,
+   41.392856
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Qender veterianre",
+  "type": "public",
+  "address": "Kamëz",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.656967,
+   41.389203
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Qendra dentare Vini",
+  "type": "public",
+  "address": "Kamëz",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.654509,
+   41.393604
+  ],
+  "osm": ""
+ },
+ {
+  "name": "emergency 1",
+  "type": "public",
+  "address": "Kamëz",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.757055,
+   41.425795
+  ],
+  "osm": ""
+ },
+ {
+  "name": "emergency 2",
+  "type": "public",
+  "address": "Kamëz",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.774889,
+   41.430574
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali Kavajë",
+  "type": "public",
+  "address": "Rruga Qazim Kariqi, Kavajë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.54848,
+   41.182519
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spital Civil \"Teni Konomi\" Korçë",
+  "type": "public",
+  "address": "Bulevardi Fan Noli, Korçë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   20.785721,
+   40.611344
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali Krujë",
+  "type": "public",
+  "address": "Krujë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.78998,
+   41.515884
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Qendra Shendetsore Helshan",
+  "type": "public",
+  "address": "Vas Pas, Krumë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   20.279759,
+   42.215493
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali \"Haxhi Derri\"",
+  "type": "public",
+  "address": "Krumë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   20.411603,
+   42.196229
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Klinika Dentare Ngjeçi",
+  "type": "private",
+  "address": "Rruga Kosova H14, Kukës",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   20.42241,
+   42.077195
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Qendra Shendetsore Lezhe",
+  "type": "public",
+  "address": "Lezhë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.644331,
+   41.778631
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali Obstetrik Gjinekologjik",
+  "type": "public",
+  "address": "Lezhë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.643484,
+   41.776927
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spirali Librazhd",
+  "type": "public",
+  "address": "Rruga Qazim Murtini, Librazhd",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   20.317724,
+   41.183955
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali Lushnjes",
+  "type": "public",
+  "address": "Lushnjë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.711448,
+   40.933963
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Qëndra Shendetsore \"Thoma Rrudha\"",
+  "type": "public",
+  "address": "Thoma Rrudha, Patos",
+  "phone": null,
+  "isOpen24h": true,
+  "coordinates": [
+   19.618546,
+   40.684295
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Materniteti",
+  "type": "public",
+  "address": "Pogradec",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   20.655838,
+   40.901993
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali",
+  "type": "public",
+  "address": "Islam Dani, Pogradec",
+  "phone": "127 + 112",
+  "isOpen24h": false,
+  "coordinates": [
+   20.651926,
+   40.901243
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali",
+  "type": "public",
+  "address": "Pukë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.89932,
+   42.043055
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali Përmet",
+  "type": "public",
+  "address": "Përmet",
+  "phone": "+355 81322248",
+  "isOpen24h": false,
+  "coordinates": [
+   20.350198,
+   40.236733
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Qendra Shëndetësore Roskovec",
+  "type": "public",
+  "address": "Roskovec",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.709636,
+   40.736071
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Qendra Shëndetësore Rrogozhinë",
+  "type": "public",
+  "address": "Rrogozhinë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.667011,
+   41.077302
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali Mirditë",
+  "type": "public",
+  "address": "Rrëshen",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.874098,
+   41.770222
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Materniteti",
+  "type": "public",
+  "address": "Sarandë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   20.004307,
+   39.873408
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali i Sarandës",
+  "type": "public",
+  "address": "Sarandë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   20.000885,
+   39.874437
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Urgjencë",
+  "type": "public",
+  "address": "Sarandë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   20.000612,
+   39.874496
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Ish Spitali",
+  "type": "public",
+  "address": "Sazan",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.28143,
+   40.494044
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Qendra Shëndetësore Shijak",
+  "type": "public",
+  "address": "Shijak",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.567165,
+   41.34278
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Qendra Spitalore Marqinet",
+  "type": "public",
+  "address": "Shijak",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.649248,
+   41.401756
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Sanatoriumi Shkoder",
+  "type": "public",
+  "address": "Shkodër",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.521541,
+   42.075055
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Shërbimi i Shëndetit Mendor me Shtretër",
+  "type": "public",
+  "address": "Shkodër",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.525865,
+   42.073316
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spital Privat",
+  "type": "public",
+  "address": "Shkodër",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.511885,
+   42.062397
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali Rajonal Shkoder",
+  "type": "public",
+  "address": "Kolë Heqimi 11, Shkodër",
+  "phone": "127",
+  "isOpen24h": false,
+  "coordinates": [
+   19.524487,
+   42.073991
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali Shkodër",
+  "type": "public",
+  "address": "Kolë Heqimi 11, Shkodër",
+  "phone": "127",
+  "isOpen24h": false,
+  "coordinates": [
+   19.52332,
+   42.073688
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali i Tepelenës",
+  "type": "public",
+  "address": "Tepelenë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   20.014523,
+   40.295405
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Theth",
+  "type": "public",
+  "address": "Theth",
+  "phone": "129",
+  "isOpen24h": false,
+  "coordinates": [
+   19.776425,
+   42.394664
+  ],
+  "osm": ""
+ },
+ {
+  "name": "ASHR - Autoriteti Shendetësor Rajonal, Tiranë",
+  "type": "public",
+  "address": "Qamil Guranjaku, Tiranë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.82648,
+   41.321979
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Dentisti a Tirana",
+  "type": "public",
+  "address": "Rruga Sami Frashëri 30, Tiranë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.813918,
+   41.321515
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Diamond Dental",
+  "type": "public",
+  "address": "Rruga e Kavajës, Tiranë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.803647,
+   41.326121
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Family dental care",
+  "type": "public",
+  "address": "Tiranë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.832468,
+   41.337637
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Hygeia Hospital",
+  "type": "public",
+  "address": "Rruga Prishtina 4, Tiranë",
+  "phone": "+35542390000",
+  "isOpen24h": false,
+  "coordinates": [
+   19.774513,
+   41.344291
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Klinika Eltion",
+  "type": "public",
+  "address": "Rruga Don Bosko, Tiranë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.803127,
+   41.338934
+  ],
+  "osm": ""
+ },
+ {
+  "name": "MediCare Hospital",
+  "type": "public",
+  "address": "Sheshi Karl Topia, Tiranë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.804121,
+   41.333703
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Psikiatria",
+  "type": "public",
+  "address": "Tiranë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.83709,
+   41.338589
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Psikiatria Infantile",
+  "type": "public",
+  "address": "Tiranë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.836265,
+   41.338859
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Qendra Komunitare e Shëndetit Mendor nr.1",
+  "type": "public",
+  "address": "Stavro Vinaju, Tiranë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.828009,
+   41.320099
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Qendra Spitalore Universitare \"Nënë Teresa\"",
+  "type": "public",
+  "address": "Rruga e Dibrës 372, Tiranë",
+  "phone": "+35542349233;+35542222235;08002828;+35542349217",
+  "isOpen24h": false,
+  "coordinates": [
+   19.833238,
+   41.340312
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Salus",
+  "type": "public",
+  "address": "Rruga Vidhëgjat 16, Tiranë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.761952,
+   41.344336
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spital Universitar Obstetrik Gjinekolgjik Koço Gliozheni",
+  "type": "public",
+  "address": "Tiranë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.838119,
+   41.331273
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali Amavita",
+  "type": "public",
+  "address": "Rruga Pjetër Budi, Tiranë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.829571,
+   41.32135
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali Amerikan 1",
+  "type": "private",
+  "address": "Rruga Lord Bajron, Tiranë",
+  "phone": "04 235 7535",
+  "isOpen24h": false,
+  "coordinates": [
+   19.795752,
+   41.343571
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali Amerikan 2",
+  "type": "private",
+  "address": "Rruga e Dibrës, Tiranë",
+  "phone": "04 235 7535",
+  "isOpen24h": false,
+  "coordinates": [
+   19.832418,
+   41.342123
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali Amerikan 3",
+  "type": "public",
+  "address": "Rruga Sabaudin Gabrani, Tiranë",
+  "phone": "+355 (0) 42 35 75 35",
+  "isOpen24h": true,
+  "coordinates": [
+   19.784438,
+   41.320814
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali Amerikan Laboratori Qendror",
+  "type": "private",
+  "address": "Bulevardi Zogu i Parë 40, Tiranë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.817119,
+   41.334109
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali Continental",
+  "type": "public",
+  "address": "Rruga Saimir Duçkollari, Tiranë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.848512,
+   41.331659
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali GVM Tiranë (Villa Maria)",
+  "type": "public",
+  "address": "Rruga Manush Peshkëpia, Tiranë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.702921,
+   41.368469
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali Gjerman",
+  "type": "public",
+  "address": "Rruga Nikolla Llena, Tiranë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.806232,
+   41.326381
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali Gjerman 2",
+  "type": "public",
+  "address": "Rruga Kongresi i Manastirit, Tiranë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.831851,
+   41.337107
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali Iniversitar Shefqet Ndroqi",
+  "type": "public",
+  "address": "Tiranë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.844283,
+   41.313892
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali Universitar Obstetrik-Gjinekologjik \"Mbretëresha Geraldinë\"",
+  "type": "public",
+  "address": "Tiranë",
+  "phone": "+35542222609;+35542225516",
+  "isOpen24h": false,
+  "coordinates": [
+   19.817474,
+   41.334712
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali Universitar i Traumës (SUT)",
+  "type": "public",
+  "address": "Rruga Lord Bajroni, Tiranë",
+  "phone": "+35544330470",
+  "isOpen24h": false,
+  "coordinates": [
+   19.794943,
+   41.342993
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali i Zemres",
+  "type": "public",
+  "address": "Rruga Naim Frashëri, Tiranë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.805271,
+   41.327514
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Infektivi",
+  "type": "public",
+  "address": "Vlorë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.499659,
+   40.477948
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali Psikiatrik Ali Mihali",
+  "type": "public",
+  "address": "Vlorë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.497563,
+   40.452305
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Spitali Rajonal Vlorë",
+  "type": "public",
+  "address": "Mitaq Sallata 1, Vlorë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.50056,
+   40.478099
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Qendra Spitalore Vorë",
+  "type": "public",
+  "address": "Rruga Shaqo Derja, Vorë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.658677,
+   41.391797
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Ambulanca Cfir",
+  "type": "public",
+  "address": "Rruga Cfir - Aranitas., Çfir",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   19.818088,
+   40.633826
+  ],
+  "osm": ""
+ },
+ {
+  "name": "Çorovoda's Hospital",
+  "type": "public",
+  "address": "Çorovodë",
+  "phone": null,
+  "isOpen24h": false,
+  "coordinates": [
+   20.228126,
+   40.501478
+  ],
+  "osm": ""
+ }
+]

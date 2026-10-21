@@ -3,6 +3,7 @@ import { authRequired } from '../../middleware/auth';
 import { allow } from '../../middleware/rbac';
 import { validate } from '../../middleware/validate';
 import { emergencyController, createEmergencySchema, statusSchema, aedStatusSchema } from './emergency.controller';
+import { nearQuery } from '../../utils/geo';
 import { Hospital } from '../../models/Hospital';
 
 const r = Router();
@@ -17,9 +18,14 @@ const EMERGENCY_NUMBERS = [
 ];
 r.get('/numbers', (_req, res) => res.json(EMERGENCY_NUMBERS));
 
-r.get('/hospitals', async (_req, res, next) => {
+// Every hospital in the country: nearest first when the phone says where it is, else by town.
+r.get('/hospitals', async (req, res, next) => {
   try {
-    const items = await Hospital.find().lean();
+    const lng = Number(req.query.lng), lat = Number(req.query.lat);
+    const near = req.query.lng && req.query.lat && Math.abs(lng) <= 180 && Math.abs(lat) <= 90;
+    const items = near
+      ? await Hospital.find(nearQuery(lng, lat, 400_000)).lean()
+      : await Hospital.find().sort('address').lean();
     res.json(items.map(h => ({
       id: String(h._id),
       name: h.name,
