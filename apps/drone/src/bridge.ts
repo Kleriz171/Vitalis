@@ -252,6 +252,7 @@ const shutdown = async () => {
 };
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
+process.on('SIGHUP', shutdown); // its Terminal window was closed
 // A stray error must not kill the bridge while a drone is in the air: its rules are the safety net.
 process.on('unhandledRejection', e => log('unexpected error, bridge keeps running:', e));
 
