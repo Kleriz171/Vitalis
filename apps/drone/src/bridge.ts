@@ -1,27 +1,35 @@
 /**
  * Vitalis drone bridge: runs on the laptop (or Raspberry Pi) that is joined to the
- * Tello's Wi-Fi, and stays online to the Vitalis API over a second connection
+ * drone's Wi-Fi, and stays online to the Vitalis API over a second connection
  * (USB Wi-Fi dongle, Ethernet or USB tethering).
  *
  *   API_URL=http://<api-host>:4000 DRONE_BRIDGE_KEY=... npm start -w @vitalis/drone
- *   npm run sim -w @vitalis/drone          # simulated Tello, no hardware needed
+ *   DRONE_TYPE=cooingdv ... npm start -w @vitalis/drone   # a Wi-Fi toy drone (see README)
+ *   npm run sim -w @vitalis/drone                          # simulated Tello, no hardware needed
  *
  * Safety rules enforced here, independent of the console:
- *   - no takeoff below MIN_BATTERY
+ *   - no takeoff without a live link to the drone, or below MIN_BATTERY when it reports one
  *   - lose the server link while flying → land
- *   - lose the drone's state stream while flying a mission → abort
+ *   - lose the drone's link while flying a mission → abort
  *   - manual sticks are a dead-man switch: no input for RC_DEADMAN_MS → hover
  *   - hovering with no operator input for IDLE_LAND_MS → land
+ *   - drones whose take off and land are one button (drone.oneKey) are only ever landed
+ *     by the operator; the automatic cases above centre the sticks instead
  */
 import http from 'node:http';
-import { spawn, ChildProcess } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { io } from 'socket.io-client';
-import { Tello } from './tello';
-import { startSimulator } from './sim';
+import type { Drone } from './drone';
+import { TelloDrone } from './tello';
+import { Turbodrone } from './turbodrone';
+import { simCamera, startSimulator } from './sim';
+import { handleMedia } from './media';
 
 const API_URL = (process.env.API_URL ?? 'http://localhost:4000').replace(/\/$/, '');
 const KEY = process.env.DRONE_BRIDGE_KEY ?? '';
-const DRONE_ID = process.env.DRONE_ID ?? 'tello-1';
+// "tello", or one of the turbodrone families: cooingdv, cooingdv_jieli, s2x, wifi_uav, wifi_cam, x69_lg, debug.
+const DRONE_TYPE = (process.env.DRONE_TYPE ?? 'tello').toLowerCase();
+const DRONE_ID = process.env.DRONE_ID ?? `${DRONE_TYPE.replace(/_/g, '-')}-1`;
 const SIM = process.env.SIM === '1';
 const TELLO_HOST = process.env.TELLO_HOST ?? (SIM ? '127.0.0.1' : '192.168.10.1');
 const VIDEO_PORT = Number(process.env.VIDEO_PORT ?? 8090);
@@ -30,10 +38,13 @@ const VIDEO_PORT = Number(process.env.VIDEO_PORT ?? 8090);
 const MIN_BATTERY = Number(process.env.MIN_BATTERY ?? 30);
 const RC_DEADMAN_MS = 400;
 const IDLE_LAND_MS = Number(process.env.IDLE_LAND_MS ?? 60_000);
-const STATE_STALE_MS = 3_000;
 
 if (!KEY) {
   console.error('DRONE_BRIDGE_KEY is required (same value as the API).');
+  process.exit(1);
+}
+if (SIM && DRONE_TYPE !== 'tello') {
+  console.error('SIM=1 simulates a Tello. For a toy drone without hardware use DRONE_TYPE=debug (the laptop webcam stands in for the camera).');
   process.exit(1);
 }
 
@@ -49,26 +60,51 @@ let videoUrl: string | undefined;
 
 const log = (...a: unknown[]) => console.log(new Date().toISOString().slice(11, 19), ...a);
 
-const stopSim = SIM ? startSimulator() : null;
-const tello = new Tello(TELLO_HOST);
-const socket = io(`${API_URL}/drones`, { auth: { key: KEY, droneId: DRONE_ID }, reconnectionDelay: 1000 });
+// A sleeping laptop is a drone with nobody at the controls: keep this Mac awake while the bridge runs.
+// ponytail: macOS only (caffeinate); on Windows set the power plan to never sleep while flying.
+if (process.platform === 'darwin') spawn('caffeinate', ['-i', '-w', String(process.pid)], { stdio: 'ignore' }).on('error', () => {}).unref();
 
-const battery = () => tello.state.bat ?? 0;
-const linkOk = () => Date.now() - tello.lastStateAt < STATE_STALE_MS;
+const stopSim = SIM ? startSimulator() : null;
+const drone: Drone = DRONE_TYPE === 'tello' ? new TelloDrone(TELLO_HOST, !SIM) : new Turbodrone(DRONE_TYPE);
+if (SIM) drone.video = simCamera();
+// auth is re-read on every reconnect, so the API learns which photos and videos are still on their way.
+const socket = io(`${API_URL}/drones`, {
+  auth: cb => cb({ key: KEY, droneId: DRONE_ID, info: drone.info, activeMedia: [...media.active] }),
+  reconnectionDelay: 1000,
+});
+const media = handleMedia(socket, {
+  apiUrl: API_URL,
+  key: KEY,
+  droneId: DRONE_ID,
+  feed: () => (drone.video && drone.linkOk() ? `http://127.0.0.1:${VIDEO_PORT}/video.mjpg` : undefined),
+  log: (...a) => log(...a),
+});
+
+const battery = () => drone.readings().battery;
 
 const progress = (status: string, step?: number, reason?: string) =>
   mission && socket.emit('mission:progress', { missionId: mission.id, status, step, reason });
 
+const OPERATOR = 'Operator';
+
 async function land(reason: string) {
   if (!airborne || mode === 'landing') return;
+  // We can't see whether a one-key drone already set itself down (flat battery), and
+  // "land" would launch it again. Only the operator lands it; until then it hovers.
+  if (drone.oneKey && reason !== OPERATOR) {
+    log(`not landing automatically (${reason}): take off and land are one button on this drone. Sticks centred.`);
+    drone.rc(0, 0, 0, 0);
+    lastInput = Date.now();
+    return;
+  }
   log('landing:', reason);
   mode = 'landing';
   if (mission) mission.abortReason ??= reason;
   try {
-    await tello.send('land');
+    await drone.land();
   } catch (e) {
     log('land failed, retrying', (e as Error).message);
-    await tello.send('land').catch(() => log('LAND FAILED TWICE: take manual control of the drone'));
+    await drone.land().catch(() => log('LAND FAILED TWICE: take manual control of the drone'));
   }
   airborne = false;
   mode = 'idle';
@@ -76,28 +112,31 @@ async function land(reason: string) {
 
 async function takeoff() {
   if (airborne) return;
-  if (battery() < MIN_BATTERY) throw new Error(`Battery ${battery()}% is below ${MIN_BATTERY}%`);
-  await tello.send('takeoff');
+  if (!drone.linkOk()) throw new Error('No link to the drone. Is the bridge on its Wi-Fi?');
+  const b = battery();
+  if (b !== undefined && b < MIN_BATTERY) throw new Error(`Battery ${b}% is below ${MIN_BATTERY}%`);
+  await drone.takeoff();
   airborne = true;
   lastInput = Date.now();
 }
 
 async function runMission(id: string, steps: string[]) {
   if (mission) return socket.emit('mission:progress', { missionId: id, status: 'aborted', reason: 'Another mission is running' });
+  if (!drone.info.routes) return socket.emit('mission:progress', { missionId: id, status: 'aborted', reason: 'This drone can only be flown by hand' });
   mission = { id, abortReason: null };
   mode = 'mission';
   try {
-    if (!linkOk()) throw new Error('No state from the drone. Is the bridge on the Tello Wi-Fi?');
+    if (!drone.linkOk()) throw new Error('No state from the drone. Is the bridge on its Wi-Fi?');
     await takeoff();
     progress('launched', -1);
     for (let i = 0; i < steps.length; i++) {
       if (mission.abortReason) throw new Error(mission.abortReason);
-      if (!linkOk()) throw new Error('Lost state stream from drone');
+      if (!drone.linkOk()) throw new Error('Lost state stream from drone');
       progress('in_flight', i);
       log(`step ${i + 1}/${steps.length}: ${steps[i]}`);
-      await tello.send(steps[i]).catch(() => tello.send(steps[i])); // one retry, then give up
+      await drone.move(steps[i]).catch(() => drone.move(steps[i])); // one retry, then give up
     }
-    await tello.send('land');
+    await drone.land();
     airborne = false;
     progress('delivered', steps.length);
     log('mission delivered');
@@ -131,12 +170,12 @@ socket.on('command', async ({ action }: { action: string }) => {
   try {
     if (action === 'emergency') {
       // Kills the motors mid-air. The console asks for confirmation before sending this.
-      tello.now('emergency');
+      drone.emergency();
       if (mission) mission.abortReason ??= 'Emergency stop';
       airborne = false;
       mode = 'idle';
     } else if (action === 'land') {
-      await land('Operator');
+      await land(OPERATOR);
     } else if (action === 'abort') {
       if (mission) mission.abortReason ??= 'Aborted by operator';
     } else if (action === 'takeoff') {
@@ -155,7 +194,7 @@ socket.on('rc', ({ lr, fb, ud, yaw }: { lr: number; fb: number; ud: number; yaw:
   mode = 'manual';
   lastInput = lastRc = Date.now();
   rcActive = lr !== 0 || fb !== 0 || ud !== 0 || yaw !== 0;
-  tello.now(`rc ${lr} ${fb} ${ud} ${yaw}`);
+  drone.rc(lr, fb, ud, yaw);
 });
 
 // Watchdog: dead-man, idle landing, keep-alive (Tello lands itself after 15 s of silence).
@@ -164,7 +203,7 @@ setInterval(() => {
   const now = Date.now();
   if (rcActive && now - lastRc > RC_DEADMAN_MS) {
     rcActive = false;
-    tello.now('rc 0 0 0 0');
+    drone.rc(0, 0, 0, 0);
   }
   if (mode !== 'mission' && mode !== 'landing' && now - lastInput > IDLE_LAND_MS) {
     void land('No operator input');
@@ -172,100 +211,47 @@ setInterval(() => {
   }
   if (!rcActive && mode === 'manual' && now - lastKeepalive > 2_000) {
     lastKeepalive = now;
-    tello.now('rc 0 0 0 0');
+    drone.rc(0, 0, 0, 0);
   }
-  if (battery() > 0 && battery() < 15) void land(`Battery critical (${battery()}%)`);
+  const b = battery();
+  if (b !== undefined && b > 0 && b < 15) void land(`Battery critical (${b}%)`);
 }, 200);
 
 // Telemetry to the console at 2 Hz.
 setInterval(() => {
-  const s = tello.state;
   socket.emit('telemetry', {
-    battery: s.bat,
-    heightCm: s.h,
-    tempC: s.templ !== undefined ? Math.round((s.templ + s.temph) / 2) : undefined,
-    flightTimeS: s.time,
-    speedCms: Math.round(Math.hypot(s.vgx ?? 0, s.vgy ?? 0) * 10),
+    ...drone.readings(),
     airborne,
     mode,
-    linkOk: linkOk(),
-    videoUrl,
+    linkOk: drone.linkOk(),
+    videoUrl: drone.video ? videoUrl : undefined,
   });
 }, 500);
 
-/**
- * Optional live video: Tello streams raw H.264 to :11111. With ffmpeg installed we
- * transcode to MJPEG and serve it at http://<bridge>:VIDEO_PORT/video.mjpg for the console.
- * ponytail: one ffmpeg per bridge, fine for one drone; use WebRTC if many viewers need it.
- */
-function startVideo() {
-  let ff: ChildProcess;
-  try {
-    ff = spawn('ffmpeg', ['-loglevel', 'error', '-i', 'udp://0.0.0.0:11111', '-f', 'mjpeg', '-q:v', '6', '-r', '12', 'pipe:1']);
-  } catch {
-    return log('ffmpeg not found: video disabled (brew install ffmpeg)');
-  }
-  ff.on('error', () => log('ffmpeg not found: video disabled (brew install ffmpeg)'));
-  const clients = new Set<http.ServerResponse>();
-  let buf = Buffer.alloc(0);
-  ff.stdout?.on('data', (chunk: Buffer) => {
-    buf = Buffer.concat([buf, chunk]);
-    let end;
-    while ((end = buf.indexOf(Buffer.from([0xff, 0xd9]))) !== -1) {
-      const start = buf.indexOf(Buffer.from([0xff, 0xd8]));
-      const frame = start !== -1 && start < end ? buf.subarray(start, end + 2) : null;
-      buf = buf.subarray(end + 2);
-      if (!frame) continue;
-      for (const res of clients) {
-        res.write(`--frame\r\nContent-Type: image/jpeg\r\nContent-Length: ${frame.length}\r\n\r\n`);
-        res.write(frame);
-        res.write('\r\n');
-      }
-    }
-    if (buf.length > 4_000_000) buf = Buffer.alloc(0);
-  });
-  http.createServer((req, res) => {
-    if (req.url !== '/video.mjpg') { res.writeHead(404).end(); return; }
-    res.writeHead(200, { 'Content-Type': 'multipart/x-mixed-replace; boundary=frame', 'Cache-Control': 'no-store' });
-    clients.add(res);
-    req.on('close', () => clients.delete(res));
-  }).listen(VIDEO_PORT, () => {
+// Live video for the console at http://<bridge>:VIDEO_PORT/video.mjpg, whichever driver feeds it.
+http.createServer((req, res) => {
+  if (req.url !== '/video.mjpg' || !drone.video) { res.writeHead(404).end(); return; }
+  drone.video(req, res);
+}).on('error', e => log(`video server on :${VIDEO_PORT} failed (${e.message}): no video in the console`))
+  .listen(VIDEO_PORT, () => {
     videoUrl = `http://${process.env.VIDEO_HOST ?? 'localhost'}:${VIDEO_PORT}/video.mjpg`;
-    log(`video at ${videoUrl}`);
   });
-}
-
-async function main() {
-  await tello.open();
-  // Enter SDK mode; keep trying until the laptop is on the Tello's Wi-Fi.
-  for (;;) {
-    try {
-      await tello.send('command');
-      break;
-    } catch {
-      log(`no answer from Tello at ${TELLO_HOST}. Join its Wi-Fi (TELLO-XXXXXX). Retrying…`);
-      await new Promise(r => setTimeout(r, 2000));
-    }
-  }
-  log(`Tello ready, battery ${await tello.send('battery?').catch(() => '?')}%`);
-  if (!SIM) {
-    await tello.send('streamon').catch(() => log('streamon failed: video unavailable'));
-    startVideo();
-  }
-}
 
 const shutdown = async () => {
   log('shutting down');
   if (airborne) await land('Bridge stopped');
+  await media.flush(15_000);
   socket.close();
-  tello.close();
+  drone.close();
   stopSim?.();
   process.exit(0);
 };
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
+// A stray error must not kill the bridge while a drone is in the air: its rules are the safety net.
+process.on('unhandledRejection', e => log('unexpected error, bridge keeps running:', e));
 
-main().catch(e => {
+drone.open().catch(e => {
   console.error(e);
   process.exit(1);
 });

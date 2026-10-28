@@ -1,4 +1,4 @@
-import { CheckCircle, SealCheck, MapPin, PersonSimpleRun, Siren, UserCheck, Warning, XCircle, type Icon } from '@phosphor-icons/react';
+import { Camera, CheckCircle, Drone, Eye, SealCheck, MapPin, PersonSimpleRun, Siren, UserCheck, VideoCamera, Warning, XCircle, type Icon } from '@phosphor-icons/react';
 import { Tile, type TileTone } from '../../components/ui/tile';
 import { useEffect, useState } from 'react';
 import { api } from '../../api/client';
@@ -34,6 +34,15 @@ const ACTION_TILE: Record<string, [Icon, TileTone]> = {
   on_scene: [MapPin, 'teal'],
   resolved: [CheckCircle, 'teal'],
   cancelled: [XCircle, 'slate'],
+  dispatched: [Drone, 'teal'],
+  delivered: [Drone, 'teal'],
+  aborted: [Drone, 'sos'],
+  takeoff: [Drone, 'mint'],
+  land: [Drone, 'mint'],
+  emergency: [Drone, 'sos'],
+  photo_taken: [Camera, 'teal'],
+  video_recorded: [VideoCamera, 'teal'],
+  media_viewed: [Eye, 'slate'],
 };
 
 // Plain names for what each entry records.
@@ -45,6 +54,7 @@ const EVENT: Record<string, string> = {
   released: 'Responder released, call sent to others',
   checkin_missed: 'Safety check-in missed', checkin_duress: 'Safety check-in: duress PIN used', checkin_pin_attempts: 'Safety check-in: wrong PIN too often',
   takeoff: 'Drone took off', land: 'Drone landed', emergency: 'Drone emergency stop', launched: 'Drone launched', in_flight: 'Drone in flight',
+  photo_taken: 'Drone photo saved', video_recorded: 'Drone video saved', media_viewed: 'Drone footage opened',
 };
 const sentence = (s: string) => { const t = s.replace(/_/g, ' '); return t.charAt(0).toUpperCase() + t.slice(1); };
 const describe = (b: Block) => {
@@ -56,20 +66,44 @@ const describe = (b: Block) => {
         : sentence(action || 'entry'));
   const subject = b.payload?.entity === 'emergency' ? `Call #${shortId(id ?? '')}`
     : b.payload?.entity === 'drone_mission' ? `Drone flight #${shortId(id ?? '')}`
-      : b.payload?.entity === 'drone' ? `Drone ${id ?? ''}` : sentence(b.payload?.entity ?? '');
+      : b.payload?.entity === 'drone' ? `Drone ${id ?? ''}`
+        : b.payload?.entity === 'drone_media' ? `Footage #${shortId(id ?? '')}` : sentence(b.payload?.entity ?? '');
   return { event, subject };
 };
 const when = (iso: string, seconds = false) =>
   new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: seconds ? '2-digit' : undefined });
 
+// The screen shows the newest entries first, a day at a time, PAGE at a go.
+const PAGE = 50;
+const dayOf = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+
 export const CallLog = () => {
   const [blocks, setBlocks] = useState<Block[]>([]);
+  const [shown, setShown] = useState(PAGE);
   const [verify, setVerify] = useState<VerifyResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingBlocks, setLoadingBlocks] = useState(true);
 
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const load = () =>
     api.get('/blockchain').then(r => setBlocks(r.data)).catch(() => {}).finally(() => setLoadingBlocks(false));
+  // Entries are numbered from 0, so the newest one's number says how many there are in all.
+  const total = blocks.length ? blocks[blocks.length - 1].index + 1 : 0;
+  const older = blocks.length ? blocks[0].index : 0; // still on the server
+  const showOlder = async () => {
+    if (blocks.length - shown < PAGE && older > 0) {
+      setLoadingOlder(true);
+      try {
+        const { data } = await api.get<Block[]>('/blockchain', { params: { before: blocks[0].index } });
+        setBlocks(b => [...data, ...b]);
+      } catch {
+        pushToast({ tone: 'error', title: 'Could not load older entries' });
+      } finally {
+        setLoadingOlder(false);
+      }
+    }
+    setShown(n => n + PAGE);
+  };
   useEffect(() => { load(); }, []);
 
   const runVerify = async () => {
@@ -108,27 +142,37 @@ export const CallLog = () => {
           </div>
           <Button loading={loading} onClick={runVerify} className="rounded-xl h-10 px-5">{verify ? 'Check again' : 'Check the log'}</Button>
         </section>
-        <Panel title={`${blocks.length} ${blocks.length === 1 ? 'entry' : 'entries'}`} aside={<span className="text-[13px] text-muted-foreground">Newest last · entries can be added, never edited</span>}>
+        <Panel title={`${total} ${total === 1 ? 'entry' : 'entries'}`} aside={<span className="text-[13px] text-muted-foreground">Newest first · entries can be added, never edited</span>}>
           {loadingBlocks && Array.from({ length: 5 }).map((_, i) => <div key={i} className="px-5 py-4"><Skeleton className="h-10" /></div>)}
           {!loadingBlocks && blocks.length === 0 && (
             <p className="text-sm text-muted-foreground text-center py-12">Nothing yet. The first SOS writes the first entry.</p>
           )}
-          {blocks.map(b => {
+          {[...blocks].reverse().slice(0, shown).map((b, i, list) => {
             const [icon, tone] = ACTION_TILE[b.payload?.action ?? ''] ?? [SealCheck, 'slate'];
+            const day = dayOf(b.timestamp);
             return (
-              <Row
-                key={b._id}
-                icon={icon}
-                tone={tone}
-                title={`${describe(b).event} · ${describe(b).subject}`}
-                summary={<span title={`Seal ${b.hash}\nPrevious ${b.prevHash}`}>Seal <span className="code">{b.hash.slice(0, 12)}</span></span>}
-                right={<>
-                  <span className="text-[13px] text-muted-foreground">{new Date(b.timestamp).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
-                  <Chip><span className="num font-semibold text-foreground">#{b.index}</span></Chip>
-                </>}
-              />
+              <div key={b._id}>
+                {(i === 0 || dayOf(list[i - 1].timestamp) !== day) && (
+                  <div className="px-5 py-2 bg-muted/60 text-[13px] font-bold text-muted-foreground">{day}</div>
+                )}
+                <Row
+                  icon={icon}
+                  tone={tone}
+                  title={`${describe(b).event} · ${describe(b).subject}`}
+                  summary={<span title={`Seal ${b.hash}\nPrevious ${b.prevHash}`}>Seal <span className="code">{b.hash.slice(0, 12)}</span></span>}
+                  right={<>
+                    <span className="num text-[13px] text-muted-foreground">{new Date(b.timestamp).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
+                    <Chip><span className="num font-semibold text-foreground">#{b.index}</span></Chip>
+                  </>}
+                />
+              </div>
             );
           })}
+          {(blocks.length > shown || older > 0) && (
+            <div className="px-5 py-3 text-center">
+              <Button variant="ghost" loading={loadingOlder} onClick={showOlder}>Show older ({blocks.length - shown + older} more)</Button>
+            </div>
+          )}
         </Panel>
       </div>
       </div>

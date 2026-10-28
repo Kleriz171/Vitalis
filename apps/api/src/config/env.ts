@@ -14,6 +14,11 @@ export const env = {
   geminiApiKey: process.env.GEMINI_API_KEY ?? '',
   // Shared secret the drone bridge presents on connect. Empty = drone bridges disabled.
   droneBridgeKey: process.env.DRONE_BRIDGE_KEY ?? '',
+  // Drone photos and videos go to this Firebase Storage bucket (e.g. vitalis-al-7c3m.firebasestorage.app),
+  // signed in with the service account in GOOGLE_APPLICATION_CREDENTIALS. Empty = files on local disk
+  // under MEDIA_DIR, for development only: production then turns photos and videos off.
+  mediaBucket: process.env.MEDIA_BUCKET ?? '',
+  mediaDir: process.env.MEDIA_DIR ?? '.media',
   // OSRM server for road ETAs. Patient locations must not go to a third party, so the public
   // demo is used only outside production; for launch, self-host OSRM with the Albania extract
   // (free) and set OSRM_URL. Empty = straight-line estimate.

@@ -12,7 +12,8 @@ export const timeAgo = (iso: string) => {
   if (diff < 60) return `${Math.floor(diff)}s ago`;
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return new Date(iso).toLocaleDateString();
+  // Same day-month style as the rest of the console, whatever the computer's locale.
+  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: diff > 300 * 86400 ? 'numeric' : undefined });
 };
 
 export const shortId = (id: string) => id?.slice(-6).toUpperCase();

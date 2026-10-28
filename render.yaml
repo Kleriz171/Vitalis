@@ -29,6 +29,12 @@ services:
       # Where certificate QR codes and the emergency contact's tracking link open.
       - key: PUBLIC_WEB_URL
         value: https://vitalis-web.onrender.com
+      # Drone photos and videos (kept 30 days): the Firebase Storage bucket, and the service-account
+      # key uploaded as a Render Secret File named firebase-storage.json. Unset = photos/videos off.
+      - key: MEDIA_BUCKET
+        sync: false
+      - key: GOOGLE_APPLICATION_CREDENTIALS
+        value: /etc/secrets/firebase-storage.json
 
   # The website (apps/landing): certificate checks (/verify) and live SOS links (/track).
   - type: web

@@ -1,4 +1,4 @@
-import { LockSimple, LockSimpleOpen, MagnifyingGlass, Ambulance, Bandaids, Certificate, Drop, FirstAid, Heartbeat, Hourglass, Pill, Pulse, Siren, PersonSimpleRun, Timer, Warning, X, type Icon } from '@phosphor-icons/react';
+import { LockSimple, LockSimpleOpen, MagnifyingGlass, Ambulance, Drone, Bandaids, Certificate, Drop, FirstAid, Heartbeat, Hourglass, Pill, Pulse, Siren, PersonSimpleRun, Timer, Warning, X, type Icon } from '@phosphor-icons/react';
 import { Defibrillator } from '../../components/ui/aed-icon';
 import { Tile, type TileTone } from '../../components/ui/tile';
 import { Digits } from '../../components/ui/digits';
@@ -7,6 +7,7 @@ import { Gauge } from '../../components/widgets/Gauge';
 import { AnimatePresence, motion } from 'framer-motion';
 import { EASE, FAST as FAST_T } from '../../lib/motion';
 import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useNow } from '../../lib/useNow';
 import { api } from '../../api/client';
 import { socket } from '../../realtime/socket';
@@ -495,6 +496,7 @@ const IncidentPanel = ({ incident, onClose, onChanged }: { incident: Emergency; 
                 {incident.type === 'cardiac' && (
                   <li className="flex items-center gap-2"><span className={cn('w-2 h-2 rounded-full', h.aedRunner ? 'bg-[hsl(var(--teal))]' : 'bg-muted-foreground/40')} />{h.aedRunner ? <><span className="font-medium">{h.aedRunner.name}</span><span className="text-muted-foreground">fetching a defibrillator{h.aed ? ` from ${h.aed.name}` : ''}</span></> : 'No defibrillator runner yet'}</li>
                 )}
+                <DroneLink emergencyId={incident._id} />
               </ul>
             </section>
 
@@ -533,5 +535,30 @@ const IncidentPanel = ({ incident, onClose, onChanged }: { incident: Emergency; 
         )}
       </motion.div>
     </motion.aside>
+  );
+};
+
+/** Drones that could help with this call; opens the flight view with the call already linked. */
+const DroneLink = ({ emergencyId }: { emergencyId: string }) => {
+  const [drones, setDrones] = useState<{ droneId: string; telemetry: { linkOk?: boolean } | null }[]>([]);
+  const nav = useNavigate();
+  useEffect(() => {
+    api.get('/drones/fleet').then(r => setDrones(r.data)).catch(() => {});
+    socket.on('drone:fleet', setDrones);
+    return () => { socket.off('drone:fleet', setDrones); };
+  }, []);
+  const ready = drones.filter(d => d.telemetry?.linkOk);
+  return (
+    <li className="flex items-center gap-2">
+      <span className={cn('w-2 h-2 rounded-full', ready.length ? 'bg-[hsl(var(--teal))]' : 'bg-muted-foreground/40')} />
+      {drones.length === 0 ? 'No drone online' : (
+        <>
+          <Drone size={16} className="text-muted-foreground" aria-hidden />
+          <span className="font-medium">{ready.length ? ready.map(d => d.droneId).join(', ') : drones.map(d => d.droneId).join(', ')}</span>
+          <span className="text-muted-foreground">{ready.length ? 'ready' : 'not reaching its drone'}</span>
+          <Button size="sm" variant="outline" className="ml-auto h-7" onClick={() => nav(`/command/drones?call=${emergencyId}`)}>Drone view</Button>
+        </>
+      )}
+    </li>
   );
 };

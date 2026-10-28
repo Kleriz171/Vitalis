@@ -63,18 +63,19 @@ The operator sees every user's Medical ID, so its password is never in the repo 
 
 Change these before any real deployment. The console only shows demo-account shortcuts in development builds.
 
-## Drones (DJI Tello)
+## Drones (DJI Tello and Wi-Fi toy drones)
 
-The bridge runs on a laptop joined to the Tello's Wi-Fi and stays online through a second link (USB Wi-Fi adapter, Ethernet, or a phone over USB).
+The bridge runs on a laptop joined to the drone's Wi-Fi and stays online through a second link (USB Wi-Fi adapter, Ethernet, or a phone over USB).
 
 ```bash
 # same DRONE_BRIDGE_KEY on the API and the bridge (openssl rand -hex 24)
-DRONE_BRIDGE_KEY=... API_URL=http://<api>:4000 npm run dev:drone
+DRONE_BRIDGE_KEY=... API_URL=http://<api>:4000 npm run dev:drone                       # DJI Tello
+DRONE_BRIDGE_KEY=... API_URL=http://<api>:4000 DRONE_TYPE=cooingdv npm run dev:drone   # a Wi-Fi toy drone
 npm run dev:drone:sim          # simulated Tello, no hardware needed
-brew install ffmpeg            # optional: live camera in the console
+brew install ffmpeg            # optional: live Tello camera in the console
 ```
 
-The Tello has no GPS, so autonomous routes are measured moves from the take-off spot (`forward 200`, `cw 90`, …). Manual flight uses W A S D and the arrow keys in the console. Safety rules run on the bridge itself: no take-off under 30% battery, land if the API link drops, hover when you let go of the controls, land after 60 s without input.
+The Tello has no GPS, so autonomous routes are measured moves from the take-off spot (`forward 200`, `cw 90`, …). Cheap Wi-Fi toy drones (CooingDV, S2x, WiFi UAV and other families) go through the vendored [turbodrone](https://github.com/marshallrichards/turbodrone) server; they have no positioning or battery reading, so they are flown by hand only. Manual flight uses W A S D and the arrow keys, or a gamepad, in the console. Safety rules run on the bridge itself: no take-off without a link to the drone or under 30% battery, land if the API link drops, hover when you let go of the controls, land after 60 s without input. Operators can take photos and record video from any drone's camera; files go to Firebase Storage, are linked to the call, and are deleted after 30 days. Setup (including Firebase Storage), drone families and their limits: [`apps/drone/README.md`](apps/drone/README.md).
 
 ## Watch apps
 
@@ -97,6 +98,8 @@ With the API running against a seeded test database:
 ```bash
 API_URL=http://localhost:4000 npm run check:security   # auth, RBAC, injection, dispatch races, rooms
 API_URL=http://localhost:4000 npm run check:drones     # needs the bridge in sim mode
+npm run check:toy-drones                               # needs the bridge driving turbodrone (apps/drone/README.md)
+MONGO_URI=… npm run check:drone-media                  # needs the bridge in sim mode; video needs ffmpeg
 ```
 
 ## Deploying the website

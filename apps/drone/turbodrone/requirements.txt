@@ -1,0 +1,7 @@
+# Server for the toy-drone driver of the Vitalis bridge (see ../README.md).
+# Headless OpenCV: the server decodes video but never opens a window.
+numpy>=1.19.2
+opencv-python-headless>=4.5.1.48
+fastapi
+uvicorn[standard]
+python-dotenv

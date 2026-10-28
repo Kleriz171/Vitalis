@@ -1,4 +1,6 @@
 import dgram from 'node:dgram';
+import { readFileSync } from 'node:fs';
+import type { Drone } from './drone';
 
 /**
  * Fake Tello on 127.0.0.1:8889 for developing without the drone.
@@ -53,4 +55,21 @@ export const startSimulator = () => {
 
   sock.bind(8889, '127.0.0.1');
   return () => { clearInterval(tick); sock.close(); };
+};
+
+/**
+ * The simulator's camera: a still test card as MJPEG at 10 fps, so the console's picture,
+ * photos and recordings all work without a drone.
+ */
+export const simCamera = (): NonNullable<Drone['video']> => {
+  const frame = readFileSync(new URL('./sim-camera.jpg', import.meta.url));
+  return (req, res) => {
+    res.writeHead(200, { 'Content-Type': 'multipart/x-mixed-replace; boundary=frame', 'Cache-Control': 'no-store' });
+    const timer = setInterval(() => {
+      res.write(`--frame\r\nContent-Type: image/jpeg\r\nContent-Length: ${frame.length}\r\n\r\n`);
+      res.write(frame);
+      res.write('\r\n');
+    }, 100);
+    req.on('close', () => clearInterval(timer));
+  };
 };

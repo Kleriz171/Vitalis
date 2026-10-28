@@ -14,6 +14,7 @@ import emergencyRoutes from './modules/emergency/emergency.routes';
 import medicineRoutes from './modules/medicine/medicine.routes';
 import bioRoutes from './modules/biopassport/biopassport.routes';
 import droneRoutes from './modules/drone/drone.routes';
+import droneMediaRoutes from './modules/drone/media.routes';
 import blockchainRoutes from './modules/blockchain/blockchain.routes';
 import analyticsRoutes from './modules/analytics/analytics.routes';
 import bloodRoutes from './modules/blood/blood.routes';
@@ -77,6 +78,7 @@ export function buildApp() {
   app.use('/api/watch', strict(30), watchRoutes); // paired watches; pairing codes expire in 10 min
   app.use('/api/medicine', medicineRoutes);
   app.use('/api/biopassport', bioRoutes);
+  app.use('/api/drones/media', droneMediaRoutes); // before /api/drones: the bridge uploads here with its own key
   app.use('/api/drones', droneRoutes);
   app.use('/api/blockchain', blockchainRoutes);
   app.use('/api/analytics', analyticsRoutes);

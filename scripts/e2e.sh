@@ -18,19 +18,21 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# run <name> "<API env>" "<check env>" <check script> [bridge]
+# run <name> "<API env>" "<check env>" <check script> ["<bridge env>"]
 run() {
-  local name=$1 apienv=$2 checkenv=$3 script=$4 bridge=${5:-}
+  local name=$1 apienv=$2 checkenv=$3 script=$4 bridgeenv=${5:-}
   echo "── $name"
   npm run seed -w @vitalis/api >"$LOG_DIR/$name-seed.log" 2>&1
   env $apienv PORT="$PORT" node --import tsx apps/api/src/index.ts >"$LOG_DIR/$name-api.log" 2>&1 & pids+=($!)
   for _ in $(seq 1 60); do curl -s -o /dev/null "$API_URL/api/health" && break; sleep 1; done
-  if [ -n "$bridge" ]; then
-    (cd apps/drone && exec env $apienv SIM=1 TELLO_HOST=127.0.0.1 node --import tsx src/bridge.ts >"$LOG_DIR/$name-bridge.log" 2>&1) & pids+=($!)
+  if [ -n "$bridgeenv" ]; then
+    (cd apps/drone && exec env $apienv $bridgeenv node --import tsx src/bridge.ts >"$LOG_DIR/$name-bridge.log" 2>&1) & pids+=($!)
     sleep 3
   fi
   if ! env $checkenv npx tsx "$script"; then
-    echo "✗ $name failed; API log:" >&2; tail -40 "$LOG_DIR/$name-api.log" >&2; exit 1
+    echo "✗ $name failed; API log:" >&2; tail -40 "$LOG_DIR/$name-api.log" >&2
+    [ -n "$bridgeenv" ] && { echo "bridge log:" >&2; tail -40 "$LOG_DIR/$name-bridge.log" >&2; }
+    exit 1
   fi
   cleanup
 }
@@ -43,5 +45,14 @@ run sms        "TWILIO_AUTH_TOKEN=test-token TWILIO_WEBHOOK_URL=$API_URL/api/sms
 run track      "" "" apps/api/scripts/track-check.ts
 run account    "" "" apps/api/scripts/account-check.ts
 run watch      "" "" apps/api/scripts/watch-check.ts
-run drones     "DRONE_BRIDGE_KEY=ci-bridge-key" "" apps/api/scripts/drone-check.ts bridge
+run drones     "DRONE_BRIDGE_KEY=ci-bridge-key" "" apps/api/scripts/drone-check.ts "SIM=1 TELLO_HOST=127.0.0.1"
+# Photos and videos from the simulator's camera, stored on disk (no MEDIA_BUCKET). Video needs ffmpeg.
+run drone-media "DRONE_BRIDGE_KEY=ci-bridge-key MEDIA_DIR=$LOG_DIR/media" "MONGO_URI=$MONGO_URI" apps/api/scripts/drone-media-check.ts "SIM=1 TELLO_HOST=127.0.0.1"
+# Toy drones need the turbodrone server's Python environment (apps/drone/README.md).
+if [ -x apps/drone/turbodrone/.venv/bin/python ]; then
+  run toy-drones "DRONE_BRIDGE_KEY=ci-bridge-key" "TURBODRONE_TOKEN=ci-toy-token TURBODRONE_PORT=8765" apps/api/scripts/toy-drone-check.ts \
+    "DRONE_TYPE=cooingdv DRONE_IP=127.0.0.1 TURBODRONE_TOKEN=ci-toy-token TURBODRONE_PORT=8765 TOY_TAKEOFF_MS=300 TOY_LAND_MS=300 AXES_DEADMAN_MS=600"
+else
+  echo "── toy-drones skipped: no apps/drone/turbodrone/.venv"
+fi
 echo "All end-to-end checks passed."

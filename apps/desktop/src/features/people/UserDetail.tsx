@@ -40,7 +40,7 @@ interface UserDetail {
 
 const RESPONDER_ROLES = ['student_responder', 'doctor', 'nurse'];
 
-const fmt = (iso?: string) => iso ? new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
+const fmt = (iso?: string) => iso ? new Date(iso).toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
 
 export const UserDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -123,43 +123,33 @@ export const UserDetail = () => {
           </div>
         </Section>
 
-        <div className="grid lg:grid-cols-2 gap-4">
-          <Section title="Medications" icon={<Pill size={18} weight="duotone" />} empty={!data.medications.length}>
-            {data.medications.map(m => (
-              <Row key={m._id} title={m.name} subtitle={m.dosage || (m.isActive ? 'Active' : 'Ended')} />
-            ))}
-          </Section>
-
-          <Section title="Allergies" icon={<Warning size={18} weight="duotone" />} empty={!data.allergies.length}>
-            {data.allergies.map(a => (
-              <Row key={a._id} title={a.allergen} badge={<Chip tone={a.severity === 'severe' ? 'sos' : 'muted'}>{a.severity}</Chip>} />
-            ))}
-          </Section>
-
-          <Section title="Vaccinations" icon={<Syringe size={18} weight="duotone" />} empty={!data.vaccinations.length}>
-            {data.vaccinations.map(v => (
-              <Row key={v._id} title={v.name} subtitle={[v.provider, fmt(v.date)].filter(Boolean).join(' · ')} />
-            ))}
-          </Section>
-
-          <Section title="Conditions" icon={<Pulse size={18} weight="duotone" />} empty={!data.conditions.length}>
-            {data.conditions.map(c => (
-              <Row key={c._id} title={c.name} subtitle={c.notes} />
-            ))}
-          </Section>
-
-          <Section title="Appointments" icon={<CalendarBlank size={18} weight="duotone" />} empty={!data.appointments.length}>
-            {data.appointments.map(a => (
-              <Row key={a._id} title={a.appointmentType} subtitle={`${fmt(a.scheduledAt)} · ${a.status}`} />
-            ))}
-          </Section>
-
-          <Section title="Disabilities" icon={<Stethoscope size={18} weight="duotone" />} empty={!data.disabilities.length}>
-            {data.disabilities.map(d => (
-              <Row key={d._id} title={d.name} subtitle={d.notes} />
-            ))}
-          </Section>
-        </div>
+        {(() => {
+          // Only sections with something in them get a card; the empty ones share one line.
+          const sections = [
+            { title: 'Medications', icon: <Pill size={18} weight="duotone" />, rows: data.medications.map(m => <Row key={m._id} title={m.name} subtitle={m.dosage || (m.isActive ? 'Active' : 'Ended')} />) },
+            { title: 'Allergies', icon: <Warning size={18} weight="duotone" />, rows: data.allergies.map(a => <Row key={a._id} title={a.allergen} badge={<Chip tone={a.severity === 'severe' ? 'sos' : 'muted'}>{a.severity}</Chip>} />) },
+            { title: 'Vaccinations', icon: <Syringe size={18} weight="duotone" />, rows: data.vaccinations.map(v => <Row key={v._id} title={v.name} subtitle={[v.provider, fmt(v.date)].filter(Boolean).join(' · ')} />) },
+            { title: 'Conditions', icon: <Pulse size={18} weight="duotone" />, rows: data.conditions.map(c => <Row key={c._id} title={c.name} subtitle={c.notes} />) },
+            { title: 'Appointments', icon: <CalendarBlank size={18} weight="duotone" />, rows: data.appointments.map(a => <Row key={a._id} title={a.appointmentType} subtitle={`${fmt(a.scheduledAt)} · ${a.status}`} />) },
+            { title: 'Disabilities', icon: <Stethoscope size={18} weight="duotone" />, rows: data.disabilities.map(d => <Row key={d._id} title={d.name} subtitle={d.notes} />) },
+          ];
+          const filled = sections.filter(x => x.rows.length);
+          const empty = sections.filter(x => !x.rows.length).map(x => x.title.toLowerCase());
+          return (
+            <>
+              {filled.length > 0 && (
+                <div className="grid lg:grid-cols-2 gap-4">
+                  {filled.map(x => <Section key={x.title} title={x.title} icon={x.icon} empty={false}>{x.rows}</Section>)}
+                </div>
+              )}
+              {empty.length > 0 && (
+                <p className="rounded-2xl border border-border bg-card px-5 py-4 text-sm text-muted-foreground">
+                  Nothing on file for {empty.length > 1 ? `${empty.slice(0, -1).join(', ')} and ${empty[empty.length - 1]}` : empty[0]}.
+                </p>
+              )}
+            </>
+          );
+        })()}
 
         <Panel title={`Training certificates · ${data.certifications.length}`}>
           {data.certifications.length ? data.certifications.map(c => {

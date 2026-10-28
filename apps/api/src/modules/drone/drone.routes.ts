@@ -6,7 +6,7 @@ import { authRequired, AuthReq } from '../../middleware/auth';
 import { allow } from '../../middleware/rbac';
 import { validate } from '../../middleware/validate';
 import { getIO } from '../../realtime/socket';
-import { DRONE_ID, ROUTES, fleetSnapshot, isOnline, isValidStep, sendToBridge } from '../../realtime/drones';
+import { DRONE_ID, ROUTES, droneInfo, fleetSnapshot, isOnline, isValidStep, sendToBridge } from '../../realtime/drones';
 import { blockchainService } from '../blockchain/blockchain.service';
 
 const r = Router();
@@ -32,7 +32,8 @@ r.post('/:droneId/dispatch', validate(dispatchSchema), async (req: AuthReq, res,
   try {
     const { droneId } = req.params;
     if (!DRONE_ID.test(droneId)) return res.status(400).json({ error: 'Invalid drone id' });
-    if (!isOnline(droneId)) return res.status(409).json({ error: 'Drone is offline. Start the bridge and connect it to the Tello Wi-Fi.' });
+    if (!isOnline(droneId)) return res.status(409).json({ error: 'Drone is offline. Start the bridge and connect it to the drone\'s Wi-Fi.' });
+    if (!droneInfo(droneId)?.routes) return res.status(409).json({ error: 'This drone has no positioning, so it can only be flown by hand.' });
 
     const body = req.body as z.infer<typeof dispatchSchema>;
     const preset = body.routeId ? ROUTES[body.routeId] : undefined;

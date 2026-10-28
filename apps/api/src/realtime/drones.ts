@@ -3,6 +3,7 @@ import { timingSafeEqual } from 'crypto';
 import { env } from '../config/env';
 import { logger } from '../config/logger';
 import { DroneMission } from '../models/DroneMission';
+import { DroneMedia, MEDIA_RETENTION_DAYS } from '../models/DroneMedia';
 import { blockchainService } from '../modules/blockchain/blockchain.service';
 
 /**
@@ -30,6 +31,15 @@ export const ROUTES: Record<string, { name: string; steps: string[] }> = {
   'demo-return': { name: 'Out and back · 3 m and return', steps: ['up 50', 'forward 300', 'cw 180', 'forward 300'] },
 };
 
+/** What a bridge says about its drone when it connects. Bridges from before toy-drone support are Tellos. */
+export interface DroneInfo { driver: 'tello' | 'turbodrone'; model: string; routes: boolean }
+
+const parseInfo = (raw: any): DroneInfo => {
+  if (raw?.driver !== 'turbodrone') return { driver: 'tello', model: 'tello', routes: true };
+  // Toy drones have no positioning, so they never fly routes, whatever the bridge claims.
+  return { driver: 'turbodrone', model: typeof raw.model === 'string' && /^[a-z0-9_]{1,24}$/.test(raw.model) ? raw.model : 'unknown', routes: false };
+};
+
 export interface Telemetry {
   battery?: number;
   heightCm?: number;
@@ -43,13 +53,30 @@ export interface Telemetry {
   at: number;
 }
 
-const fleet = new Map<string, { socketId: string; telemetry?: Telemetry; connectedAt: number }>();
+const fleet = new Map<string, { socketId: string; info: DroneInfo; telemetry?: Telemetry; connectedAt: number }>();
 let nsp: ReturnType<Server['of']> | null = null;
+let ioRef: Server | null = null;
+
+/** A photo or video as the console sees it. */
+export const mediaView = (m: any) => ({
+  _id: String(m._id),
+  droneId: m.droneId,
+  kind: m.kind,
+  status: m.status,
+  emergency: m.emergency ? String(m.emergency) : undefined,
+  size: m.size,
+  sha256: m.sha256,
+  error: m.error,
+  createdAt: m.createdAt,
+  expiresAt: new Date(new Date(m.createdAt).getTime() + MEDIA_RETENTION_DAYS * 24 * 3600_000),
+});
+export const emitMedia = (m: any) => ioRef?.to('dispatchers').emit('drone:media', mediaView(m));
 
 export const fleetSnapshot = () =>
-  [...fleet.entries()].map(([droneId, v]) => ({ droneId, online: true, connectedAt: v.connectedAt, telemetry: v.telemetry ?? null }));
+  [...fleet.entries()].map(([droneId, v]) => ({ droneId, online: true, info: v.info, connectedAt: v.connectedAt, telemetry: v.telemetry ?? null }));
 
 export const isOnline = (droneId: string) => fleet.has(droneId);
+export const droneInfo = (droneId: string) => fleet.get(droneId)?.info;
 
 export const sendToBridge = (droneId: string, event: string, payload: unknown) => {
   const entry = fleet.get(droneId);
@@ -58,7 +85,7 @@ export const sendToBridge = (droneId: string, event: string, payload: unknown) =
   return true;
 };
 
-const keyMatches = (given: unknown) => {
+export const bridgeKeyMatches = (given: unknown) => {
   if (!env.droneBridgeKey || typeof given !== 'string') return false;
   const a = Buffer.from(given);
   const b = Buffer.from(env.droneBridgeKey);
@@ -66,31 +93,38 @@ const keyMatches = (given: unknown) => {
 };
 
 const clampRc = (v: unknown) => Math.max(-100, Math.min(100, Math.round(Number(v) || 0)));
+// A reading the drone doesn't report stays missing, so the console shows "—" rather than 0.
+const reading = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? Math.round(v) : undefined);
 
 export const registerDrones = (io: Server) => {
+  ioRef = io;
   nsp = io.of('/drones');
 
   nsp.use((socket, next) => {
     const { key, droneId } = socket.handshake.auth ?? {};
-    if (!keyMatches(key)) return next(new Error('bridge auth failed'));
+    if (!bridgeKeyMatches(key)) return next(new Error('bridge auth failed'));
     if (typeof droneId !== 'string' || !DRONE_ID.test(droneId)) return next(new Error('bad drone id'));
     if (fleet.has(droneId)) return next(new Error('drone id already connected'));
     (socket.data as any).droneId = droneId;
+    (socket.data as any).info = parseInfo(socket.handshake.auth?.info);
+    const active = socket.handshake.auth?.activeMedia;
+    (socket.data as any).activeMedia = Array.isArray(active) ? active.filter((id: unknown) => typeof id === 'string' && /^[a-f0-9]{24}$/i.test(id)).slice(0, 20) : [];
     next();
   });
 
   nsp.on('connection', (socket: Socket) => {
     const droneId: string = (socket.data as any).droneId;
+    const info: DroneInfo = (socket.data as any).info;
 
     socket.on('telemetry', (t: Partial<Telemetry>) => {
       const entry = fleet.get(droneId);
       if (!entry) return;
       entry.telemetry = {
-        battery: Number(t.battery) || 0,
-        heightCm: Number(t.heightCm) || 0,
-        tempC: Number(t.tempC) || 0,
-        flightTimeS: Number(t.flightTimeS) || 0,
-        speedCms: Number(t.speedCms) || 0,
+        battery: reading(t.battery),
+        heightCm: reading(t.heightCm),
+        tempC: reading(t.tempC),
+        flightTimeS: reading(t.flightTimeS),
+        speedCms: reading(t.speedCms),
         airborne: !!t.airborne,
         mode: (['idle', 'mission', 'manual', 'landing'] as const).includes(t.mode as any) ? t.mode : 'idle',
         linkOk: !!t.linkOk,
@@ -124,6 +158,25 @@ export const registerDrones = (io: Server) => {
       }
     });
 
+    // Photo/video progress from the bridge. "ready" only ever comes from a finished upload.
+    socket.on('media:status', async (p: { mediaId?: string; status?: string; reason?: string }) => {
+      if (typeof p?.mediaId !== 'string' || !/^[a-f0-9]{24}$/i.test(p.mediaId) || !['uploading', 'failed'].includes(p.status as string)) return;
+      const update = p.status === 'failed' ? { status: 'failed', error: String(p.reason ?? 'failed').slice(0, 200) } : { status: 'uploading' };
+      const m = await DroneMedia.findOneAndUpdate({ _id: p.mediaId, droneId, status: { $in: ['recording', 'uploading'] } }, { $set: update }, { new: true }).catch(() => null);
+      if (m) emitMedia(m);
+    });
+
+    // Captures this bridge no longer knows about (it restarted) will never upload.
+    const closeLostMedia = async () => {
+      const lost = await DroneMedia.find({ droneId, status: { $in: ['recording', 'uploading'] }, _id: { $nin: (socket.data as any).activeMedia } });
+      for (const m of lost) {
+        m.status = 'failed';
+        m.error = 'The bridge restarted before the file was saved';
+        await m.save();
+        emitMedia(m);
+      }
+    };
+
     const closeOpenMissions = async (reason: string) => {
       const open = await DroneMission.find({ droneId, status: { $in: ['queued', 'launched', 'in_flight'] } });
       for (const m of open) {
@@ -137,12 +190,12 @@ export const registerDrones = (io: Server) => {
     // A bridge always lands and drops its mission when it loses us, so anything still
     // open for this drone (API restart, network blip) is stale. Clean it up before the
     // drone shows as online, so a fresh dispatch can't be caught by the cleanup.
-    closeOpenMissions('Bridge reconnected; previous flight was ended by the bridge')
+    Promise.all([closeOpenMissions('Bridge reconnected; previous flight was ended by the bridge'), closeLostMedia()])
       .catch(() => {})
       .finally(() => {
         if (!socket.connected) return;
-        fleet.set(droneId, { socketId: socket.id, connectedAt: Date.now() });
-        logger.info(`drone bridge online ${droneId}`);
+        fleet.set(droneId, { socketId: socket.id, info, connectedAt: Date.now() });
+        logger.info(`drone bridge online ${droneId} (${info.model})`);
         io.to('dispatchers').emit('drone:fleet', fleetSnapshot());
       });
 

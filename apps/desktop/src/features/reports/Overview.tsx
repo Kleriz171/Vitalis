@@ -32,7 +32,7 @@ const fmtEta = (s: number) => {
 
 const fmtShortDate = (iso: string) => {
   const d = new Date(iso);
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return d.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' });
 };
 
 export const ReportsOverview = () => {
@@ -69,7 +69,7 @@ export const ReportsOverview = () => {
 
         <div className="grid xl:grid-cols-3 gap-5 stagger" style={{ ['--base' as string]: '120ms' }}>
           <ChartPanel icon={ChartLineUp} title="Calls, last 14 days" note="Received and closed per day" className="xl:col-span-2">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 1, height: 1 }}>
               <AreaChart data={series} margin={{ top: 10, right: 16, left: -12, bottom: 0 }}>
                 <defs>
                   <linearGradient id="fillCalls" x1="0" y1="0" x2="0" y2="1">
@@ -91,7 +91,7 @@ export const ReportsOverview = () => {
             {kpis?.byType?.length ? (
               <div className="h-full flex flex-col">
                 <div className="relative flex-1 min-h-0">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 1, height: 1 }}>
                     <PieChart>
                       <Pie data={kpis.byType.map((t) => ({ name: t._id.replace('_', ' '), value: t.count }))} dataKey="value" nameKey="name"
                         cx="50%" cy="50%" innerRadius="62%" outerRadius="88%" paddingAngle={3} stroke="none" animationDuration={900}>
@@ -139,7 +139,7 @@ export const ReportsOverview = () => {
 
           <ChartPanel icon={UsersThree} title="Most calls, last 90 days" note="People who sent the most SOS calls" className="xl:col-span-2">
             {top.length ? (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 1, height: 1 }}>
                 <BarChart data={top} layout="vertical" margin={{ top: 4, right: 24, left: 8, bottom: 0 }}>
                   <CartesianGrid horizontal={false} stroke="hsl(40 14% 89%)" />
                   <XAxis type="number" allowDecimals={false} fontSize={11} tickLine={false} axisLine={false} />

@@ -20,6 +20,10 @@ const DEMO_OPERATOR_ACCOUNTS = import.meta.env.DEV
     ]
   : [];
 
+// Which API this build talks to, shown under the form: a console pointed at the wrong server
+// otherwise just says "wrong password".
+const SERVER = new URL(api.defaults.baseURL ?? '/', window.location.href).host;
+
 export const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -46,7 +50,8 @@ export const Login = () => {
       pushToast({ tone: 'success', title: 'Welcome back', body: data.user.email });
       nav('/command');
     } catch (e: any) {
-      const msg = e.response?.data?.error ?? 'Sign in failed';
+      const msg = e.response?.data?.error
+        ?? (e.response ? 'Sign in failed' : `Can't reach the server at ${SERVER}. Check that it's running and that this computer is online.`);
       setErr(msg);
       pushToast({ tone: 'error', title: 'Error', body: msg });
     } finally {
@@ -85,6 +90,7 @@ export const Login = () => {
             <Button type="submit" size="lg" loading={loading} className="w-full h-11 rounded-xl text-[15px]">
               {loading ? 'Signing in…' : 'Sign in'}
             </Button>
+            <p className="text-center text-[12px] text-muted-foreground">Server: {SERVER}</p>
           </form>
 
           {DEMO_OPERATOR_ACCOUNTS.length > 0 && (

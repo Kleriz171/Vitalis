@@ -15,3 +15,4 @@ data/osrm/
 .claude/settings.local.json
 .shots/
 .render/
+.media/
