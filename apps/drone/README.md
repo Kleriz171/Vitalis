@@ -104,15 +104,24 @@ drone with a camera feed, Tello or toy:
    frames encoded by ffmpeg into an H.264 MP4 for a video (up to `MAX_RECORD_S`, 10 minutes).
 3. The bridge uploads the file to the API with its bridge key, retrying for about a minute, then
    deletes it from the laptop. It is footage of patients and bystanders.
-4. The API streams it into Firebase Storage, writes its SHA-256 to the call log, and the
-   console lists it under **Photos and videos**.
+4. The API stores it (MongoDB by default, Firebase Storage if set up), writes its SHA-256 to
+   the call log, and the console lists it under **Photos and videos**.
 
 Opening one gets a link that works for 10 minutes, and each opening goes into the call log.
-After **30 days** both the record (a MongoDB TTL index) and the file (a lifecycle rule on the
-bucket, which the API sets at start-up) are deleted. Recording needs `ffmpeg` on the bridge
-laptop; photos don't.
+After **30 days** the record (a MongoDB TTL index) and the file are deleted. Recording needs
+`ffmpeg` on the bridge laptop; photos don't.
 
-### Firebase Storage setup (once, by whoever owns the Firebase project)
+### Where the files go
+
+**MongoDB (default, free).** With no `MEDIA_BUCKET`, files go into the API's own database
+(GridFS, `droneMedia.*` collections), the same way doctor certificates do, and an hourly sweep
+deletes them after 30 days. The free Atlas tier holds 512 MB for everything, so footage is
+capped at `MEDIA_QUOTA_MB` (300 MB); when full, the console says so until older footage expires.
+A photo is about 50–150 KB and a minute of 720p video roughly 5–15 MB, so 300 MB holds
+thousands of photos or about half an hour of video. Check usage in the Atlas dashboard.
+
+**Firebase Storage (no cap, costs money).** Set `MEDIA_BUCKET` and the API uses it instead.
+It needs the Blaze (pay-as-you-go) plan, so a billing account with a card:
 
 1. Firebase console → project `vitalis-al-7c3m` → **Upgrade to Blaze**. Cloud Storage for Firebase
    needs the pay-as-you-go plan; a few GB of footage costs cents a month. Add a budget alert.
@@ -127,10 +136,6 @@ laptop; photos don't.
 6. Start the API and look for `drone media in gs://…, deleted after 30 days`. An error there means
    the key can't manage the bucket; the lifecycle rule can also be set by hand under the bucket's
    Lifecycle tab in Google Cloud console (delete, age 30 days, prefix `drone-media/`).
-
-Without `MEDIA_BUCKET`, development and CI keep files on disk under `MEDIA_DIR` (`.media/`), with
-the same 30 days. Production without `MEDIA_BUCKET` turns photos and videos off rather than
-keeping footage on a server's disk.
 
 ## Checks
 

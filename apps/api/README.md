@@ -36,7 +36,7 @@ a `.controller.ts` and `.service.ts` (`auth`, `emergency`) so the routes file st
 | `emergency` (+ `redispatch.ts`) | mobile, console | SOS, matching responders, two-runner cardiac dispatch, re-dispatch when nobody answers |
 | `watch` | watch apps, mobile | Pairing and the watch's limited SOS / Medical ID key |
 | `biopassport`, `training`, `doctor-applications` | mobile, console | Medical ID, courses and certificates, doctors applying to respond |
-| `aed`, `drone`, `track`, `checkin`, `sms`, `push` | various | Defibrillators, drones and their photos/videos (`drone/media.*`: Firebase Storage, kept 30 days), the public tracking link, safety check-ins, Twilio SMS fallback, push tokens |
+| `aed`, `drone`, `track`, `checkin`, `sms`, `push` | various | Defibrillators, drones and their photos/videos (`drone/media.*`: MongoDB GridFS or Firebase Storage, kept 30 days), the public tracking link, safety check-ins, Twilio SMS fallback, push tokens |
 | `blood`, `supply`, `medicine`, `doctors`, `community`, `health`, `ai` | mobile | The citizen app's other tabs and the assistant |
 | `admin`, `analytics`, `blockchain` | console | Operators and users, reports, the tamper-proof call log |
 

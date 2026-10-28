@@ -1,6 +1,6 @@
 /**
  * End-to-end drone photo/video check: API + bridge in simulator mode (its camera is a test card).
- *   API:    DRONE_BRIDGE_KEY=k MEDIA_DIR=/tmp/vitalis-media npm run dev -w @vitalis/api   (no MEDIA_BUCKET: disk store)
+ *   API:    DRONE_BRIDGE_KEY=k npm run dev -w @vitalis/api   (no MEDIA_BUCKET: files go to MongoDB)
  *   Bridge: DRONE_BRIDGE_KEY=k API_URL=http://localhost:4000 npm run sim -w @vitalis/drone
  *   Check:  API_URL=http://localhost:4000 npx tsx apps/api/scripts/drone-media-check.ts
  * The video part needs ffmpeg on PATH (the bridge encodes with it).
@@ -101,7 +101,11 @@ async function main() {
     assert.equal(clip.type, 'video/mp4');
     assert.equal(clip.bytes.subarray(4, 8).toString(), 'ftyp');
     assert.equal(createHash('sha256').update(clip.bytes).digest('hex'), video.sha256);
-    ok(`video recorded, encoded and stored (${Math.round(clip.bytes.length / 1024)} KB); one recording at a time`);
+    // Seeking in a video asks for byte ranges.
+    const part = await fetch(new URL(clip.url, BASE), { headers: { Range: 'bytes=4-7' } });
+    assert.equal(part.status, 206);
+    assert.equal(Buffer.from(await part.arrayBuffer()).toString(), 'ftyp');
+    ok(`video recorded, encoded and stored (${Math.round(clip.bytes.length / 1024)} KB), seekable; one recording at a time`);
   } else {
     console.log('  - video skipped: no ffmpeg on PATH');
   }

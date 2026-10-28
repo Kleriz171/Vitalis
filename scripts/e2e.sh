@@ -46,8 +46,8 @@ run track      "" "" apps/api/scripts/track-check.ts
 run account    "" "" apps/api/scripts/account-check.ts
 run watch      "" "" apps/api/scripts/watch-check.ts
 run drones     "DRONE_BRIDGE_KEY=ci-bridge-key" "" apps/api/scripts/drone-check.ts "SIM=1 TELLO_HOST=127.0.0.1"
-# Photos and videos from the simulator's camera, stored on disk (no MEDIA_BUCKET). Video needs ffmpeg.
-run drone-media "DRONE_BRIDGE_KEY=ci-bridge-key MEDIA_DIR=$LOG_DIR/media" "MONGO_URI=$MONGO_URI" apps/api/scripts/drone-media-check.ts "SIM=1 TELLO_HOST=127.0.0.1"
+# Photos and videos from the simulator's camera, stored in MongoDB (no MEDIA_BUCKET). Video needs ffmpeg.
+run drone-media "DRONE_BRIDGE_KEY=ci-bridge-key" "MONGO_URI=$MONGO_URI" apps/api/scripts/drone-media-check.ts "SIM=1 TELLO_HOST=127.0.0.1"
 # Toy drones need the turbodrone server's Python environment (apps/drone/README.md).
 if [ -x apps/drone/turbodrone/.venv/bin/python ]; then
   run toy-drones "DRONE_BRIDGE_KEY=ci-bridge-key" "TURBODRONE_TOKEN=ci-toy-token TURBODRONE_PORT=8765" apps/api/scripts/toy-drone-check.ts \

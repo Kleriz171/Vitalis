@@ -14,11 +14,11 @@ export const env = {
   geminiApiKey: process.env.GEMINI_API_KEY ?? '',
   // Shared secret the drone bridge presents on connect. Empty = drone bridges disabled.
   droneBridgeKey: process.env.DRONE_BRIDGE_KEY ?? '',
-  // Drone photos and videos go to this Firebase Storage bucket (e.g. vitalis-al-7c3m.firebasestorage.app),
-  // signed in with the service account in GOOGLE_APPLICATION_CREDENTIALS. Empty = files on local disk
-  // under MEDIA_DIR, for development only: production then turns photos and videos off.
+  // Drone photos and videos live in MongoDB (GridFS) unless MEDIA_BUCKET names a Firebase Storage
+  // bucket (needs the Blaze plan; signs in with GOOGLE_APPLICATION_CREDENTIALS). In MongoDB they share
+  // the free Atlas tier's 512 MB, so they're capped at MEDIA_QUOTA_MB.
   mediaBucket: process.env.MEDIA_BUCKET ?? '',
-  mediaDir: process.env.MEDIA_DIR ?? '.media',
+  mediaQuotaMb: Number(process.env.MEDIA_QUOTA_MB ?? 300),
   // OSRM server for road ETAs. Patient locations must not go to a third party, so the public
   // demo is used only outside production; for launch, self-host OSRM with the Albania extract
   // (free) and set OSRM_URL. Empty = straight-line estimate.

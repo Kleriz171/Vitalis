@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { createHash } from 'node:crypto';
-import { unlink } from 'node:fs/promises';
 import { Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { z } from 'zod';
@@ -12,11 +11,11 @@ import { validate } from '../../middleware/validate';
 import { logger } from '../../config/logger';
 import { DRONE_ID, bridgeKeyMatches, emitMedia, fleetSnapshot, mediaView, sendToBridge } from '../../realtime/drones';
 import { blockchainService } from '../blockchain/blockchain.service';
-import { LINK_TTL_MS, diskFile, diskLinkValid, isDiskStore, mediaStore } from './media.storage';
+import { LINK_TTL_MS, QUOTA_BYTES, linkValid, mediaStore } from './media.storage';
 
 /**
  * Drone photos and videos. An operator asks for one, the bridge captures it from the
- * drone's camera and uploads it here, and we store it (Firebase Storage) for 30 days.
+ * drone's camera and uploads it here, and we store it (MongoDB or Firebase Storage) for 30 days.
  * Every saved file and every time someone opens one goes into the call log.
  */
 const r = Router();
@@ -25,6 +24,7 @@ const OBJECT_ID = /^[a-f0-9]{24}$/i;
 const TYPE = { photo: 'image/jpeg', video: 'video/mp4' } as const;
 const EXT = { photo: 'jpg', video: 'mp4' } as const;
 const MAX_BYTES = { photo: 10 * 1024 * 1024, video: 500 * 1024 * 1024 } as const;
+const FULL = `Photo and video storage is full (${Math.round(QUOTA_BYTES / 1024 / 1024)} MB). Older footage is deleted after 30 days.`;
 
 // ── Bridge side: authenticated with the bridge key, never with a user token ──
 
@@ -32,7 +32,6 @@ r.put('/:id/file', async (req, res, next) => {
   const droneId = req.get('x-drone-id') ?? '';
   if (!bridgeKeyMatches(req.get('x-bridge-key')) || !DRONE_ID.test(droneId)) return res.status(401).json({ error: 'Bridge auth failed' });
   if (!OBJECT_ID.test(req.params.id)) return res.status(400).json({ error: 'Invalid id' });
-  if (!mediaStore) return res.status(503).json({ error: 'Storage is not set up' });
   let key: string | undefined;
   try {
     // Only files the API asked this drone for, and only once.
@@ -41,6 +40,7 @@ r.put('/:id/file', async (req, res, next) => {
     const kind = m.kind as 'photo' | 'video';
     if (req.get('content-type') !== TYPE[kind]) return res.status(415).json({ error: `Expected ${TYPE[kind]}` });
     if (Number(req.get('content-length')) > MAX_BYTES[kind]) return res.status(413).json({ error: 'File too large' });
+    if ((await mediaStore.used()) + Number(req.get('content-length') || 0) > QUOTA_BYTES) return res.status(507).json({ error: FULL });
 
     const hash = createHash('sha256');
     let size = 0;
@@ -53,6 +53,7 @@ r.put('/:id/file', async (req, res, next) => {
       },
     });
     key = `${droneId}/${m._id}.${EXT[kind]}`;
+    await mediaStore.remove(key); // a half-finished earlier attempt
     await pipeline(req, meter, await mediaStore.writer(key, TYPE[kind]));
     if (size === 0) throw Object.assign(new Error('Empty file'), { status: 400 });
 
@@ -72,25 +73,25 @@ r.put('/:id/file', async (req, res, next) => {
     res.status(201).json({ ok: true, sha256 });
   } catch (e: any) {
     // Leave it "uploading": the bridge retries, then reports a failure itself.
-    if (key && isDiskStore) await unlink(diskFile(key)).catch(() => {});
+    if (key) await mediaStore.remove(key).catch(() => {});
     logger.warn(`drone media upload ${req.params.id} failed: ${e?.message}`);
     if (e?.status) return res.status(e.status).json({ error: e.message });
     next(e);
   }
 });
 
-// Development only (disk store): the console opens files through short signed links.
+// MongoDB store: the console opens files through short signed links to here.
 r.get('/:id/file', async (req, res, next) => {
   try {
-    if (!OBJECT_ID.test(req.params.id) || !diskLinkValid(req.params.id, req.query.exp, req.query.sig)) return res.status(403).json({ error: 'Link expired' });
+    if (!mediaStore.serve) return res.status(404).json({ error: 'Not found' });
+    if (!OBJECT_ID.test(req.params.id) || !linkValid(req.params.id, req.query.exp, req.query.sig)) return res.status(403).json({ error: 'Link expired' });
     const m = await DroneMedia.findById(req.params.id).lean();
     if (!m || m.status !== 'ready' || !m.storageKey) return res.status(404).json({ error: 'Not found' });
     // helmet sends Cross-Origin-Resource-Policy: same-origin, which would block the console's <img>/<video>.
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     res.setHeader('Cache-Control', 'private, no-store');
-    res.type(m.contentType ?? 'application/octet-stream');
-    res.sendFile(diskFile(m.storageKey)); // handles Range, so videos can seek
-  } catch (e) { next(e); }
+    await mediaStore.serve(m.storageKey, m.contentType ?? 'application/octet-stream', req, res);
+  } catch (e) { if (!res.headersSent) next(e); }
 });
 
 // ── Operator side ──
@@ -113,7 +114,7 @@ const captureSchema = z.object({
 r.post('/', validate(captureSchema), async (req: AuthReq, res, next) => {
   try {
     const { droneId, kind, emergencyId } = req.body as z.infer<typeof captureSchema>;
-    if (!mediaStore) return res.status(503).json({ error: 'Photo and video storage isn\'t set up on the server yet.' });
+    if ((await mediaStore.used()) > QUOTA_BYTES) return res.status(507).json({ error: FULL });
     const drone = fleetSnapshot().find(d => d.droneId === droneId);
     if (!drone) return res.status(409).json({ error: 'Drone is offline' });
     if (!drone.telemetry?.videoUrl || !drone.telemetry.linkOk) return res.status(409).json({ error: 'This drone has no camera picture right now' });
@@ -143,7 +144,6 @@ r.post('/:id/stop', async (req, res, next) => {
 r.get('/:id/link', async (req: AuthReq, res, next) => {
   try {
     if (!OBJECT_ID.test(req.params.id)) return res.status(400).json({ error: 'Invalid id' });
-    if (!mediaStore) return res.status(503).json({ error: 'Storage is not set up' });
     const m = await DroneMedia.findById(req.params.id).lean();
     if (!m || m.status !== 'ready' || !m.storageKey) return res.status(404).json({ error: 'Not found' });
     // The bucket's 30-day rule can run a little before the database's; or the file was removed by hand.

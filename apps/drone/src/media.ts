@@ -112,8 +112,8 @@ async function upload(apiUrl: string, key: string, droneId: string, mediaId: str
       });
       if (res.ok) return;
       error = `${res.status} ${(await res.text()).slice(0, 200)}`;
-      // 4xx other than rate limits won't get better by retrying.
-      if (res.status < 500 && res.status !== 429) throw Object.assign(new Error(`upload refused: ${error}`), { final: true });
+      // 4xx other than rate limits, or storage full (507), won't get better by retrying.
+      if ((res.status < 500 && res.status !== 429) || res.status === 507) throw Object.assign(new Error(`upload refused: ${error}`), { final: true });
     } catch (e) {
       if ((e as { final?: boolean }).final) throw e;
       error = (e as Error).message;

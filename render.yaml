@@ -29,8 +29,9 @@ services:
       # Where certificate QR codes and the emergency contact's tracking link open.
       - key: PUBLIC_WEB_URL
         value: https://vitalis-web.onrender.com
-      # Drone photos and videos (kept 30 days): the Firebase Storage bucket, and the service-account
-      # key uploaded as a Render Secret File named firebase-storage.json. Unset = photos/videos off.
+      # Drone photos and videos (kept 30 days) go to MongoDB, capped at MEDIA_QUOTA_MB (default 300).
+      # For Firebase Storage instead (Blaze plan): set MEDIA_BUCKET and upload the service-account
+      # key as a Render Secret File named firebase-storage.json.
       - key: MEDIA_BUCKET
         sync: false
       - key: GOOGLE_APPLICATION_CREDENTIALS

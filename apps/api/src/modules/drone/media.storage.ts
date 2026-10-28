@@ -1,27 +1,36 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { createWriteStream } from 'node:fs';
-import { access, mkdir, readdir, stat, unlink } from 'node:fs/promises';
-import path from 'node:path';
 import type { Writable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
+import type { Request, Response } from 'express';
+import mongoose from 'mongoose';
+import { GridFSBucket } from 'mongodb';
 import { Storage } from '@google-cloud/storage';
 import { env } from '../../config/env';
 import { logger } from '../../config/logger';
 import { MEDIA_RETENTION_DAYS } from '../../models/DroneMedia';
 
 /**
- * Where drone photos and videos live. Firebase Storage in production; plain files on disk
- * when MEDIA_BUCKET is unset, so development and CI work without a cloud account.
+ * Where drone photos and videos live:
+ *   - MongoDB (GridFS), the default: free, in the database we already run, but it shares
+ *     the free Atlas tier's 512 MB, so footage is capped at MEDIA_QUOTA_MB.
+ *   - Firebase Storage when MEDIA_BUCKET is set: no cap, needs the Blaze plan.
  * Files are private either way: the console gets a link that works for LINK_TTL_MS.
  */
 export interface MediaStore {
   where: string;
   writer(key: string, contentType: string): Promise<Writable>;
+  remove(key: string): Promise<void>;
   link(key: string, id: string): Promise<string>;
   exists(key: string): Promise<boolean>;
+  /** Bytes in use, for the cap. */
+  used(): Promise<number>;
+  /** Stores without their own links stream files through the API. */
+  serve?(key: string, contentType: string, req: Request, res: Response): Promise<void>;
 }
 
 const PREFIX = 'drone-media/';
 export const LINK_TTL_MS = 10 * 60_000;
+const DAY_MS = 24 * 3600_000;
 
 const firebaseStore = (bucketName: string): MediaStore => {
   const bucket = new Storage().bucket(bucketName);
@@ -40,57 +49,83 @@ const firebaseStore = (bucketName: string): MediaStore => {
     where: `gs://${bucketName}`,
     writer: async (key, contentType) =>
       bucket.file(PREFIX + key).createWriteStream({ contentType, resumable: false, metadata: { cacheControl: 'private, no-store' } }),
+    remove: async key => { await bucket.file(PREFIX + key).delete({ ignoreNotFound: true }); },
     link: async key => {
       const [url] = await bucket.file(PREFIX + key).getSignedUrl({ version: 'v4', action: 'read', expires: Date.now() + LINK_TTL_MS });
       return url;
     },
     exists: async key => (await bucket.file(PREFIX + key).exists())[0],
+    used: async () => 0, // pay as you go: no cap
   };
 };
 
 const sign = (id: string, exp: number) => createHmac('sha256', env.jwtAccess).update(`drone-media:${id}:${exp}`).digest('base64url');
 
-const diskStore = (dir: string): MediaStore => {
-  const root = path.resolve(dir);
-  // Same 30 days on disk: sweep hourly.
+const mongoStore = (): MediaStore => {
+  // Lazy: the database connects after this module loads.
+  const bucket = () => {
+    if (!mongoose.connection.db) throw new Error('Database not ready');
+    return new GridFSBucket(mongoose.connection.db, { bucketName: 'droneMedia' });
+  };
+  const files = (filter: object) => bucket().find(filter).toArray();
+
+  // The 30 days on the files: the record's TTL index doesn't reach GridFS, so sweep hourly.
   const sweep = async () => {
-    const cutoff = Date.now() - MEDIA_RETENTION_DAYS * 24 * 3600_000;
-    const files = await readdir(root, { recursive: true, withFileTypes: true }).catch(() => []);
-    for (const f of files) {
-      if (!f.isFile()) continue;
-      const p = path.join(f.parentPath, f.name);
-      if ((await stat(p)).mtimeMs < cutoff) await unlink(p).catch(() => {});
+    try {
+      for (const f of await files({ uploadDate: { $lt: new Date(Date.now() - MEDIA_RETENTION_DAYS * DAY_MS) } })) await bucket().delete(f._id);
+    } catch (e: any) {
+      logger.warn(`drone media sweep failed: ${e?.message}`);
     }
   };
-  void sweep();
+  setTimeout(() => void sweep(), 60_000).unref();
   setInterval(() => void sweep(), 3600_000).unref();
-  logger.info(`drone media on local disk at ${root} (development only; set MEDIA_BUCKET for Firebase Storage)`);
+
+  const remove = async (key: string) => {
+    for (const f of await files({ filename: key })) await bucket().delete(f._id);
+  };
 
   return {
-    where: root,
-    writer: async key => {
-      await mkdir(path.dirname(path.join(root, key)), { recursive: true });
-      return createWriteStream(path.join(root, key));
-    },
+    where: 'MongoDB (GridFS: droneMedia)',
+    writer: async (key, contentType) => bucket().openUploadStream(key, { metadata: { contentType } }),
+    remove,
     link: async (_key, id) => {
       const exp = Date.now() + LINK_TTL_MS;
       return `/api/drones/media/${id}/file?exp=${exp}&sig=${sign(id, exp)}`;
     },
-    exists: key => access(path.join(root, key)).then(() => true, () => false),
+    exists: async key => (await files({ filename: key })).length > 0,
+    used: async () => {
+      const [row] = await mongoose.connection.db!.collection('droneMedia.files').aggregate<{ total: number }>([{ $group: { _id: null, total: { $sum: '$length' } } }]).toArray();
+      return row?.total ?? 0;
+    },
+    // With Range support, so videos can seek.
+    serve: async (key, contentType, req, res) => {
+      const [file] = await files({ filename: key });
+      if (!file) { res.status(404).json({ error: 'Not found' }); return; }
+      const size = file.length;
+      const m = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range ?? '');
+      let start = 0;
+      let end = size - 1;
+      if (m && (m[1] || m[2])) {
+        start = m[1] ? Number(m[1]) : Math.max(0, size - Number(m[2]));
+        end = m[1] && m[2] ? Math.min(Number(m[2]), size - 1) : size - 1;
+        if (start > end || start >= size) { res.status(416).setHeader('Content-Range', `bytes */${size}`).end(); return; }
+        res.status(206).setHeader('Content-Range', `bytes ${start}-${end}/${size}`);
+      }
+      res.setHeader('Accept-Ranges', 'bytes');
+      res.setHeader('Content-Length', String(end - start + 1));
+      res.type(contentType);
+      await pipeline(bucket().openDownloadStream(file._id, { start, end: end + 1 }), res);
+    },
   };
 };
 
-export const mediaStore: MediaStore | null = env.mediaBucket
-  ? firebaseStore(env.mediaBucket)
-  : env.nodeEnv === 'production' ? null : diskStore(env.mediaDir);
+export const mediaStore: MediaStore = env.mediaBucket ? firebaseStore(env.mediaBucket) : mongoStore();
+logger.info(`drone photos and videos: ${mediaStore.where}${env.mediaBucket ? '' : `, up to ${env.mediaQuotaMb} MB`}`);
 
-if (!mediaStore) logger.warn('Drone photos and videos are off: set MEDIA_BUCKET to the Firebase Storage bucket.');
+export const QUOTA_BYTES = env.mediaBucket ? Infinity : env.mediaQuotaMb * 1024 * 1024;
 
-export const isDiskStore = !env.mediaBucket && !!mediaStore;
-export const diskFile = (key: string) => path.join(path.resolve(env.mediaDir), key);
-
-export const diskLinkValid = (id: string, exp: unknown, sig: unknown) => {
-  if (!isDiskStore || typeof exp !== 'string' || typeof sig !== 'string' || Number(exp) < Date.now()) return false;
+export const linkValid = (id: string, exp: unknown, sig: unknown) => {
+  if (typeof exp !== 'string' || typeof sig !== 'string' || Number(exp) < Date.now()) return false;
   const want = Buffer.from(sign(id, Number(exp)));
   const got = Buffer.from(sig);
   return want.length === got.length && timingSafeEqual(want, got);
