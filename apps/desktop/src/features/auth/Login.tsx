@@ -1,3 +1,4 @@
+import { Eye, EyeSlash } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -28,6 +29,7 @@ const DEMO_OPERATOR_ACCOUNTS = import.meta.env.DEV && /^(localhost|127\.0\.0\.1)
 export const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const dispatch = useDispatch();
@@ -85,7 +87,18 @@ export const Login = () => {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} minLength={8} required className="h-11 bg-white" />
+              <div className="relative">
+                <Input id="password" type={showPassword ? 'text' : 'password'} autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} minLength={8} required className="h-11 bg-white pr-11" />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(v => !v)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-pressed={showPassword}
+                  className="absolute right-1 top-1 h-9 w-9 grid place-items-center rounded-lg text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  {showPassword ? <EyeSlash size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
             {err && <Alert variant="destructive"><AlertDescription>{err}</AlertDescription></Alert>}
             <Button type="submit" size="lg" loading={loading} className="w-full h-11 rounded-xl text-[15px]">
