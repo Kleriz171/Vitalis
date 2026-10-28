@@ -153,7 +153,11 @@ async function runMission(id: string, steps: string[]) {
 }
 
 socket.on('connect', () => log(`connected to ${API_URL} as ${DRONE_ID}`));
-socket.on('connect_error', e => log('api connection failed:', e.message));
+socket.on('connect_error', e => {
+  log('api connection failed:', e.message);
+  // A refusal from the API (wrong key, API restarting) stops socket.io's own retries: keep trying.
+  if (!socket.active) setTimeout(() => socket.connect(), 5_000);
+});
 socket.on('disconnect', () => {
   log('lost API link');
   if (airborne) void land('Lost connection to Vitalis');
