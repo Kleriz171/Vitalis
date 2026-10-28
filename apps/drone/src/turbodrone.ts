@@ -50,9 +50,12 @@ export class Turbodrone implements Drone {
   private poll?: NodeJS.Timeout;
   private flightS = 0;
   private flyingSince = 0;
+  camera?: Drone['camera'];
 
   constructor(private type: string) {
     this.info = { driver: 'turbodrone', model: type, routes: false };
+    // The CooingDV apps' camera button ("06 01" / "06 02"), for dual-camera models.
+    if (type === 'cooingdv') this.camera = index => this.send({ type: 'camera', index });
   }
 
   async open() {

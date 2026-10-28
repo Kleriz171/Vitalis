@@ -26,6 +26,8 @@ export interface Drone {
    * itself down launches it again. The bridge never lands these on its own.
    */
   oneKey?: boolean;
+  /** Picks camera 1 (front) or 2 (the second one, usually looking down). Only on drones that have the command. */
+  camera?: (index: 1 | 2) => void;
   /** The bridge has heard from the drone recently. */
   linkOk(): boolean;
   /** Streams the camera as MJPEG. Undefined while there is no camera feed. */

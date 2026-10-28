@@ -25,6 +25,8 @@ interface Telemetry {
   mode?: 'idle' | 'mission' | 'manual' | 'landing';
   linkOk?: boolean;
   videoUrl?: string;
+  /** Only from drones that can switch cameras: 1 front, 2 the second (looks down on most). */
+  camera?: 1 | 2;
   at?: number;
 }
 interface DroneInfo { driver: 'tello' | 'turbodrone'; model: string; routes: boolean }
@@ -42,7 +44,8 @@ interface Mission {
   createdAt: string;
 }
 interface ActiveEmergency { _id: string; type: string; status: string; createdAt: string }
-type Command = 'takeoff' | 'land' | 'emergency' | 'abort';
+type Command = 'takeoff' | 'land' | 'emergency' | 'abort' | 'camera_front' | 'camera_down';
+const CAMERAS = [['camera_front', 1, 'Front'], ['camera_down', 2, 'Down']] as const;
 
 const MISSION_LABEL: Record<Mission['status'], string> = {
   queued: 'Queued', launched: 'Taking off', in_flight: 'In flight', delivered: 'Completed', aborted: 'Aborted',
@@ -281,6 +284,22 @@ const FlightDeck = ({ drone, routes, emergencies, callId, mission, recording }: 
           )}
           {(t.airborne || !!t.flightTimeS) && (
             <Hud className="absolute bottom-3 left-3">Flight time <span className="tabular-nums">{clock(t.flightTimeS ?? 0)}</span></Hud>
+          )}
+          {t.camera && live && t.linkOk && (
+            <div role="group" aria-label="Camera" className="absolute bottom-3 right-3 flex items-center gap-0.5 rounded-md bg-[hsl(176_60%_6%/0.72)] p-0.5 text-xs font-semibold text-white">
+              <VideoCamera size={15} className="mx-1.5" aria-hidden />
+              {CAMERAS.map(([action, index, label]) => (
+                <button
+                  key={action}
+                  type="button"
+                  aria-pressed={t.camera === index}
+                  onClick={() => void command(action)}
+                  className={cn('rounded px-2.5 py-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white', t.camera === index ? 'bg-white text-[hsl(176_60%_10%)]' : 'hover:bg-white/15')}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           )}
         </div>
 

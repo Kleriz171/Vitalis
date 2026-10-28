@@ -92,6 +92,7 @@ Toy drones add three more, inside turbodrone:
 - **No routes.** They have no GPS or position sensor, so there is no "fly 2 m forward". The API refuses to dispatch them, and the console offers manual flight only.
 - **No readings.** No battery, height or speed. The bridge judges the link from video frames and the drone's replies, and counts flight time itself.
 - **Take-off and landing take a set time** (`TOY_TAKEOFF_MS` 3 s, `TOY_LAND_MS` 5 s), because the drone never says it's done. Time your model once and set them.
+- **No camera tilt.** No command is known for a motorised tilt on these drones: turbodrone's authors swept every spare byte of the M10's control packet and the camera never moved. What `cooingdv` drones do have is the apps' camera button (`06 01` / `06 02`): on dual-camera models, Front / Down over the console's picture switches to the camera that looks down (untested on a one-camera drone).
 - **One-button drones.** CooingDV "GL" drones use the same button to take off and land. If one sets itself down (flat battery), the console still says it's flying, and Land would launch it again. So the bridge never lands these automatically: if the API link drops or nobody steers for 60 s, it centres the sticks and the drone hovers until the operator lands it or the drone lands itself.
 
 ## Photos and videos
@@ -150,7 +151,7 @@ MONGO_URI=… npm run check:drone-media                              # bridge in
 
 `check:toy-drones` plays a fake CooingDV drone on UDP 7099 and checks the real path:
 console → API → bridge → turbodrone → drone packets (take-off, sticks, hover on release, land,
-emergency stop), the token, and both stick dead-man switches. `scripts/e2e.sh` runs both drone
+emergency stop, camera switch), the token, and both stick dead-man switches. `scripts/e2e.sh` runs both drone
 checks; it skips the toy one when the Python environment isn't set up.
 
 ## Files

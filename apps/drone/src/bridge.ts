@@ -57,6 +57,8 @@ let rcActive = false;
 let lastKeepalive = 0;
 let mission: { id: string; abortReason: string | null } | null = null;
 let videoUrl: string | undefined;
+// ponytail: the last camera asked for, not read back from the drone; a restarted bridge says 1 until the next switch.
+let camera: 1 | 2 = 1;
 
 const log = (...a: unknown[]) => console.log(new Date().toISOString().slice(11, 19), ...a);
 
@@ -185,6 +187,10 @@ socket.on('command', async ({ action }: { action: string }) => {
     } else if (action === 'takeoff') {
       mode = 'manual';
       await takeoff();
+    } else if ((action === 'camera_front' || action === 'camera_down') && drone.camera) {
+      const index = action === 'camera_front' ? 1 : 2;
+      drone.camera(index);
+      camera = index;
     }
   } catch (e) {
     log(`${action} failed:`, (e as Error).message);
@@ -229,6 +235,7 @@ setInterval(() => {
     mode,
     linkOk: drone.linkOk(),
     videoUrl: drone.video ? videoUrl : undefined,
+    camera: drone.camera ? camera : undefined,
   });
 }, 500);
 

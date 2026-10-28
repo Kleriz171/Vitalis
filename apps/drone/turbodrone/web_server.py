@@ -1,6 +1,7 @@
 # Modified for Vitalis (apps/drone): plugins, CORS and /capabilities removed; every
 # endpoint needs TURBODRONE_TOKEN; sticks centre when the controlling socket closes;
-# /status reports how fresh the video and the drone's replies are; exits with its bridge.
+# /status reports how fresh the video and the drone's replies are; exits with its bridge;
+# a "camera" message switches cameras on drones whose adapter can (CooingDV).
 import asyncio
 import hmac
 import threading
@@ -506,6 +507,13 @@ async def ws_endpoint(websocket: WebSocket) -> None:
                         flight_controller.model.stop_flag = True
                     except Exception:
                         pass
+            elif msg_type == "camera":
+                try:
+                    switch = getattr(flight_controller.protocol, "switch_camera", None)
+                    if callable(switch):
+                        switch(int(data.get("index", 0)))
+                except Exception:
+                    pass
             elif msg_type in ("set_camera_tilt", "camera_tilt"):
                 try:
                     _apply_camera_tilt_command(flight_controller.model, data)

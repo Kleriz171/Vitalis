@@ -1,5 +1,6 @@
 """
-Modified for Vitalis (apps/drone): records last_rx_at so /status can tell the link is up.
+Modified for Vitalis (apps/drone): records last_rx_at so /status can tell the link is up;
+switch_camera() sends the apps' camera button.
 
 RC Protocol Adapter for CooingDV drones.
 
@@ -48,6 +49,7 @@ class CooingdvRcProtocolAdapter(BaseProtocolAdapter):
     # Discrete UDP commands
     HEARTBEAT_COMMAND: Final = bytes([0x01, 0x01])
     STOP_COMMAND: Final = bytes([0x08, 0x01])
+    CAMERA_COMMAND: Final = 0x06  # {06 01} front camera, {06 02} the second one
 
     # Variant names
     DEVICE_UNKNOWN: Final = "unknown"
@@ -251,6 +253,15 @@ class CooingdvRcProtocolAdapter(BaseProtocolAdapter):
             else ""
         )
         logger.info("[cooingdv] Auto-detected %s control variant.%s", variant.upper(), resolution_text)
+
+    def switch_camera(self, index: int) -> None:
+        """Select camera 1 (front) or 2 (second, on dual-camera drones), as the apps' camera button does."""
+        if index not in (1, 2):
+            return
+        try:
+            self.sock.sendto(bytes([self.CAMERA_COMMAND, index]), (self.drone_ip, self.control_port))
+        except OSError:
+            pass
 
     def stop(self) -> None:
         """Clean shutdown of the adapter."""

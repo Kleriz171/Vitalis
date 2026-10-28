@@ -50,6 +50,8 @@ export interface Telemetry {
   mode?: 'idle' | 'mission' | 'manual' | 'landing';
   linkOk?: boolean;
   videoUrl?: string;
+  /** Which camera the picture comes from, on drones that can switch (1 front, 2 the second). */
+  camera?: 1 | 2;
   at: number;
 }
 
@@ -129,6 +131,7 @@ export const registerDrones = (io: Server) => {
         mode: (['idle', 'mission', 'manual', 'landing'] as const).includes(t.mode as any) ? t.mode : 'idle',
         linkOk: !!t.linkOk,
         videoUrl: typeof t.videoUrl === 'string' && /^http:\/\/[\w.-]+(:\d+)?\/[\w./-]*$/.test(t.videoUrl) ? t.videoUrl : undefined,
+        camera: t.camera === 1 || t.camera === 2 ? t.camera : undefined,
         at: Date.now(),
       };
       io.to('dispatchers').volatile.emit('drone:telemetry', { droneId, ...entry.telemetry });
@@ -211,7 +214,8 @@ export const registerDrones = (io: Server) => {
 
 /** Operator-side events on the main namespace. Caller has already verified the operator role. */
 export const registerOperatorDroneControls = (socket: Socket, user: { id: string }) => {
-  const ACTIONS = new Set(['takeoff', 'land', 'emergency', 'abort']);
+  const ACTIONS = new Set(['takeoff', 'land', 'emergency', 'abort', 'camera_front', 'camera_down']);
+  const LOGGED = new Set(['takeoff', 'land', 'emergency']); // flight actions go in the call log
 
   socket.on('drone:command', async (msg: { droneId?: string; action?: string }, ack?: (r: { ok: boolean; error?: string }) => void) => {
     const reply = typeof ack === 'function' ? ack : () => {};
@@ -221,7 +225,7 @@ export const registerOperatorDroneControls = (socket: Socket, user: { id: string
       return reply({ ok: false, error: 'Invalid command' });
     }
     if (!sendToBridge(droneId, 'command', { action, by: user.id })) return reply({ ok: false, error: 'Drone is offline' });
-    if (action !== 'abort') {
+    if (LOGGED.has(action)) {
       blockchainService.append({ entity: 'drone', entityId: droneId, action, actor: user.id }).catch(() => {});
     }
     reply({ ok: true });

@@ -44,10 +44,12 @@ const ok = (m: string) => console.log(`  ✓ ${m}`);
 // and keeps the control packets ("03 66 roll pitch throttle yaw flags xor 99").
 type Ctl = { pitch: number; flags: number; at: number };
 const packets: Ctl[] = [];
+const cameraPackets: number[] = []; // "06 01" / "06 02"
 const drone = dgram.createSocket('udp4');
 drone.on('message', (msg, rinfo) => {
   drone.send(Buffer.from([5]), rinfo.port, rinfo.address);
   if (msg.length === 9 && msg[0] === 0x03 && msg[1] === 0x66 && msg[8] === 0x99) packets.push({ pitch: msg[3], flags: msg[6], at: Date.now() });
+  if (msg.length === 2 && msg[0] === 0x06) cameraPackets.push(msg[1]);
 });
 const packet = async (pred: (p: Ctl) => boolean, what: string, since = Date.now(), ms = 5_000) => {
   const end = Date.now() + ms;
@@ -140,6 +142,18 @@ async function main() {
   await packet(p => (p.flags & 0x04) !== 0, 'the motor stop flag', t0);
   await until<any>(ds, 'drone:telemetry', t => t.droneId === DRONE && !t.airborne);
   ok('emergency stop reaches the drone');
+
+  // Camera switch: reaches the drone as the apps' "06 02" / "06 01", and the console sees which is on.
+  assert.equal((await until<any>(ds, 'drone:telemetry', t => t.droneId === DRONE)).camera, 1);
+  assert.equal((await cmd('camera_down')).ok, true);
+  await until<any>(ds, 'drone:telemetry', t => t.droneId === DRONE && t.camera === 2);
+  assert.equal((await cmd('camera_front')).ok, true);
+  await until<any>(ds, 'drone:telemetry', t => t.droneId === DRONE && t.camera === 1);
+  assert.deepEqual(cameraPackets, [2, 1]);
+  assert.equal((await cmd('camera_sideways')).ok, false);
+  const log = (await call('GET', '/blockchain', disp)).data as any[];
+  assert.ok(!log.some(b => b.payload?.entity === 'drone' && String(b.payload.action).startsWith('camera')), 'camera switches stay out of the call log');
+  ok('camera switch reaches the drone and shows in the console');
 
   ds.close();
   drone.close();
