@@ -13,16 +13,17 @@ import { Logo } from '../../components/ui/logo';
 
 // The console is for emergency services operators ('eso'); older sessions may still say dispatcher/admin.
 const OPERATOR_ROLES = ['eso', 'dispatcher', 'admin'];
-// Seeded demo accounts, dev builds only. Vite drops this array from production bundles.
-const DEMO_OPERATOR_ACCOUNTS = import.meta.env.DEV
+// Which API this build talks to, shown under the form: a console pointed at the wrong server
+// otherwise just says "wrong password".
+const SERVER = new URL(api.defaults.baseURL ?? '/', window.location.href).host;
+
+// Seeded demo account, dev builds against a local API only: the live server has its own password.
+// Vite drops this array from production bundles.
+const DEMO_OPERATOR_ACCOUNTS = import.meta.env.DEV && /^(localhost|127\.0\.0\.1)(:|$)/.test(SERVER)
   ? [
       { label: 'Emergency services operator', email: 'aleks@vitalis.com', password: 'AlexNo11$' },
     ]
   : [];
-
-// Which API this build talks to, shown under the form: a console pointed at the wrong server
-// otherwise just says "wrong password".
-const SERVER = new URL(api.defaults.baseURL ?? '/', window.location.href).host;
 
 export const Login = () => {
   const [email, setEmail] = useState('');
