@@ -1,4 +1,4 @@
-import { LockSimple, LockSimpleOpen, MagnifyingGlass, Ambulance, Drone, Bandaids, Certificate, Drop, FirstAid, Heartbeat, Hourglass, Pill, Pulse, Siren, PersonSimpleRun, Timer, Warning, X, type Icon } from '@phosphor-icons/react';
+import { Check, Copy, LockSimple, LockSimpleOpen, MagnifyingGlass, Ambulance, Drone, Bandaids, Certificate, Drop, FirstAid, Heartbeat, Hourglass, Pill, Pulse, Siren, PersonSimpleRun, Timer, Warning, X, type Icon } from '@phosphor-icons/react';
 import { Defibrillator } from '../../components/ui/aed-icon';
 import { Tile, type TileTone } from '../../components/ui/tile';
 import { Digits } from '../../components/ui/digits';
@@ -18,6 +18,7 @@ import { KPI } from '../../components/widgets/KPI';
 import { pushToast } from '../../components/toast/toast';
 import { timeAgo, shortId, formatEta } from '../../lib/format';
 import { cn } from '../../lib/utils';
+import { formatCoords } from '../../lib/geo';
 import type { MapAed, MapResponder } from '../../components/map/MapView';
 import { TYPE_LABEL } from '../../components/map/MapView';
 import { roleLabel } from '../../lib/roles';
@@ -453,6 +454,7 @@ const IncidentPanel = ({ incident, onClose, onChanged }: { incident: Emergency; 
         <div className="mt-2 flex items-center gap-2 text-[13px] text-muted-foreground">
           <StatusPill status={incident.status} />
           <span className="num">{timeAgo(incident.createdAt)}</span>
+          {incident.location?.coordinates && <CopyCoords coordinates={incident.location.coordinates} />}
         </div>
       </div>
 
@@ -535,6 +537,22 @@ const IncidentPanel = ({ incident, onClose, onChanged }: { incident: Emergency; 
         )}
       </motion.div>
     </motion.aside>
+  );
+};
+
+/** The caller's position as text: copy it here, paste it into a drone's "Where to". */
+const CopyCoords = ({ coordinates }: { coordinates: [number, number] }) => {
+  const [copied, setCopied] = useState(false);
+  const text = formatCoords(coordinates);
+  const copy = () => navigator.clipboard.writeText(text)
+    .then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); })
+    .catch(() => pushToast({ tone: 'error', title: 'Could not copy', body: text }));
+  return (
+    <button type="button" onClick={copy} title="Copy the caller's coordinates" className="ml-auto inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <span className="num">{text}</span>
+      {copied ? <Check size={14} weight="bold" className="text-[hsl(var(--teal))]" /> : <Copy size={14} />}
+      <span className="sr-only">{copied ? 'Copied' : 'Copy coordinates'}</span>
+    </button>
   );
 };
 

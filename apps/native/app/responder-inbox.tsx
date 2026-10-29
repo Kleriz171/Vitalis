@@ -35,7 +35,8 @@ interface Incident {
   aedRunner?: string;
   aedStatus?: 'to_aed' | 'has_aed' | 'delivered';
   needsAedRunner?: boolean;
-  aed?: { name: string; placement?: string; coordinates: LngLat };
+  // cabinetCode: only for the runner on the way to a locked cabinet.
+  aed?: { name: string; placement?: string; coordinates: LngLat; cabinetCode?: string };
 }
 
 const RESPONDER_ROLES = ['doctor', 'nurse', 'student_responder', 'blood_donor'];
@@ -353,6 +354,11 @@ export default function ResponderInbox() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.aedName}>{active.aed.name}</Text>
                   {active.aed.placement ? <Text style={styles.aedPlace}>{active.aed.placement}</Text> : null}
+                  {active.aed.cabinetCode ? (
+                    <Text style={styles.aedPlace} accessibilityLabel={t('Cabinet code {code}', { code: active.aed.cabinetCode.split('').join(' ') })}>
+                      {t('Cabinet code')} <Text style={styles.aedCode}>{active.aed.cabinetCode}</Text>
+                    </Text>
+                  ) : null}
                 </View>
               </View>
             ) : null}
@@ -465,6 +471,7 @@ const styles = StyleSheet.create({
   aedBox: { flexDirection: 'row', gap: 10, padding: 12, backgroundColor: colors.warningSoft, borderRadius: radius.md },
   aedName: { color: colors.foreground, fontSize: 15, fontWeight: '700' },
   aedPlace: { color: colors.foreground, fontSize: 14, marginTop: 2 },
+  aedCode: { fontSize: 20, fontWeight: '800', letterSpacing: 3, fontVariant: ['tabular-nums'] },
   actionRow: { flexDirection: 'row', gap: 10 },
   listHeader: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginTop: 4 },
   listTitle: { color: colors.foreground, fontSize: 18, fontWeight: '800' },

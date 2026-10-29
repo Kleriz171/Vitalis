@@ -50,6 +50,27 @@ API_URL=http://localhost:4000 npm run check:security                           #
 `check:security` covers auth, roles, injection, dispatch races and socket rooms. Run it after
 any change to the API.
 
+## Defibrillator cabinets
+
+- **Battery.** Typed in at an inspection (console: Defibrillators → Cabinet and log), or reported by a
+  connected cabinet. The console flags anything below 30 % or not checked for 30 days.
+- **Cabinet code.** 4 to 8 digits, set by an operator. Stored sealed (AES-256-GCM, key derived from
+  `JWT_ACCESS`: re-enter the codes after rotating that secret). The runner sent for the device gets the
+  code in the app until they pick it up; operators can show it in the console. Every read is in the
+  device's log and the call log. It's never in a list, a broadcast or a live event.
+- **Taken out.** Once the runner picks it up, it's out of dispatch until an operator marks it back in
+  its cabinet. Its log shows who had the code, who took it, when it reached the patient and who put it back.
+- **Connected cabinets** (off unless `AED_DEVICE_KEY` is set):
+
+  ```http
+  POST /api/aeds/:id/device
+  X-Device-Key: <AED_DEVICE_KEY>
+  {"batteryPercent": 82}   or   {"door": "opened"}   or   {"door": "closed"}
+  ```
+
+  A door opening when nobody was given the code in the last 30 minutes alerts every console and goes
+  in the call log. `npm run check:aeds` covers all of this.
+
 ## Conventions
 
 - Validate every request body with zod (`validate(schema)`), check roles with `allow(...)`.

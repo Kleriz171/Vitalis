@@ -1,4 +1,4 @@
-import { Camera, CheckCircle, Drone, Eye, SealCheck, MapPin, PersonSimpleRun, Siren, UserCheck, VideoCamera, Warning, XCircle, type Icon } from '@phosphor-icons/react';
+import { Camera, CheckCircle, Drone, Eye, LockKey, SealCheck, MapPin, PersonSimpleRun, Siren, UserCheck, VideoCamera, Warning, XCircle, type Icon } from '@phosphor-icons/react';
 import { Tile, type TileTone } from '../../components/ui/tile';
 import { useEffect, useState } from 'react';
 import { api } from '../../api/client';
@@ -43,6 +43,10 @@ const ACTION_TILE: Record<string, [Icon, TileTone]> = {
   photo_taken: [Camera, 'teal'],
   video_recorded: [VideoCamera, 'teal'],
   media_viewed: [Eye, 'slate'],
+  code_given: [LockKey, 'teal'],
+  code_viewed: [LockKey, 'slate'],
+  code_changed: [LockKey, 'slate'],
+  cabinet_opened: [Warning, 'sos'],
 };
 
 // Plain names for what each entry records.
@@ -55,6 +59,8 @@ const EVENT: Record<string, string> = {
   checkin_missed: 'Safety check-in missed', checkin_duress: 'Safety check-in: duress PIN used', checkin_pin_attempts: 'Safety check-in: wrong PIN too often',
   takeoff: 'Drone took off', land: 'Drone landed', emergency: 'Drone emergency stop', launched: 'Drone launched', in_flight: 'Drone in flight',
   photo_taken: 'Drone photo saved', video_recorded: 'Drone video saved', media_viewed: 'Drone footage opened',
+  code_given: 'Cabinet code sent to the runner', code_viewed: 'Cabinet code viewed', code_changed: 'Cabinet code changed',
+  cabinet_opened: 'Cabinet opened with nobody given the code',
 };
 const sentence = (s: string) => { const t = s.replace(/_/g, ' '); return t.charAt(0).toUpperCase() + t.slice(1); };
 const describe = (b: Block) => {
@@ -67,7 +73,8 @@ const describe = (b: Block) => {
   const subject = b.payload?.entity === 'emergency' ? `Call #${shortId(id ?? '')}`
     : b.payload?.entity === 'drone_mission' ? `Drone flight #${shortId(id ?? '')}`
       : b.payload?.entity === 'drone' ? `Drone ${id ?? ''}`
-        : b.payload?.entity === 'drone_media' ? `Footage #${shortId(id ?? '')}` : sentence(b.payload?.entity ?? '');
+        : b.payload?.entity === 'drone_media' ? `Footage #${shortId(id ?? '')}`
+          : b.payload?.entity === 'aed' ? `Defibrillator #${shortId(id ?? '')}` : sentence(b.payload?.entity ?? '');
   return { event, subject };
 };
 const when = (iso: string, seconds = false) =>

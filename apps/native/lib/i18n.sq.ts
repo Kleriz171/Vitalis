@@ -338,6 +338,8 @@ export const ui: Record<string, string> = {
   'AED delivered': 'Defibrilatori u dorëzua',
   'AED picked up': 'Defibrilatori u mor',
   'Heading to the AED': 'Drejt defibrilatorit',
+  'Cabinet code': 'Kodi i kutisë',
+  'Cabinet code {code}': 'Kodi i kutisë {code}',
   'Directions': 'Udhëzime',
   'I have the AED': 'E kam defibrilatorin',
   'AED is with the patient': 'Defibrilatori është te pacienti',

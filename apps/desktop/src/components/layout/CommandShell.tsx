@@ -1,8 +1,9 @@
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-  Siren, FirstAidKit, ChartBar, FilePdf, SignOut, UsersThree, type Icon,
+  Siren, ChartBar, Drone, FilePdf, SignOut, UsersThree, type Icon,
 } from '@phosphor-icons/react';
+import { Defibrillator } from '../ui/aed-icon';
 import { Tile } from '../ui/tile';
 import { Digits } from '../ui/digits';
 import { useNow } from '../../lib/useNow';
@@ -13,17 +14,16 @@ import { RootState, logout } from '../../store';
 import { socket } from '../../realtime/socket';
 import { cn } from '../../lib/utils';
 import { exportPdf } from '../../lib/exportPdf';
+import { pushToast } from '../toast/toast';
 import { Logo } from '../ui/logo';
 
-/** Four sections named for what operators do; a section with several pages shows them as tabs. */
+/** Sections named for what operators do; a section with several pages shows them as tabs. */
 type Section = { label: string; icon: Icon; to: string; tabs?: { to: string; label: string }[] };
 
 const SECTIONS: Section[] = [
   { label: 'Live calls', icon: Siren, to: '/command' },
-  { label: 'Equipment', icon: FirstAidKit, to: '/command/aeds', tabs: [
-    { to: '/command/aeds', label: 'Defibrillators' },
-    { to: '/command/drones', label: 'Drones' },
-  ] },
+  { label: 'Defibrillators', icon: Defibrillator, to: '/command/aeds' },
+  { label: 'Drones', icon: Drone, to: '/command/drones' },
   { label: 'People', icon: UsersThree, to: '/command/admin/users', tabs: [
     { to: '/command/admin/users', label: 'Users' },
     { to: '/command/admin/doctor-applications', label: 'Applications' },
@@ -74,6 +74,18 @@ export const CommandShell = () => {
   const location = useLocation();
   const live = useLive();
   const current = sectionOf(location.pathname);
+
+  // A connected cabinet opened with nobody given its code: whatever page the operator is on.
+  useEffect(() => {
+    const onAlert = (a: { id: string; name: string }) => pushToast({
+      tone: 'error',
+      title: 'Defibrillator cabinet opened',
+      body: `${a.name}: nobody was given the code. Check the cabinet and its log.`,
+      ttl: 60_000,
+    });
+    socket.on('aed:alert', onAlert);
+    return () => { socket.off('aed:alert', onAlert); };
+  }, []);
 
   const signOut = () => { dispatch(logout()); nav('/login'); };
 

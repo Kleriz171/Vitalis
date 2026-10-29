@@ -77,6 +77,22 @@ async function main() {
   assert.equal(done.status, 'delivered', done.abortReason);
   ok('autonomous route flown and delivered; double dispatch blocked');
 
+  // To coordinates pasted from a call: the API turns them into moves from the take-off point.
+  const home = [19.8187, 41.3275];
+  const far = await call('POST', `/drones/${DRONE}/dispatch`, disp, { target: [19.8187, 41.3290], home }); // ~167 m north
+  assert.equal(far.status, 400);
+  assert.match(far.data.error, /at most 100 m/);
+  assert.equal((await call('POST', `/drones/${DRONE}/dispatch`, disp, { target: [19.8187, 41.3290] })).status, 400); // no take-off point
+  const east = await call('POST', `/drones/${DRONE}/dispatch`, disp, { target: [19.81874, 41.3275], home, heading: 0 }); // ~3.3 m east
+  assert.equal(east.status, 201, JSON.stringify(east.data));
+  assert.deepEqual(east.data.steps.slice(0, 2), ['up 100', 'cw 90']);
+  assert.match(east.data.steps[2], /^forward 3\d\d$/);
+  assert.equal(east.data.steps.length, 3);
+  assert.deepEqual(east.data.destination.coordinates, [19.81874, 41.3275]);
+  const there = await until<any>(ds, 'drone:update', u => u._id === east.data._id && ['delivered', 'aborted'].includes(u.status));
+  assert.equal(there.status, 'delivered', there.abortReason);
+  ok('flown to coordinates: turned to the bearing, flew the distance, landed; too far refused');
+
   // Manual: takeoff, sticks take over, land.
   const ack = await new Promise<any>(r => ds.emit('drone:command', { droneId: DRONE, action: 'takeoff' }, r));
   assert.equal(ack.ok, true);

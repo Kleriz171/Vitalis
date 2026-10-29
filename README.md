@@ -22,7 +22,7 @@ All of them talk to one API: [`apps/api`](apps/api/README.md) (Express, MongoDB,
 
 1. Caller taps SOS. A 3-second countdown allows cancelling; "someone isn't breathing" marks it as a cardiac arrest.
 2. The API alerts on-duty responders within 5 km (20 km if nobody is closer). Only doctors, nurses and people with a valid CPR/AED certificate can go on duty.
-3. First to accept gets the patient. On a cardiac arrest the second gets sent to the nearest registered AED first.
+3. First to accept gets the patient. On a cardiac arrest the second gets sent to the nearest registered AED first, with the code of its locked cabinet.
 4. The caller sees who is coming and how far away, gets a 110/min CPR metronome, and a one-tap ambulance call.
 5. The responder opens a handover summary (allergies, medication, conditions, timeline) for the ambulance crew.
 6. The console shows it all live and flags calls with no responder after 60 seconds.

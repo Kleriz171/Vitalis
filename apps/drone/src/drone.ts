@@ -3,7 +3,7 @@ import type http from 'node:http';
 /**
  * What the bridge needs from a drone. Two drivers implement it:
  *   tello.ts       DJI Tello over its SDK (telemetry, measured moves, so routes work)
- *   turbodrone.ts  Wi-Fi toy drones through the vendored turbodrone server (sticks only)
+ *   turbodrone.ts  Wi-Fi toy drones through the vendored turbodrone server (sticks; routes flown by time)
  */
 export interface Drone {
   /** Sent to the API on connect, so the console knows what the drone can do. */
@@ -17,8 +17,8 @@ export interface Drone {
   emergency(): void;
   /** Stick positions, each -100…100. Latest wins; no reply. */
   rc(lr: number, fb: number, ud: number, yaw: number): void;
-  /** One route step such as "forward 200". Only when info.routes. */
-  move(step: string): Promise<void>;
+  /** One route step such as "forward 200". Only when info.routes. A timed move stops early when `signal` aborts. */
+  move(step: string, signal?: AbortSignal): Promise<void>;
   /** Whatever the drone reports; missing fields mean it doesn't. */
   readings(): { battery?: number; heightCm?: number; tempC?: number; flightTimeS?: number; speedCms?: number };
   /**

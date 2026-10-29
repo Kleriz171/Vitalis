@@ -33,6 +33,7 @@ jobs:
           npm run check:fall
           npm run check:voice
           npm run check:eta
+          npm run check:coords
 
   e2e:
     name: End-to-end API checks

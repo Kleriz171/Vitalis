@@ -89,11 +89,38 @@ Toy drones add three more, inside turbodrone:
 
 ### What toy drones can't do
 
-- **No routes.** They have no GPS or position sensor, so there is no "fly 2 m forward". The API refuses to dispatch them, and the console offers manual flight only.
+- **Routes by time, not by measurement.** They have no GPS or position sensor, so "fly 3 m forward" means holding the stick for as long as 3 m takes at a speed you measured (below). Wind and a tired battery still put them metres off, so the API sends them at most 50 m.
 - **No readings.** No battery, height or speed. The bridge judges the link from video frames and the drone's replies, and counts flight time itself.
 - **Take-off and landing take a set time** (`TOY_TAKEOFF_MS` 3 s, `TOY_LAND_MS` 5 s), because the drone never says it's done. Time your model once and set them.
 - **No camera tilt.** No command is known for a motorised tilt on these drones: turbodrone's authors swept every spare byte of the M10's control packet and the camera never moved. What `cooingdv` drones do have is the apps' camera button (`06 01` / `06 02`): on dual-camera models, Front / Down over the console's picture switches to the camera that looks down (untested on a one-camera drone).
 - **One-button drones.** CooingDV "GL" drones use the same button to take off and land. If one sets itself down (flat battery), the console still says it's flying, and Land would launch it again. So the bridge never lands these automatically: if the API link drops or nobody steers for 60 s, it centres the sticks and the drone hovers until the operator lands it or the drone lands itself.
+
+## Sending a drone to coordinates
+
+In the console, a drone's **Send the drone → To a location** takes coordinates pasted from a call
+(Live calls → a call → the coordinates next to its status copy them) or picked from the list of live
+calls. Neither drone has GPS, so before take-off tell it two things, both remembered on that computer:
+
+- **Take-off point**: where the drone sits, pasted the same way (a maps app gives it: long-press the spot).
+- **Nose to**: which way its front points (N, NE, E…). Put it down facing that way.
+
+The API works out the distance and compass bearing and turns them into moves: climb 1 m, turn
+from the nose's direction to the bearing, fly straight there in legs of up to 5 m, land. A Tello
+measures each move (up to 100 m away, about its Wi-Fi range). A toy drone flies them by time
+(up to 50 m), and any stick input from the operator stops the route at once and leaves it hovering.
+
+### Timed routes (toy drones)
+
+Timed moves hold the stick at half, which is **Speed 50** in the console's flight controls. Measure
+your drone once that way, outdoors with no wind, and set the results on the bridge:
+
+| Variable | Default | Measure (Speed 50, controls armed) |
+|---|---|---|
+| `TOY_SPEED_CMS` | 100 | Hold W for 5 s; distance flown in cm ÷ 5 |
+| `TOY_CLIMB_CMS` | 50 | Hold ↑ for 4 s; height gained in cm ÷ 4 |
+| `TOY_YAW_DPS` | 90 | Hold → for 4 s; degrees turned ÷ 4 |
+
+Add them to the Desktop launcher (`export TOY_SPEED_CMS=…`) or the bridge's environment.
 
 ## Photos and videos
 
@@ -151,7 +178,8 @@ MONGO_URI=… npm run check:drone-media                              # bridge in
 
 `check:toy-drones` plays a fake CooingDV drone on UDP 7099 and checks the real path:
 console → API → bridge → turbodrone → drone packets (take-off, sticks, hover on release, land,
-emergency stop, camera switch), the token, and both stick dead-man switches. `scripts/e2e.sh` runs both drone
+emergency stop, camera switch, a timed route to coordinates and the operator taking over mid-route),
+the token, and both stick dead-man switches. `scripts/e2e.sh` runs both drone
 checks; it skips the toy one when the Python environment isn't set up.
 
 ## Files

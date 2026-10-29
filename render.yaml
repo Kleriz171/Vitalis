@@ -30,6 +30,10 @@ services:
       # Shared secret for drone bridges (apps/drone). Same value on every bridge.
       - key: DRONE_BRIDGE_KEY
         sync: false
+      # Shared secret connected defibrillator cabinets send with battery and door reports.
+      # Unset = cabinet reports off; batteries are typed in at inspection.
+      - key: AED_DEVICE_KEY
+        sync: false
       # Where certificate QR codes and the emergency contact's tracking link open.
       - key: PUBLIC_WEB_URL
         value: https://vitalis-web.onrender.com

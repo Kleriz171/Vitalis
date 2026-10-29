@@ -5,6 +5,7 @@ import { logger } from '../config/logger';
 import { DroneMission } from '../models/DroneMission';
 import { DroneMedia, MEDIA_RETENTION_DAYS } from '../models/DroneMedia';
 import { blockchainService } from '../modules/blockchain/blockchain.service';
+import { bearingDeg, haversineKm } from '../utils/geo';
 
 /**
  * Drone bridges (apps/drone) connect to the /drones namespace with a shared key.
@@ -23,6 +24,23 @@ export const isValidStep = (s: string) => {
   return +m[4] >= 1 && +m[4] <= 360;
 };
 
+/**
+ * Drones without GPS reach a point as moves from where they took off: climb clear of
+ * people, turn from the way the nose points to the point's compass bearing, fly straight.
+ * Null when the point is closer than the smallest move (20 cm).
+ */
+export const stepsTo = (home: [number, number], target: [number, number], heading: number) => {
+  const cm = Math.round(haversineKm(home, target) * 100_000);
+  if (cm < 20) return null;
+  const turn = Math.round(((((bearingDeg(home, target) - heading) % 360) + 540) % 360) - 180);
+  const legs = Math.ceil(cm / 500); // the SDK's longest move is 500 cm
+  return [
+    'up 100',
+    ...(turn > 0 ? [`cw ${turn}`] : turn < 0 ? [`ccw ${-turn}`] : []),
+    ...Array<string>(legs).fill(`forward ${Math.round(cm / legs)}`),
+  ];
+};
+
 // ponytail: fixed demo routes for an indoor/courtyard Tello. Real deployments replace
 // these with GPS waypoints on a GPS drone; the dispatch flow stays the same.
 export const ROUTES: Record<string, { name: string; steps: string[] }> = {
@@ -31,13 +49,18 @@ export const ROUTES: Record<string, { name: string; steps: string[] }> = {
   'demo-return': { name: 'Out and back · 3 m and return', steps: ['up 50', 'forward 300', 'cw 180', 'forward 300'] },
 };
 
-/** What a bridge says about its drone when it connects. Bridges from before toy-drone support are Tellos. */
-export interface DroneInfo { driver: 'tello' | 'turbodrone'; model: string; routes: boolean }
+/**
+ * What a bridge says about its drone when it connects. Bridges from before toy-drone support are Tellos.
+ * `timed`: the drone can't measure its moves, so routes are flown by time at a speed calibrated on
+ * the bridge, and it can end up metres off.
+ */
+export interface DroneInfo { driver: 'tello' | 'turbodrone'; model: string; routes: boolean; timed?: boolean }
 
 const parseInfo = (raw: any): DroneInfo => {
   if (raw?.driver !== 'turbodrone') return { driver: 'tello', model: 'tello', routes: true };
-  // Toy drones have no positioning, so they never fly routes, whatever the bridge claims.
-  return { driver: 'turbodrone', model: typeof raw.model === 'string' && /^[a-z0-9_]{1,24}$/.test(raw.model) ? raw.model : 'unknown', routes: false };
+  const model = typeof raw.model === 'string' && /^[a-z0-9_]{1,24}$/.test(raw.model) ? raw.model : 'unknown';
+  // Toy drones have no positioning: any route they fly is timed. Bridges from before timed flight say routes: false.
+  return raw.routes === true ? { driver: 'turbodrone', model, routes: true, timed: true } : { driver: 'turbodrone', model, routes: false };
 };
 
 export interface Telemetry {

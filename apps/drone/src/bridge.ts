@@ -55,7 +55,7 @@ let lastInput = Date.now();
 let lastRc = 0;
 let rcActive = false;
 let lastKeepalive = 0;
-let mission: { id: string; abortReason: string | null } | null = null;
+let mission: { id: string; abortReason: string | null; stop: AbortController } | null = null;
 let videoUrl: string | undefined;
 // ponytail: the last camera asked for, not read back from the drone; a restarted bridge says 1 until the next switch.
 let camera: 1 | 2 = 1;
@@ -84,6 +84,13 @@ const media = handleMedia(socket, {
 
 const battery = () => drone.readings().battery;
 
+// Ends the running mission: the route stops before its next step, a timed move at once.
+const abortMission = (reason: string) => {
+  if (!mission) return;
+  mission.abortReason ??= reason;
+  mission.stop.abort();
+};
+
 const progress = (status: string, step?: number, reason?: string) =>
   mission && socket.emit('mission:progress', { missionId: mission.id, status, step, reason });
 
@@ -101,7 +108,7 @@ async function land(reason: string) {
   }
   log('landing:', reason);
   mode = 'landing';
-  if (mission) mission.abortReason ??= reason;
+  abortMission(reason);
   try {
     await drone.land();
   } catch (e) {
@@ -125,7 +132,8 @@ async function takeoff() {
 async function runMission(id: string, steps: string[]) {
   if (mission) return socket.emit('mission:progress', { missionId: id, status: 'aborted', reason: 'Another mission is running' });
   if (!drone.info.routes) return socket.emit('mission:progress', { missionId: id, status: 'aborted', reason: 'This drone can only be flown by hand' });
-  mission = { id, abortReason: null };
+  mission = { id, abortReason: null, stop: new AbortController() };
+  const { signal } = mission.stop;
   mode = 'mission';
   try {
     if (!drone.linkOk()) throw new Error('No state from the drone. Is the bridge on its Wi-Fi?');
@@ -136,7 +144,7 @@ async function runMission(id: string, steps: string[]) {
       if (!drone.linkOk()) throw new Error('Lost state stream from drone');
       progress('in_flight', i);
       log(`step ${i + 1}/${steps.length}: ${steps[i]}`);
-      await drone.move(steps[i]).catch(() => drone.move(steps[i])); // one retry, then give up
+      await drone.move(steps[i], signal).catch(() => drone.move(steps[i], signal)); // one retry, then give up
     }
     await drone.land();
     airborne = false;
@@ -177,13 +185,13 @@ socket.on('command', async ({ action }: { action: string }) => {
     if (action === 'emergency') {
       // Kills the motors mid-air. The console asks for confirmation before sending this.
       drone.emergency();
-      if (mission) mission.abortReason ??= 'Emergency stop';
+      abortMission('Emergency stop');
       airborne = false;
       mode = 'idle';
     } else if (action === 'land') {
       await land(OPERATOR);
     } else if (action === 'abort') {
-      if (mission) mission.abortReason ??= 'Aborted by operator';
+      abortMission('Aborted by operator');
     } else if (action === 'takeoff') {
       mode = 'manual';
       await takeoff();
@@ -200,7 +208,7 @@ socket.on('command', async ({ action }: { action: string }) => {
 // Manual control: any stick input takes over from the autopilot.
 socket.on('rc', ({ lr, fb, ud, yaw }: { lr: number; fb: number; ud: number; yaw: number }) => {
   if (!airborne) return;
-  if (mission) mission.abortReason ??= 'Operator took manual control';
+  abortMission('Operator took manual control');
   mode = 'manual';
   lastInput = lastRc = Date.now();
   rcActive = lr !== 0 || fb !== 0 || ud !== 0 || yaw !== 0;

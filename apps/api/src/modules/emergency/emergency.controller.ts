@@ -89,7 +89,7 @@ export const emergencyController = {
   },
   accept: async (req: AuthReq, res: Response, next: NextFunction) => {
     try {
-      const { emergency: e, role, aedAvailable, aed } = await emergencyService.assign(req.params.id, req.user!.id);
+      const { emergency: e, role, aedAvailable, aed, cabinetCode } = await emergencyService.assign(req.params.id, req.user!.id);
       broadcast('emergency:assigned', e);
       const me = await User.findById(req.user!.id).select('name role').lean();
       push({
@@ -114,7 +114,7 @@ export const emergencyController = {
       res.json({
         ...e.toObject(),
         myRole: role,
-        aed: aed ? { id: String(aed._id), name: aed.name, placement: aed.placement, coordinates: (aed.location as any).coordinates } : undefined,
+        aed: aed ? { id: String(aed._id), name: aed.name, placement: aed.placement, coordinates: (aed.location as any).coordinates, cabinetCode } : undefined,
       });
     } catch (err) { next(err); }
   },

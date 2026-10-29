@@ -45,6 +45,7 @@ run sms        "TWILIO_AUTH_TOKEN=test-token TWILIO_WEBHOOK_URL=$API_URL/api/sms
 run track      "" "" apps/api/scripts/track-check.ts
 run account    "" "" apps/api/scripts/account-check.ts
 run watch      "" "" apps/api/scripts/watch-check.ts
+run aeds       "AED_DEVICE_KEY=ci-aed-key" "AED_DEVICE_KEY=ci-aed-key MONGO_URI=$MONGO_URI" apps/api/scripts/aed-check.ts
 run drones     "DRONE_BRIDGE_KEY=ci-bridge-key" "" apps/api/scripts/drone-check.ts "SIM=1 TELLO_HOST=127.0.0.1"
 # Photos and videos from the simulator's camera, stored in MongoDB (no MEDIA_BUCKET). Video needs ffmpeg.
 run drone-media "DRONE_BRIDGE_KEY=ci-bridge-key" "MONGO_URI=$MONGO_URI" apps/api/scripts/drone-media-check.ts "SIM=1 TELLO_HOST=127.0.0.1"

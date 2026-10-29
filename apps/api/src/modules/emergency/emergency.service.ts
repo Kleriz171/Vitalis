@@ -7,6 +7,8 @@ import { sendSms } from '../../utils/sms';
 import { User, ageOf } from '../../models/User';
 import { Certification } from '../../models/Training';
 import { Aed } from '../../models/Aed';
+import { recordAedEvent } from '../../models/AedEvent';
+import { unseal } from '../../utils/sealed';
 import { Allergy, Medication, Condition } from '../../models/HealthRecord';
 import { nearQuery, haversineKm, roadEtaSeconds } from '../../utils/geo';
 import { blockchainService } from '../blockchain/blockchain.service';
@@ -20,14 +22,14 @@ const RINGS_M = [5_000, 20_000];
 // Farthest an AED runner should detour for a device (metres from the patient).
 const AED_RADIUS_M = 1_500;
 
-// Only devices an operator confirmed, with pads in date: a runner sent to a rumour loses minutes.
+// Only devices an operator confirmed, in their cabinet, with pads in date: a runner sent to a rumour loses minutes.
 const nearestAed = (coords: [number, number]) =>
   Aed.findOne({
     ...nearQuery(coords[0], coords[1], AED_RADIUS_M),
     verifiedAt: { $ne: null },
-    status: { $nin: ['needs_check', 'out_of_service'] },
+    status: { $nin: ['needs_check', 'out_of_service', 'in_use'] },
     $or: [{ padsExpireAt: null }, { padsExpireAt: { $gt: new Date() } }],
-  }).lean();
+  }).select('+cabinetCode').lean();
 
 /** Texts the emergency contact a live link (landing /track/:token). Silent alarms never call this. */
 async function textTrackingLink(citizenId: string, token: string) {
@@ -181,7 +183,13 @@ export const emergencyService = {
         );
         if (runner) {
           await blockchainService.append({ entity: 'emergency', entityId: emergencyId, action: 'aed_runner_assigned', actor: responderId });
-          return { emergency: runner, role: 'aed' as const, aedAvailable: true, aed };
+          // The runner gets the cabinet's code; that it went to them, and when, is on record.
+          const cabinetCode = unseal(aed.cabinetCode) ?? undefined;
+          if (cabinetCode) {
+            await recordAedEvent(aed._id, 'code_given', { by: responderId, emergency: emergencyId });
+            await blockchainService.append({ entity: 'aed', entityId: String(aed._id), action: 'code_given', actor: responderId, emergency: emergencyId });
+          }
+          return { emergency: runner, role: 'aed' as const, aedAvailable: true, aed, cabinetCode };
         }
       }
     }
@@ -196,6 +204,11 @@ export const emergencyService = {
     );
     if (!e) throw httpError(403, 'You are not the AED runner on an active call');
     await blockchainService.append({ entity: 'emergency', entityId: emergencyId, action: `aed_${aedStatus}`, actor: actorId });
+    if (e.aed) {
+      // Out of its cabinet until an operator puts it back in service: nobody else is sent to an empty cabinet.
+      if (aedStatus === 'has_aed') await Aed.updateOne({ _id: e.aed }, { $set: { status: 'in_use' } });
+      await recordAedEvent(e.aed, aedStatus === 'has_aed' ? 'picked_up' : 'delivered', { by: actorId, emergency: emergencyId });
+    }
     return e;
   },
 
@@ -311,7 +324,7 @@ export const emergencyService = {
       Emergency.find({
         $or: [{ responder: responderId }, { aedRunner: responderId }],
         status: { $in: ACTIVE_STATUSES },
-      }).sort('-createdAt').limit(5).populate('aed', 'name placement location').lean(),
+      }).sort('-createdAt').limit(5).populate({ path: 'aed', select: 'name placement location +cabinetCode' }).lean(),
     ]);
     const mineIds = new Set(mine.map(e => String(e._id)));
     const open: ReturnType<typeof toResponderView>[] = [];
@@ -324,7 +337,13 @@ export const emergencyService = {
       else if (v.needsAedRunner && v.responder !== responderId && (await nearestAed((e.location as any).coordinates))) open.push(v);
       if (open.length >= 30) break;
     }
-    return [...mine.map(toResponderView), ...open];
+    // The runner still on the way to the cabinet gets its code; nobody else does.
+    const withCode = (e: any) => {
+      const v = toResponderView(e);
+      const code = String(e.aedRunner) === responderId && e.aedStatus === 'to_aed' ? unseal(e.aed?.cabinetCode) : null;
+      return code && v.aed ? { ...v, aed: { ...v.aed, cabinetCode: code } } : v;
+    };
+    return [...mine.map(withCode), ...open];
   },
 
   // Caller's own live incident, so the app can restore state after a restart.

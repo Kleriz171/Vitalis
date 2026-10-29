@@ -12,6 +12,7 @@ import { PageHeader } from '../../components/layout/CommandShell';
 import { pushToast } from '../../components/toast/toast';
 import { timeAgo } from '../../lib/format';
 import { cn } from '../../lib/utils';
+import { COMPASS, bearingDeg, compassPoint, distanceM, formatCoords, parseCoords } from '../../lib/geo';
 import { TYPE_LABEL } from '../../components/map/MapView';
 import { CaptureBar, MediaPanel, RecordingBadge, useDroneMedia, type Media } from './DroneMedia';
 
@@ -29,7 +30,7 @@ interface Telemetry {
   camera?: 1 | 2;
   at?: number;
 }
-interface DroneInfo { driver: 'tello' | 'turbodrone'; model: string; routes: boolean }
+interface DroneInfo { driver: 'tello' | 'turbodrone'; model: string; routes: boolean; timed?: boolean }
 interface FleetEntry { droneId: string; online: boolean; info?: DroneInfo; telemetry: Telemetry | null }
 interface Route { id: string; name: string; steps: string[] }
 interface Mission {
@@ -43,7 +44,7 @@ interface Mission {
   emergency?: string;
   createdAt: string;
 }
-interface ActiveEmergency { _id: string; type: string; status: string; createdAt: string }
+interface ActiveEmergency { _id: string; type: string; status: string; createdAt: string; location?: { coordinates: [number, number] } }
 type Command = 'takeoff' | 'land' | 'emergency' | 'abort' | 'camera_front' | 'camera_down';
 const CAMERAS = [['camera_front', 1, 'Front'], ['camera_down', 2, 'Down']] as const;
 
@@ -52,6 +53,24 @@ const MISSION_LABEL: Record<Mission['status'], string> = {
 };
 const MODE_LABEL: Record<string, string> = { idle: 'On the ground', mission: 'Flying a route', manual: 'Flying by hand', landing: 'Landing' };
 const LOG_PREVIEW = 8;
+// Same caps as the API: about a Tello's Wi-Fi range; toy drones fly by time, so less.
+const MAX_ROUTE_M = { tello: 100, turbodrone: 50 };
+
+/** A route step in words: "cw 47" → "Turn right 47°", "forward 255" → "Forward 2.55 m". */
+const stepLabel = (step: string) => {
+  const [dir, n] = step.split(' ');
+  const v = Number(n);
+  if (dir === 'cw' || dir === 'ccw') return `Turn ${dir === 'cw' ? 'right' : 'left'} ${v}°`;
+  if (dir === 'up' || dir === 'down') return `${dir === 'up' ? 'Climb' : 'Descend'} ${v / 100} m`;
+  return `${dir[0].toUpperCase()}${dir.slice(1)} ${v / 100} m`;
+};
+
+// Where each drone takes off and which way it faces, kept on this computer between flights.
+// ponytail: per computer; move it to the API if several consoles dispatch the same drone.
+const HOME_KEY = (droneId: string) => `vitalis.drone-home.${droneId}`;
+const loadHome = (droneId: string): { text: string; heading: number } | null => {
+  try { return JSON.parse(localStorage.getItem(HOME_KEY(droneId)) ?? 'null'); } catch { return null; }
+};
 
 const droneLabel = (info?: DroneInfo) => (info?.driver === 'turbodrone' ? `Wi-Fi toy drone · ${info.model}` : 'DJI Tello');
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
@@ -157,7 +176,7 @@ export const Drones = () => {
             </Button>
           )}
         >
-          {missions.length === 0 && <p className="px-5 py-10 text-center text-muted-foreground">No routes flown yet. Routes are for drones that can measure their moves, like the Tello.</p>}
+          {missions.length === 0 && <p className="px-5 py-10 text-center text-muted-foreground">No routes flown yet.</p>}
           {flights.map(m => (
             <Row
               key={m._id}
@@ -336,26 +355,44 @@ const HandFlownNote = () => (
   <Card className="p-5 gap-2">
     <h3 className="font-bold">Flown by hand</h3>
     <p className="text-sm text-muted-foreground">
-      This drone has no GPS or position sensor, so it can&apos;t fly a route on its own, and it doesn&apos;t report its battery.
-    </p>
-    <p className="text-sm text-muted-foreground">
-      If it sets itself down (a flat battery), don&apos;t press Land: on some models the same button takes off.
+      This drone&apos;s bridge can&apos;t send it to a point yet. Update the bridge and start it again.
     </p>
   </Card>
 );
 
 const DispatchCard = ({ drone, routes, emergencies, initialCall, mission, lowBattery, onAbort }: { drone: FleetEntry; routes: Route[]; emergencies: ActiveEmergency[]; initialCall: string; mission?: Mission; lowBattery: boolean; onAbort: () => void }) => {
   const t = drone.telemetry ?? {};
-  const [routeId, setRouteId] = useState('');
+  const [tab, setTab] = useState<'point' | 'route'>('point');
   const [emergencyId, setEmergencyId] = useState(initialCall);
+  const [targetText, setTargetText] = useState('');
+  const [homeText, setHomeText] = useState(() => loadHome(drone.droneId)?.text ?? '');
+  const [heading, setHeading] = useState(() => loadHome(drone.droneId)?.heading ?? 0);
+  const [routeId, setRouteId] = useState('');
   const [busy, setBusy] = useState(false);
+  const callCoords = (id: string) => emergencies.find(e => e._id === id)?.location?.coordinates;
   useEffect(() => { if (!routeId && routes[0]) setRouteId(routes[0].id); }, [routes, routeId]);
+  // Opened from a call: its location becomes the target once the calls have loaded.
+  useEffect(() => {
+    const c = callCoords(initialCall);
+    if (c) setTargetText(prev => prev || formatCoords(c));
+  }, [emergencies, initialCall]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    try { localStorage.setItem(HOME_KEY(drone.droneId), JSON.stringify({ text: homeText, heading })); } catch { /* private window */ }
+  }, [drone.droneId, homeText, heading]);
 
-  const dispatch = async () => {
+  const target = parseCoords(targetText);
+  const home = parseCoords(homeText);
+  const max = MAX_ROUTE_M[drone.info?.driver ?? 'tello'];
+  const metres = target && home ? Math.round(distanceM(home, target)) : null;
+  const bearing = target && home ? Math.round(bearingDeg(home, target)) % 360 : 0;
+  const turn = Math.round(((((bearing - heading) % 360) + 540) % 360) - 180);
+  const canFly = !!t.linkOk && !t.airborne && !lowBattery;
+
+  const send = async (body: object, title: string) => {
     setBusy(true);
     try {
-      await api.post(`/drones/${drone.droneId}/dispatch`, { routeId, ...(emergencyId ? { emergencyId } : {}) });
-      pushToast({ tone: 'success', title: 'Drone dispatched', body: routes.find(r => r.id === routeId)?.name });
+      await api.post(`/drones/${drone.droneId}/dispatch`, { ...body, ...(emergencyId ? { emergencyId } : {}) });
+      pushToast({ tone: 'success', title: 'Drone dispatched', body: title });
     } catch (err: any) {
       pushToast({ tone: 'error', title: 'Dispatch failed', body: err?.response?.data?.error ?? 'Try again' });
     } finally {
@@ -364,7 +401,7 @@ const DispatchCard = ({ drone, routes, emergencies, initialCall, mission, lowBat
   };
 
   if (mission) {
-    const steps = ['take off', ...(mission.steps ?? []), 'land'];
+    const steps = ['Take off', ...(mission.steps ?? []).map(stepLabel), 'Land'];
     const cur = mission.currentStep ?? -1;
     return (
       <Card className="p-5 gap-3">
@@ -390,22 +427,80 @@ const DispatchCard = ({ drone, routes, emergencies, initialCall, mission, lowBat
     );
   }
 
+  const id = drone.droneId;
+  const calls = emergencies.filter(e => e.location?.coordinates);
   return (
     <Card className="p-5 gap-3">
-      <h3 className="font-bold">Send on a route</h3>
-      <label className="text-sm font-medium" htmlFor={`route-${drone.droneId}`}>Route</label>
-      <select id={`route-${drone.droneId}`} value={routeId} onChange={e => setRouteId(e.target.value)} className="h-10 rounded-md border border-border bg-card px-3 text-sm">
-        {routes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-      </select>
-      <label className="text-sm font-medium" htmlFor={`sos-${drone.droneId}`}>For an SOS call (optional)</label>
-      <select id={`sos-${drone.droneId}`} value={emergencyId} onChange={e => setEmergencyId(e.target.value)} className="h-10 rounded-md border border-border bg-card px-3 text-sm">
-        <option value="">Not linked to a call</option>
-        {emergencies.map(e => <option key={e._id} value={e._id}>{TYPE_LABEL[e.type] ?? 'Emergency'} · {timeAgo(e.createdAt)}</option>)}
-      </select>
-      <p className="text-xs text-muted-foreground">No GPS: routes are measured moves from the take-off spot. Clear the area first.</p>
-      <Button onClick={dispatch} disabled={busy || !routeId || !t.linkOk || lowBattery || t.airborne}>
-        <PaperPlaneRight size={16} /> Dispatch
-      </Button>
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="font-bold">Send the drone</h3>
+        <div role="tablist" aria-label="How to send it" className="flex rounded-lg bg-muted p-0.5 text-[13px]">
+          {([['point', 'To a location'], ['route', 'Practice route']] as const).map(([k, label]) => (
+            <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={cn('rounded-md px-2.5 py-1 transition-colors', tab === k ? 'bg-card font-semibold shadow-sm' : 'text-muted-foreground hover:text-foreground')}>{label}</button>
+          ))}
+        </div>
+      </div>
+
+      {tab === 'point' ? (
+        <>
+          <label className="text-sm font-medium" htmlFor={`to-${id}`}>Where to</label>
+          <input id={`to-${id}`} value={targetText} onChange={e => setTargetText(e.target.value)} placeholder="Paste coordinates, e.g. 41.32750, 19.81870" className="h-10 w-full min-w-0 rounded-md border border-border bg-card px-3 text-sm" />
+          <select aria-label="Use a call's location" value={emergencyId} onChange={e => { setEmergencyId(e.target.value); const c = callCoords(e.target.value); if (c) setTargetText(formatCoords(c)); }} className="h-10 w-full min-w-0 rounded-md border border-border bg-card px-3 text-sm">
+            <option value="">{calls.length ? 'Or use a call\'s location' : 'No live calls with a location'}</option>
+            {calls.map(e => <option key={e._id} value={e._id}>{TYPE_LABEL[e.type] ?? 'Emergency'} · {timeAgo(e.createdAt)} · {formatCoords(e.location!.coordinates)}</option>)}
+          </select>
+          {targetText && !target && <p className="text-sm text-red-700">Can&apos;t read those coordinates. Paste them as 41.32750, 19.81870.</p>}
+
+          <div className="grid grid-cols-[minmax(0,1fr)_96px] gap-2 items-end">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium" htmlFor={`home-${id}`}>Take-off point</label>
+              <input id={`home-${id}`} value={homeText} onChange={e => setHomeText(e.target.value)} placeholder="Where the drone sits now" className="h-10 w-full min-w-0 rounded-md border border-border bg-card px-3 text-sm" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium" htmlFor={`nose-${id}`}>Nose to</label>
+              <select id={`nose-${id}`} value={heading} onChange={e => setHeading(+e.target.value)} className="h-10 w-full min-w-0 rounded-md border border-border bg-card px-3 text-sm">
+                {COMPASS.map((c, i) => <option key={c} value={i * 45}>{c}</option>)}
+              </select>
+            </div>
+          </div>
+          {homeText && !home && <p className="text-sm text-red-700">Can&apos;t read the take-off point. Paste it as 41.32750, 19.81870.</p>}
+
+          {metres != null && (metres > max ? (
+            <p className="text-sm text-red-700">That&apos;s {metres} m away. This drone flies at most {max} m from where it takes off.</p>
+          ) : metres < 1 ? (
+            <p className="text-sm text-red-700">That&apos;s where the drone already is.</p>
+          ) : (
+            <p className="rounded-lg bg-muted px-3 py-2 text-sm">
+              <span className="font-semibold num">{metres} m {compassPoint(bearing)}</span> <span className="text-muted-foreground num">({bearing}°)</span>.{' '}
+              Climbs 1 m, {turn > 0 ? `turns right ${turn}°` : turn < 0 ? `turns left ${-turn}°` : 'keeps its heading'}, flies straight there and lands.
+            </p>
+          ))}
+          <p className="text-xs text-muted-foreground">
+            {drone.info?.timed
+              ? 'No GPS: it flies there by time, at the speed measured for it on the bridge, so it can land metres off. Keep it in sight.'
+              : 'No GPS: it flies there as measured moves from the take-off point. Clear the area first.'}
+            {' '}Before take-off, set where it sits and which way its nose points.
+          </p>
+          <Button onClick={() => send({ target, home, heading }, `${metres} m ${compassPoint(bearing)}`)} disabled={busy || !canFly || metres == null || metres < 1 || metres > max}>
+            <PaperPlaneRight size={16} /> Send drone
+          </Button>
+        </>
+      ) : (
+        <>
+          <label className="text-sm font-medium" htmlFor={`route-${id}`}>Route</label>
+          <select id={`route-${id}`} value={routeId} onChange={e => setRouteId(e.target.value)} className="h-10 w-full min-w-0 rounded-md border border-border bg-card px-3 text-sm">
+            {routes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+          </select>
+          <label className="text-sm font-medium" htmlFor={`sos-${id}`}>For an SOS call (optional)</label>
+          <select id={`sos-${id}`} value={emergencyId} onChange={e => setEmergencyId(e.target.value)} className="h-10 w-full min-w-0 rounded-md border border-border bg-card px-3 text-sm">
+            <option value="">Not linked to a call</option>
+            {emergencies.map(e => <option key={e._id} value={e._id}>{TYPE_LABEL[e.type] ?? 'Emergency'} · {timeAgo(e.createdAt)}</option>)}
+          </select>
+          <p className="text-xs text-muted-foreground">Short fixed routes for practice and demos. Clear the area first.</p>
+          <Button onClick={() => send({ routeId }, routes.find(r => r.id === routeId)?.name ?? '')} disabled={busy || !routeId || !canFly}>
+            <PaperPlaneRight size={16} /> Dispatch
+          </Button>
+        </>
+      )}
       {lowBattery && <p className="text-sm text-red-700">Battery below 30%. Charge before flying.</p>}
     </Card>
   );
@@ -511,6 +606,7 @@ const ControlsCard = ({ drone, toy, lowBattery, live, command }: { drone: FleetE
           <AirplaneLanding size={16} /> Land
         </Button>
       </div>
+      {toy && <p className="text-xs text-muted-foreground">No battery reading. If it sets itself down, don&apos;t press Land: on some models that button takes off.</p>}
 
       {manual ? (
         <div className="space-y-3">
@@ -531,7 +627,7 @@ const ControlsCard = ({ drone, toy, lowBattery, live, command }: { drone: FleetE
           </label>
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground">Arm the controls to steer with the keyboard or a gamepad{toy ? '' : ', or to take over from a route'}.</p>
+        <p className="text-sm text-muted-foreground">Arm the controls to steer with the keyboard or a gamepad, or to take over from a route.</p>
       )}
 
       <div className="pt-4 border-t border-border">

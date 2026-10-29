@@ -14,6 +14,9 @@ export const env = {
   geminiApiKey: process.env.GEMINI_API_KEY ?? '',
   // Shared secret the drone bridge presents on connect. Empty = drone bridges disabled.
   droneBridgeKey: process.env.DRONE_BRIDGE_KEY ?? '',
+  // Shared secret connected defibrillator cabinets send with their battery and door reports.
+  // Empty = cabinet reports disabled; batteries are then typed in at inspection.
+  aedDeviceKey: process.env.AED_DEVICE_KEY ?? '',
   // Drone photos and videos live in MongoDB (GridFS) unless MEDIA_BUCKET names a Firebase Storage
   // bucket (needs the Blaze plan; signs in with GOOGLE_APPLICATION_CREDENTIALS). In MongoDB they share
   // the free Atlas tier's 512 MB, so they're capped at MEDIA_QUOTA_MB.

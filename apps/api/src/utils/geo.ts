@@ -23,6 +23,16 @@ export const haversineKm = (a: [number, number], b: [number, number]) => {
   return 2 * R * Math.asin(Math.sqrt(x));
 };
 
+/** Compass bearing from a to b: degrees clockwise from north, 0–360. */
+export const bearingDeg = (a: [number, number], b: [number, number]) => {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const [lng1, lat1] = a.map(toRad);
+  const [lng2, lat2] = b.map(toRad);
+  const y = Math.sin(lng2 - lng1) * Math.cos(lat2);
+  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(lng2 - lng1);
+  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+};
+
 // Straight line × 1.4 road factor at 35 km/h: the fallback when routing is unavailable.
 export const estimateEtaSeconds = (a: [number, number], b: [number, number]) =>
   Math.round(((haversineKm(a, b) * 1.4) / 35) * 3600);

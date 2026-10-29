@@ -10,7 +10,7 @@ import type { Drone } from './drone';
  * Wi-Fi toy drones (see ../turbodrone). The bridge starts the turbodrone server on
  * 127.0.0.1 with a fresh token and steers it over its WebSocket. These drones report
  * no battery, height or position: we only know the link is up because video frames or
- * replies keep arriving, and we can't fly measured routes.
+ * replies keep arriving, and a route is flown by holding a stick for a calibrated time.
  */
 
 const DIR = path.resolve(import.meta.dirname, '../turbodrone');
@@ -18,6 +18,18 @@ const DIR = path.resolve(import.meta.dirname, '../turbodrone');
 const TAKEOFF_MS = Number(process.env.TOY_TAKEOFF_MS ?? 3_000);
 const LAND_MS = Number(process.env.TOY_LAND_MS ?? 5_000);
 const LINK_STALE_S = 3;
+// Calibration knobs for routes: how fast your drone goes with the stick at TIMED_STICK %.
+// Time it once (README, "Timed routes"); wind and a weak battery still put it metres off.
+const TIMED_STICK = 50;
+const SPEED_CMS = Number(process.env.TOY_SPEED_CMS ?? 100);
+const CLIMB_CMS = Number(process.env.TOY_CLIMB_CMS ?? 50);
+const YAW_DPS = Number(process.env.TOY_YAW_DPS ?? 90);
+const SETTLE_MS = 500; // let it stop between moves
+// Stick direction for each route step: lr, fb, ud, yaw.
+const STICKS: Record<string, [number, number, number, number]> = {
+  forward: [0, 1, 0, 0], back: [0, -1, 0, 0], left: [-1, 0, 0, 0], right: [1, 0, 0, 0],
+  up: [0, 0, 1, 0], down: [0, 0, -1, 0], cw: [0, 0, 0, 1], ccw: [0, 0, 0, -1],
+};
 const START_TIMEOUT_MS = 60_000;
 
 const log = (...a: unknown[]) => console.log(new Date().toISOString().slice(11, 19), ...a);
@@ -53,7 +65,7 @@ export class Turbodrone implements Drone {
   camera?: Drone['camera'];
 
   constructor(private type: string) {
-    this.info = { driver: 'turbodrone', model: type, routes: false };
+    this.info = { driver: 'turbodrone', model: type, routes: true };
     // The CooingDV apps' camera button ("06 01" / "06 02"), for dual-camera models.
     if (type === 'cooingdv') this.camera = index => this.send({ type: 'camera', index });
   }
@@ -167,8 +179,20 @@ export class Turbodrone implements Drone {
     }
   }
 
-  async move(): Promise<void> {
-    throw new Error('This drone has no positioning, so it can only be flown by hand');
+  async move(step: string, signal?: AbortSignal) {
+    const [dir, amount] = step.split(' ');
+    const stick = STICKS[dir];
+    if (!stick || !(Number(amount) > 0)) throw new Error(`Unknown step "${step}"`);
+    const rate = dir === 'cw' || dir === 'ccw' ? YAW_DPS : dir === 'up' || dir === 'down' ? CLIMB_CMS : SPEED_CMS;
+    const until = Date.now() + (Number(amount) / rate) * 1000;
+    const [lr, fb, ud, yaw] = stick.map(v => v * TIMED_STICK);
+    // Re-sent every 100 ms: turbodrone centres a stick that goes quiet.
+    while (Date.now() < until && !signal?.aborted) {
+      this.rc(lr, fb, ud, yaw);
+      await sleep(100);
+    }
+    this.rc(0, 0, 0, 0);
+    if (!signal?.aborted) await sleep(SETTLE_MS);
   }
 
   readings() {

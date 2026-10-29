@@ -15,6 +15,7 @@ const DRONE = 'cooingdv-1';
 const TD = `127.0.0.1:${process.env.TURBODRONE_PORT ?? 8765}`;
 const TOKEN = process.env.TURBODRONE_TOKEN ?? '';
 const CENTRE = 128;
+const HOME = [19.8187, 41.3275];
 
 const call = async (method: string, path: string, token?: string, body?: unknown) => {
   const res = await fetch(`${BASE}/api${path}`, {
@@ -79,8 +80,8 @@ async function main() {
     if (!entry) await sleep(1000);
   }
   assert.ok(entry, `${DRONE} online (start the bridge with DRONE_TYPE=cooingdv)`);
-  assert.deepEqual(entry.info, { driver: 'turbodrone', model: 'cooingdv', routes: false });
-  ok('toy drone online and described as hand-flown');
+  assert.deepEqual(entry.info, { driver: 'turbodrone', model: 'cooingdv', routes: true, timed: true });
+  ok('toy drone online; its routes are flown by time');
 
   const ds = await connect(disp);
   const tel = await until<any>(ds, 'drone:telemetry', t => t.droneId === DRONE && t.linkOk, 15_000);
@@ -88,9 +89,10 @@ async function main() {
   assert.equal(tel.heightCm, undefined);
   ok('link reads as up from drone replies; no invented battery or height');
 
-  const route = await call('POST', `/drones/${DRONE}/dispatch`, disp, { routeId: 'demo-short' });
-  assert.equal(route.status, 409);
-  ok('autonomous routes refused');
+  const tooFar = await call('POST', `/drones/${DRONE}/dispatch`, disp, { target: [19.8187, 41.3281], home: HOME }); // ~67 m
+  assert.equal(tooFar.status, 400);
+  assert.match(tooFar.data.error, /at most 50 m/);
+  ok('a toy drone is never sent more than 50 m');
 
   // The turbodrone server only answers to the bridge's token.
   assert.equal((await fetch(`http://${TD}/status`)).status, 401);
@@ -142,6 +144,32 @@ async function main() {
   await packet(p => (p.flags & 0x04) !== 0, 'the motor stop flag', t0);
   await until<any>(ds, 'drone:telemetry', t => t.droneId === DRONE && !t.airborne);
   ok('emergency stop reaches the drone');
+
+  // Timed route to a point 3 m east with the nose already east: take off, climb, forward, land.
+  t0 = Date.now();
+  const route = await call('POST', `/drones/${DRONE}/dispatch`, disp, { target: [19.81874, 41.3275], home: HOME, heading: 90 });
+  assert.equal(route.status, 201, JSON.stringify(route.data));
+  assert.deepEqual(route.data.steps.map((s: string) => s.split(' ')[0]), ['up', 'forward']);
+  await packet(p => (p.flags & 0x01) !== 0, 'the takeoff flag', t0);
+  await packet(p => p.pitch > CENTRE + 20, 'forward stick on the timed leg', t0, 10_000);
+  const flown = await until<any>(ds, 'drone:update', u => u._id === route.data._id && ['delivered', 'aborted'].includes(u.status));
+  assert.equal(flown.status, 'delivered', flown.abortReason);
+  await packet(p => (p.flags & 0x02) !== 0, 'the land flag', t0);
+  ok('timed route to coordinates: takes off, flies forward for its time, lands');
+
+  // The operator grabs the sticks early in a 20 s leg: the timed move stops at once.
+  const long = await call('POST', `/drones/${DRONE}/dispatch`, disp, { target: [19.8187, 41.32768], home: HOME, heading: 0 }); // ~20 m north
+  assert.equal(long.status, 201, JSON.stringify(long.data));
+  await packet(p => p.pitch > CENTRE + 20, 'forward stick on the long leg', Date.now(), 10_000);
+  ds.emit('drone:rc', { droneId: DRONE, lr: 60, fb: 0, ud: 0, yaw: 0 });
+  const taken = await until<any>(ds, 'drone:update', u => u._id === long.data._id && u.status === 'aborted', 2_000);
+  assert.match(taken.abortReason, /manual/i);
+  const takenAt = Date.now();
+  await sleep(600);
+  assert.ok(packets.filter(p => p.at > takenAt + 200).every(p => p.pitch === CENTRE), 'no forward stick after the operator took over');
+  ds.emit('drone:command', { droneId: DRONE, action: 'land' }, () => {});
+  await until<any>(ds, 'drone:telemetry', t => t.droneId === DRONE && !t.airborne);
+  ok('operator sticks stop a timed leg at once; the drone hovers until landed');
 
   // Camera switch: reaches the drone as the apps' "06 02" / "06 01", and the console sees which is on.
   assert.equal((await until<any>(ds, 'drone:telemetry', t => t.droneId === DRONE)).camera, 1);
