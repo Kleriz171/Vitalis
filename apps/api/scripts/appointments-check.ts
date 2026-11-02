@@ -1,11 +1,14 @@
 /**
  * Consultations: clinician hours, days off and fees; free slots; booking without double booking
  * (even under races); prices copied at booking; reschedule, confirm, decline, cancel; who may do what.
- * Against a running, freshly seeded API:
- *   API_URL=http://localhost:4000 npx tsx apps/api/scripts/appointments-check.ts
+ * Then the clinical record: consent per booking, every view logged, summaries, follow-ups.
+ * Against a running, freshly seeded API (MONGO_URI: the same test database, to move a booking into the past):
+ *   API_URL=http://localhost:4000 MONGO_URI=mongodb://localhost:27017/vitalis_test npx tsx apps/api/scripts/appointments-check.ts
  */
 import assert from 'node:assert/strict';
+import mongoose from 'mongoose';
 import { addDays, inTirana, tiranaTime } from '../src/utils/tirana';
+import { Booking } from '../src/models/Booking';
 
 const BASE = process.env.API_URL ?? 'http://localhost:4000';
 
@@ -115,6 +118,45 @@ async function main() {
   assert.ok((await call('GET', `/doctors/${sara.id}/slots?type=${consult.id}&from=${monday}&days=1`, citizen)).data[0].times.includes(at('14:00')));
   assert.equal((await call('PUT', '/clinic/settings', doctor, { ...settings, consultationTypes: [{ name: 'Odd', minutes: 20, price: 100 }] })).status, 400, '15-minute steps');
   ok('days off close the day; cancelling frees the time, once');
+
+  // CL3. The record: only on a booking where the patient shared it; each view logged for the patient.
+  await call('PUT', '/clinic/settings', doctor, settings);
+  const shared = (await call('POST', `/doctors/${sara.id}/bookings`, citizen, req(at('15:00')))).data;
+  const notShared = (await call('POST', `/doctors/${sara.id}/bookings`, other, { ...req(at('15:30')), shareRecord: false })).data;
+  assert.equal((await call('GET', `/clinic/bookings/${notShared.id}/record`, doctor)).status, 403, 'not shared');
+  assert.equal((await call('GET', `/clinic/bookings/${shared.id}/record`, citizen)).status, 403, 'patients use their own app');
+  const record = await call('GET', `/clinic/bookings/${shared.id}/record`, doctor);
+  assert.equal(record.status, 200);
+  assert.ok(record.data.allergies.some((a: any) => a.allergen === 'Penicillin'));
+  const log = (await call('GET', '/account/access-log', citizen)).data as any[];
+  assert.deepEqual([log[0].kind, log[0].actor], ['clinician_record', 'Sara Doctor']);
+  const demoId = (await call('GET', '/health/profile', citizen)).data.user.id;
+  assert.equal((await call('GET', `/admin/users/${demoId}`, admin)).status, 200);
+  assert.equal(((await call('GET', '/account/access-log', citizen)).data as any[])[0].kind, 'admin_record');
+  assert.equal(((await call('GET', '/account/access-log', other)).data as any[]).length, 0, 'nobody opened the other record');
+  ok('record: consent per booking, patients see every clinician and admin view');
+
+  // CL4. Summary once the consultation has started; the patient reads it; a follow-up is confirmed.
+  await call('POST', `/clinic/bookings/${shared.id}/confirm`, doctor);
+  const summary = { observations: 'Wheeze on exhalation, SpO2 97%.', recommendations: 'Keep the inhaler with you; spacer.', summary: 'Mild asthma flare, settled.' };
+  assert.equal((await call('PUT', `/clinic/bookings/${shared.id}/summary`, doctor, summary)).status, 409, 'not started yet');
+  await mongoose.connect(process.env.MONGO_URI!);
+  const past = (h: number) => new Date(Date.now() - h * 3600_000);
+  await Booking.updateOne({ _id: shared.id }, { $set: { startsAt: past(2), endsAt: past(1.5) } });
+  const done = await call('PUT', `/clinic/bookings/${shared.id}/summary`, doctor, summary);
+  assert.deepEqual([done.status, done.data.status], [200, 'completed']);
+  assert.equal(((await call('GET', '/bookings/mine', citizen)).data as any[]).find(b => b.id === shared.id).summary.summary, 'Mild asthma flare, settled.');
+  const timeline = (await call('GET', `/clinic/bookings/${shared.id}/record`, doctor)).data.timeline as any[];
+  assert.ok(timeline.some(t => t.kind === 'consultation' && t.detail.summary === 'Mild asthma flare, settled.'));
+  const later2 = (await call('GET', `/clinic/slots?type=${followUp.id}&from=${addDays(monday, 7)}&days=7`, doctor)).data.find((d: any) => d.times.length).times[0];
+  const fu = await call('POST', `/clinic/bookings/${shared.id}/follow-up`, doctor, { typeId: followUp.id, startsAt: later2 });
+  assert.deepEqual([fu.status, fu.data.status, fu.data.followUpOf], [201, 'confirmed', shared.id]);
+  assert.ok(((await call('GET', '/bookings/mine', citizen)).data as any[]).some(b => b.id === fu.data.id));
+  // The shared record closes 30 days after the consultation.
+  await Booking.updateOne({ _id: shared.id }, { $set: { startsAt: past(31 * 24 + 1), endsAt: past(31 * 24) } });
+  assert.equal((await call('GET', `/clinic/bookings/${shared.id}/record`, doctor)).status, 403);
+  await mongoose.disconnect();
+  ok('summary after the start, read by the patient; confirmed follow-up; record closes after 30 days');
 
   console.log('\nAll appointment checks passed.');
 }

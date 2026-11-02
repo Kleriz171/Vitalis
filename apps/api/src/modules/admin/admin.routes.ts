@@ -6,6 +6,7 @@ import { Emergency } from '../../models/Emergency';
 import { Certification, Enrollment, RESPONDER_COURSES } from '../../models/Training';
 import { Doctor } from '../../models/Doctor';
 import { Hospital } from '../../models/Hospital';
+import { logAccess } from '../../models/AccessLog';
 import { authRequired, AuthReq } from '../../middleware/auth';
 import { allow } from '../../middleware/rbac';
 import { validate } from '../../middleware/validate';
@@ -42,10 +43,12 @@ r.get('/users', async (_req, res, next) => {
   } catch (e) { next(e); }
 });
 
-r.get('/users/:id', async (req, res, next) => {
+r.get('/users/:id', async (req: AuthReq, res, next) => {
   try {
     const user = await User.findById(req.params.id).lean();
     if (!user) return res.status(404).json({ error: 'Not found' });
+    // Administrators see every medical record; each opening is in the person's access log.
+    await logAccess({ subject: user._id, actor: req.user!.id, actorRole: 'admin', kind: 'admin_record' });
     const [medications, allergies, vaccinations, appointments, conditions, disabilities, emergencies, certifications, enrollments] =
       await Promise.all([
         Medication.find({ user: user._id }).lean(),

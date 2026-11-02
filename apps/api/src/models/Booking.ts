@@ -23,6 +23,9 @@ const BookingSchema = new Schema({
   shareRecord: { type: Boolean, default: false },
   history: [{ at: { type: Date, default: Date.now }, by: { type: Types.ObjectId, ref: 'User' }, action: String, note: String }],
   remindedAt: Date,
+  // Written by the clinician after the consultation. Not a prescription or a medical certificate.
+  summary: { observations: String, recommendations: String, summary: String, writtenAt: Date },
+  followUpOf: { type: Types.ObjectId, ref: 'Booking' },
 }, { timestamps: true });
 
 BookingSchema.index({ doctor: 1, slots: 1 }, { unique: true, partialFilterExpression: { active: true } });

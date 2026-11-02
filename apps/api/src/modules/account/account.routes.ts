@@ -21,6 +21,8 @@ import { Responder } from '../../models/Responder';
 import { PhoneCode } from '../../models/PhoneCode';
 import { VideoSession } from '../../models/VideoSession';
 import { Aed } from '../../models/Aed';
+import { AccessLog } from '../../models/AccessLog';
+import { Booking } from '../../models/Booking';
 import { logger } from '../../config/logger';
 
 // The person's own data: export everything, or erase it (privacy policy, landing /privacy).
@@ -30,6 +32,14 @@ r.use(authRequired);
 const ACTIVE = ACTIVE_STATUSES;
 const HEALTH = { allergies: Allergy, medications: Medication, conditions: Condition, disabilities: Disability, vaccinations: Vaccination, appointments: Appointment };
 const SECRETS = '-password -refreshTokenHash -checkInPinHash -duressPinHash -pushTokens';
+
+// Who opened my medical record (clinicians I shared it with, administrators, QR scans).
+r.get('/access-log', async (req: AuthReq, res, next) => {
+  try {
+    const list = await AccessLog.find({ subject: req.user!.id }).sort('-at').limit(200).populate('actor', 'name').lean();
+    res.json(list.map((a: any) => ({ id: String(a._id), kind: a.kind, at: a.at, actor: a.actor?.name ?? null, actorRole: a.actorRole ?? null })));
+  } catch (e) { next(e); }
+});
 
 r.get('/export', async (req: AuthReq, res, next) => {
   try {
@@ -92,6 +102,8 @@ r.delete('/', validate(z.object({ confirm: z.literal('DELETE') }).strict()), asy
       BloodRequest.updateMany({ createdBy: id }, { $unset: { createdBy: 1 } }),
       DoctorApplication.deleteMany({ user: id }),
       Doctor.deleteMany({ user: id }),
+      Booking.deleteMany({ patient: id }), // their consultations and the summaries written for them
+      AccessLog.deleteMany({ subject: id }),
       Notification.deleteMany({ user: id }),
       Responder.deleteMany({ user: id }),
       VideoSession.updateMany({ participants: id }, { $pull: { participants: id } }),

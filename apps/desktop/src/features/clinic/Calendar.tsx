@@ -7,6 +7,7 @@ import { Panel } from '../../components/ui/list';
 import { Button } from '../../components/ui/button';
 import { pushToast } from '../../components/toast/toast';
 import { cn } from '../../lib/utils';
+import { exportPdf } from '../../lib/exportPdf';
 
 export interface Booking {
   id: string;
@@ -18,7 +19,8 @@ export interface Booking {
   status: 'requested' | 'confirmed' | 'completed' | 'cancelled' | 'declined';
   reason?: string;
   shareRecord: boolean;
-  summary?: { summary?: string };
+  summary?: { observations?: string; recommendations?: string; summary?: string; writtenAt?: string };
+  followUpOf?: string;
   history: { at: string; action: string; note?: string }[];
 }
 
@@ -91,9 +93,9 @@ export const ClinicCalendar = () => {
 
   return (
     <>
-      <PageHeader icon={CalendarDots} title="Consultations" subtitle="Your calendar, requests waiting for an answer, and each patient’s booking." />
+      <PageHeader noPrint icon={CalendarDots} title="Consultations" subtitle="Your calendar, requests waiting for an answer, and each patient’s booking." />
       <div className="p-6 grid gap-5 xl:grid-cols-[1fr_340px]">
-        <div className="space-y-4 min-w-0">
+        <div className="space-y-4 min-w-0 print:hidden">
           {hasClinic === false && (
             <Panel><p className="px-5 py-4 text-[14px]">Patients cannot book you yet. <Link to="/command/clinic/settings" className="font-semibold text-primary underline underline-offset-2">Set your hours and fees</Link> first.</p></Panel>
           )}
@@ -191,24 +193,70 @@ export const ClinicCalendar = () => {
   );
 };
 
-/** One booking: who, when, why, and what the clinician can do with it. */
+type Slots = { date: string; times: string[] }[];
+type ClinicType = { id: string; name: string; minutes: number; active: boolean };
+interface PatientRecord {
+  patient: { name?: string; age?: number; gender?: string; bloodType?: string };
+  allergies: { allergen: string; severity: string }[];
+  medications: string[];
+  conditions: string[];
+  disabilities: string[];
+  timeline: { kind: 'consultation' | 'emergency'; at: string; title: string; detail?: { summary?: string; recommendations?: string }; reports?: { author: string; notes?: string; cprPerformed: boolean; aedUsed: boolean }[] }[];
+  accessNote: string;
+}
+
+/** Free times as buttons, grouped by day. */
+const SlotPicker = ({ slots, busy, onPick }: { slots: Slots | null; busy: boolean; onPick: (iso: string) => void }) => (
+  <div className="rounded-xl border border-border p-3 max-h-64 overflow-auto space-y-2">
+    {!slots ? <p className="text-sm text-muted-foreground">Loading free times…</p>
+      : !slots.some(d => d.times.length) ? <p className="text-sm text-muted-foreground">No free times in the next two weeks.</p>
+      : slots.filter(d => d.times.length).map(d => (
+        <div key={d.date}>
+          <div className="text-[12px] font-semibold text-muted-foreground">{fmt(d.date, { weekday: 'short', day: 'numeric', month: 'short' })}</div>
+          <div className="mt-1 flex flex-wrap gap-1">
+            {d.times.map(t => <button key={t} disabled={busy} onClick={() => onPick(t)} className="num rounded-md border border-border px-2 py-1 text-[12px] hover:bg-accent">{clock(t)}</button>)}
+          </div>
+        </div>
+      ))}
+  </div>
+);
+
+const TEXTAREA = 'w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm';
+
+/** One booking: who, when, why, the shared record, the summary and what the clinician can do next. */
 const BookingPanel = ({ booking: b, onClose, onChanged }: { booking: Booking; onClose: () => void; onChanged: () => Promise<void> }) => {
   const [busy, setBusy] = useState(false);
-  const [moving, setMoving] = useState(false);
-  const [slots, setSlots] = useState<{ date: string; times: string[] }[] | null>(null);
+  const [mode, setMode] = useState<null | 'move' | 'record' | 'summary' | 'followup'>(null);
+  const [slots, setSlots] = useState<Slots | null>(null);
+  const [types, setTypes] = useState<ClinicType[]>([]);
+  const [followType, setFollowType] = useState<string | null>(null);
+  const [record, setRecord] = useState<PatientRecord | null>(null);
+  const [recordError, setRecordError] = useState<string | null>(null);
+  const [draft, setDraft] = useState({ observations: '', recommendations: '', summary: '' });
   const open = b.status === 'requested' || b.status === 'confirmed';
+  const started = Date.parse(b.startsAt) <= Date.now() + 3600_000;
+  const canWrite = (b.status === 'confirmed' && started) || (b.status === 'completed' && !!b.summary?.writtenAt && Date.now() - Date.parse(b.summary.writtenAt) < 7 * 86_400_000);
 
-  useEffect(() => { setMoving(false); setSlots(null); }, [b.id]);
   useEffect(() => {
-    if (moving) api.get('/clinic/slots', { params: { type: b.type.id, days: 14 } }).then(r => setSlots(r.data)).catch(() => setSlots([]));
-  }, [moving, b.type.id]);
+    setMode(null); setSlots(null); setRecord(null); setRecordError(null);
+    setDraft({ observations: b.summary?.observations ?? '', recommendations: b.summary?.recommendations ?? '', summary: b.summary?.summary ?? '' });
+  }, [b.id, b.summary]);
+  useEffect(() => {
+    const type = mode === 'move' ? b.type.id : mode === 'followup' ? followType : null;
+    setSlots(null);
+    if (type) api.get('/clinic/slots', { params: { type, days: 14, ...(mode === 'followup' ? {} : {}) } }).then(r => setSlots(r.data)).catch(() => setSlots([]));
+  }, [mode, followType, b.type.id]);
+  useEffect(() => {
+    if (mode === 'followup' && !types.length) api.get('/clinic/me').then(r => setTypes((r.data?.consultationTypes ?? []).filter((t: ClinicType) => t.active))).catch(() => {});
+    if (mode === 'record' && !record) api.get(`/clinic/bookings/${b.id}/record`).then(r => setRecord(r.data)).catch(err => setRecordError(err?.response?.data?.error ?? 'Could not open the record'));
+  }, [mode, types.length, record, b.id]);
 
-  const act = async (path: string, body: object, done: string) => {
+  const act = async (request: () => Promise<unknown>, done: string) => {
     setBusy(true);
     try {
-      await api.post(`/clinic/bookings/${b.id}/${path}`, body);
+      await request();
       pushToast({ tone: 'success', title: done });
-      setMoving(false);
+      setMode(null);
       await onChanged();
     } catch (err: any) {
       pushToast({ tone: 'error', title: 'Not saved', body: err?.response?.data?.error ?? 'Try again' });
@@ -216,43 +264,109 @@ const BookingPanel = ({ booking: b, onClose, onChanged }: { booking: Booking; on
       setBusy(false);
     }
   };
+  const post = (path: string, body: object, done: string) => act(() => api.post(`/clinic/bookings/${b.id}/${path}`, body), done);
+  const toggle = (m: typeof mode) => setMode(cur => (cur === m ? null : m));
 
   return (
     <Panel title={b.patient.name} aside={<Button size="icon" variant="ghost" onClick={onClose} aria-label="Close"><X size={16} /></Button>}>
-      <div className="px-5 py-4 space-y-3 text-[14px]">
+      <div className="px-5 py-4 space-y-3 text-[14px] print:hidden">
         <div className="flex items-center gap-2">
           <span className={cn('rounded-md border px-2 py-0.5 text-[12px] font-semibold', TONE[b.status])}>{STATUS[b.status]}</span>
           <span className="text-muted-foreground">{fmt(tiranaDate(new Date(b.startsAt)), { weekday: 'long', day: 'numeric', month: 'short' })}, {clock(b.startsAt)}–{clock(b.endsAt)}</span>
         </div>
         <dl className="grid grid-cols-[92px_1fr] gap-y-1.5">
           <dt className="text-muted-foreground">Type</dt><dd>{b.type.name}{b.type.online ? ' (online)' : ''}</dd>
-          <dt className="text-muted-foreground">Price</dt><dd className="num">{b.price.toLocaleString('en-GB')} lekë <span className="text-muted-foreground">as booked</span></dd>
+          <dt className="text-muted-foreground">Price</dt><dd>{b.price.toLocaleString('en-GB')} lekë <span className="text-muted-foreground">as booked</span></dd>
           <dt className="text-muted-foreground">Reason</dt><dd>{b.reason || 'Not given'}</dd>
           <dt className="text-muted-foreground">Records</dt><dd>{b.shareRecord ? 'Shared with you for this consultation' : 'Not shared'}</dd>
         </dl>
-        {open && (
-          <div className="flex flex-wrap gap-2 pt-1">
-            {b.status === 'requested' && <Button size="sm" className="rounded-lg" disabled={busy} onClick={() => act('confirm', {}, 'Confirmed')}>Confirm</Button>}
-            {b.status === 'requested' && <Button size="sm" variant="outline" className="rounded-lg" disabled={busy} onClick={() => act('decline', {}, 'Declined')}>Decline</Button>}
-            <Button size="sm" variant="outline" className="rounded-lg" disabled={busy} onClick={() => setMoving(m => !m)}>Reschedule</Button>
-            {b.status === 'confirmed' && <Button size="sm" variant="ghost" className="rounded-lg text-muted-foreground" disabled={busy} onClick={() => { if (window.confirm('Cancel this consultation? The patient is told in the app.')) void act('cancel', {}, 'Cancelled'); }}>Cancel</Button>}
+        <div className="flex flex-wrap gap-2 pt-1">
+          {b.status === 'requested' && <Button size="sm" className="rounded-lg" disabled={busy} onClick={() => post('confirm', {}, 'Confirmed')}>Confirm</Button>}
+          {b.status === 'requested' && <Button size="sm" variant="outline" className="rounded-lg" disabled={busy} onClick={() => post('decline', {}, 'Declined')}>Decline</Button>}
+          {b.shareRecord && b.status !== 'cancelled' && b.status !== 'declined' && <Button size="sm" variant="outline" className="rounded-lg" onClick={() => toggle('record')}>Patient record</Button>}
+          {canWrite && <Button size="sm" variant="outline" className="rounded-lg" onClick={() => toggle('summary')}>{b.summary?.summary ? 'Edit summary' : 'Write summary'}</Button>}
+          {(b.status === 'confirmed' || b.status === 'completed') && <Button size="sm" variant="outline" className="rounded-lg" onClick={() => toggle('followup')}>Follow-up</Button>}
+          {open && <Button size="sm" variant="outline" className="rounded-lg" disabled={busy} onClick={() => toggle('move')}>Reschedule</Button>}
+          {b.status === 'confirmed' && <Button size="sm" variant="ghost" className="rounded-lg text-muted-foreground" disabled={busy} onClick={() => { if (window.confirm('Cancel this consultation? The patient is told in the app.')) void post('cancel', {}, 'Cancelled'); }}>Cancel</Button>}
+        </div>
+
+        {mode === 'move' && <SlotPicker slots={slots} busy={busy} onPick={t => post('reschedule', { startsAt: t }, 'Moved')} />}
+
+        {mode === 'followup' && (
+          <div className="space-y-2">
+            <select value={followType ?? ''} onChange={e => setFollowType(e.target.value || null)} className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm" aria-label="Consultation type">
+              <option value="">Choose the type of follow-up</option>
+              {types.map(t => <option key={t.id} value={t.id}>{t.name} · {t.minutes} min</option>)}
+            </select>
+            {followType && <SlotPicker slots={slots} busy={busy} onPick={t => post('follow-up', { typeId: followType, startsAt: t }, 'Follow-up booked and confirmed')} />}
           </div>
         )}
-        {moving && (
-          <div className="rounded-xl border border-border p-3 max-h-64 overflow-auto space-y-2">
-            {!slots ? <p className="text-sm text-muted-foreground">Loading free times…</p>
-              : !slots.some(d => d.times.length) ? <p className="text-sm text-muted-foreground">No free times in the next two weeks.</p>
-              : slots.filter(d => d.times.length).map(d => (
-                <div key={d.date}>
-                  <div className="text-[12px] font-semibold text-muted-foreground">{fmt(d.date, { weekday: 'short', day: 'numeric', month: 'short' })}</div>
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {d.times.map(t => <button key={t} disabled={busy} onClick={() => act('reschedule', { startsAt: t }, 'Moved')} className="num rounded-md border border-border px-2 py-1 text-[12px] hover:bg-accent">{clock(t)}</button>)}
-                  </div>
-                </div>
-              ))}
+
+        {mode === 'record' && (
+          <div className="rounded-xl border border-border p-3 space-y-3 max-h-[420px] overflow-auto">
+            {recordError ? <p className="text-sm text-muted-foreground">{recordError}</p>
+              : !record ? <p className="text-sm text-muted-foreground">Opening…</p>
+              : (
+                <>
+                  <p className="text-[12px] text-muted-foreground">{record.accessNote}</p>
+                  <dl className="grid grid-cols-[96px_1fr] gap-y-1.5">
+                    <dt className="text-muted-foreground">Patient</dt><dd>{[record.patient.age != null && `${record.patient.age} years`, record.patient.gender, record.patient.bloodType && `blood ${record.patient.bloodType}`].filter(Boolean).join(', ') || 'No details'}</dd>
+                    <dt className="text-muted-foreground">Allergies</dt><dd>{record.allergies.map(a => `${a.allergen} (${a.severity})`).join(', ') || 'None recorded'}</dd>
+                    <dt className="text-muted-foreground">Medication</dt><dd>{record.medications.join(', ') || 'None recorded'}</dd>
+                    <dt className="text-muted-foreground">Conditions</dt><dd>{record.conditions.join(', ') || 'None recorded'}</dd>
+                    {record.disabilities.length > 0 && (<><dt className="text-muted-foreground">Disabilities</dt><dd>{record.disabilities.join(', ')}</dd></>)}
+                  </dl>
+                  <ol className="space-y-2 border-t border-border pt-3">
+                    {record.timeline.length === 0 && <li className="text-sm text-muted-foreground">No earlier consultations or emergencies on Vitalis.</li>}
+                    {record.timeline.map((t, i) => (
+                      <li key={i}>
+                        <div className="text-[12px] text-muted-foreground num">{new Date(t.at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: TZ })}</div>
+                        <div className="font-semibold">{t.title}</div>
+                        {t.detail?.summary && <div>{t.detail.summary}</div>}
+                        {t.reports?.map((r, j) => <div key={j} className="text-muted-foreground">Responder {r.author}: {[r.cprPerformed && 'CPR', r.aedUsed && 'defibrillator'].filter(Boolean).join(', ') || 'no interventions'}{r.notes ? `. “${r.notes}”` : ''}</div>)}
+                      </li>
+                    ))}
+                  </ol>
+                </>
+              )}
+          </div>
+        )}
+
+        {mode === 'summary' && (
+          <form className="space-y-2" onSubmit={e => { e.preventDefault(); void act(() => api.put(`/clinic/bookings/${b.id}/summary`, {
+            summary: draft.summary.trim(),
+            ...(draft.observations.trim() ? { observations: draft.observations.trim() } : {}),
+            ...(draft.recommendations.trim() ? { recommendations: draft.recommendations.trim() } : {}),
+          }), 'Summary saved. The patient sees it in the app.'); }}>
+            <textarea value={draft.observations} onChange={e => setDraft({ ...draft, observations: e.target.value })} rows={3} maxLength={4000} placeholder="Observations" className={TEXTAREA} aria-label="Observations" />
+            <textarea value={draft.recommendations} onChange={e => setDraft({ ...draft, recommendations: e.target.value })} rows={3} maxLength={4000} placeholder="Recommendations" className={TEXTAREA} aria-label="Recommendations" />
+            <textarea value={draft.summary} onChange={e => setDraft({ ...draft, summary: e.target.value })} rows={3} maxLength={4000} required placeholder="Summary for the patient" className={TEXTAREA} aria-label="Summary" />
+            <p className="text-[12px] text-muted-foreground">Saving completes the consultation. Not a prescription, a sick note or a signed medical document.</p>
+            <Button type="submit" size="sm" className="rounded-lg" disabled={busy || draft.summary.trim().length < 3}>Save summary</Button>
+          </form>
+        )}
+
+        {b.summary?.summary && mode !== 'summary' && (
+          <div className="rounded-xl bg-muted/60 px-4 py-3 space-y-1">
+            <div className="font-semibold">Summary</div>
+            <div>{b.summary.summary}</div>
+            {b.summary.recommendations && <div className="text-muted-foreground">Recommendations: {b.summary.recommendations}</div>}
+            <Button size="sm" variant="ghost" className="rounded-lg -ml-2" onClick={() => exportPdf(`consultation summary ${b.patient.name ?? ''}`)}>Export PDF</Button>
           </div>
         )}
       </div>
+
+      {/* What "Export PDF" prints: the summary as a plain document. */}
+      {b.summary?.summary && (
+        <div className="hidden print:block p-10 text-[11pt] text-black">
+          <h1 className="text-[18pt] font-bold">Consultation summary</h1>
+          <p className="mt-1">{b.patient.name} · {b.type.name} · {fmt(tiranaDate(new Date(b.startsAt)), { day: 'numeric', month: 'long', year: 'numeric' })}, {clock(b.startsAt)}</p>
+          {b.summary.observations && <><h2 className="mt-6 font-bold">Observations</h2><p className="whitespace-pre-wrap">{b.summary.observations}</p></>}
+          {b.summary.recommendations && <><h2 className="mt-4 font-bold">Recommendations</h2><p className="whitespace-pre-wrap">{b.summary.recommendations}</p></>}
+          <h2 className="mt-4 font-bold">Summary</h2><p className="whitespace-pre-wrap">{b.summary.summary}</p>
+          <p className="mt-8 text-[9pt]">Written on Vitalis. Not a prescription, a sick note or a signed medical document.</p>
+        </div>
+      )}
     </Panel>
   );
 };

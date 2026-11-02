@@ -62,7 +62,8 @@ function assertWorkingTime(d: any, startsAt: Date, minutes: number) {
 const isDuplicate = (e: any) => e?.code === 11000;
 const TAKEN = 'That time was just booked by someone else. Pick another.';
 
-export async function book(d: any, patientId: string, body: { typeId: string; startsAt: string; reason?: string; shareRecord: boolean }) {
+/** A patient's request, or (with `followUpOf`) a follow-up the clinician schedules, confirmed at once. */
+export async function book(d: any, patientId: string, body: { typeId: string; startsAt: string; reason?: string; shareRecord: boolean }, followUpOf?: unknown) {
   if (String(d.user) === patientId) throw fail(400, 'You cannot book yourself');
   const type = (d.consultationTypes ?? []).find((t: any) => String(t._id) === body.typeId && t.active);
   if (!type) throw fail(404, 'This consultation type is not offered');
@@ -79,7 +80,8 @@ export async function book(d: any, patientId: string, body: { typeId: string; st
       type: { id: type._id, name: type.name, minutes: type.minutes, online: type.online },
       price: type.price, startsAt, endsAt, slots: slotsFor(startsAt, type.minutes),
       reason: body.reason, shareRecord: body.shareRecord,
-      history: [{ by: patientId, action: 'requested' }],
+      ...(followUpOf ? { status: 'confirmed', followUpOf } : {}),
+      history: [{ by: followUpOf ? d.user : patientId, action: followUpOf ? 'follow_up_scheduled' : 'requested' }],
     });
   } catch (e) {
     if (isDuplicate(e)) throw fail(409, TAKEN);

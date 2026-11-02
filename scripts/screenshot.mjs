@@ -6,7 +6,8 @@
  * Env: EMAIL/PASS (default demo account), APP, API, WAIT (ms), GEO="lat,lng" (fake location),
  *      WIDTH (desktop width, e.g. 1440 for the web console), PDF=1 (save the printed page as .pdf, PAGES="1-2" for some pages),
  *      SCROLLY="0,900,40%" (one shot per scroll position, name-0.png …; SETTLE=ms to wait after each scroll),
- *      REDUCED=1 (prefers-reduced-motion: reduce), LOCAL="lang=en" (localStorage set before loading).
+ *      REDUCED=1 (prefers-reduced-motion: reduce), LOCAL="lang=en" (localStorage set before loading),
+ *      CLICK2="text" (a second click after CLICK / CLICKSEL).
  */
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -65,6 +66,12 @@ if (process.env.CLICK) {
 if (process.env.CLICKSEL) {
   // A control without words (an icon button): CLICKSEL='[aria-label^="Edit"]'.
   await send('Runtime.evaluate', { expression: `document.querySelector(${JSON.stringify(process.env.CLICKSEL)})?.click()` });
+  await sleep(1500);
+}
+if (process.env.CLICK2) {
+  // A second control with this text, after CLICK / CLICKSEL (e.g. open a row, then a button in it).
+  const text = JSON.stringify(process.env.CLICK2);
+  await send('Runtime.evaluate', { expression: `[...document.querySelectorAll('button,[role=tab],[role=button],[role=link]')].find((e) => e.textContent.trim() === ${text})?.click()` });
   await sleep(1500);
 }
 if (process.env.SCROLL) {

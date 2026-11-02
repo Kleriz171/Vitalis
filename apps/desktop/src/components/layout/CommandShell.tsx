@@ -203,12 +203,12 @@ export const CommandShell = () => {
  * Page header on the green band, like the phone app: an icon tile, a heavy white title and one
  * line on what the page is for. The first block after it overlaps the band's lower edge.
  */
-export const PageHeader = ({ title, subtitle, actions, icon }: { title: string; subtitle?: string; actions?: ReactNode; icon?: Icon }) => {
+export const PageHeader = ({ title, subtitle, actions, icon, noPrint }: { title: string; subtitle?: string; actions?: ReactNode; icon?: Icon; noPrint?: boolean }) => {
   const { pathname } = useLocation();
   const role = useSelector((s: RootState) => s.auth.user?.role);
   const tabs = sectionOf(pathname, role)?.tabs;
   return (
-    <header className="page-band frame-texture flex items-start justify-between gap-4 px-6 pt-7 pb-[4.75rem]">
+    <header className={cn('page-band frame-texture flex items-start justify-between gap-4 px-6 pt-7 pb-[4.75rem]', noPrint && 'print:hidden')}>
       <div className="min-w-0">
         <div className="flex items-center gap-4 min-w-0">
           {icon && <Tile icon={icon} tone="band" size="lg" />}

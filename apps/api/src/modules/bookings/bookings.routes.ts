@@ -5,7 +5,11 @@ import { allow } from '../../middleware/rbac';
 import { validate } from '../../middleware/validate';
 import { Booking } from '../../models/Booking';
 import { Doctor } from '../../models/Doctor';
-import { User } from '../../models/User';
+import { User, ageOf } from '../../models/User';
+import { Allergy, Condition, Disability, Medication } from '../../models/HealthRecord';
+import { Emergency } from '../../models/Emergency';
+import { IncidentReport } from '../../models/IncidentReport';
+import { logAccess } from '../../models/AccessLog';
 import { inTirana } from '../../utils/tirana';
 import { book, bookableDoctor, freeSlots, isHhmm, reschedule, setStatus } from './bookings.service';
 
@@ -171,4 +175,97 @@ for (const action of ['confirm', 'decline', 'cancel'] as const) {
 
 clinicRoutes.post('/bookings/:id/reschedule', validate(z.object({ startsAt: z.string().datetime() }).strict()), async (req: AuthReq, res, next) => {
   try { res.json(bookingView(await reschedule(req.params.id, { id: req.user!.id, asClinician: true }, req.body.startsAt))); } catch (e) { next(e); }
+});
+
+// ── Clinical record (CL3, CL4): only with the patient's consent on this booking, every view logged ──
+
+const RECORD_DAYS = 30; // after the consultation, the shared record closes again
+
+/** The clinician's own booking with a patient who shared their record, still within its window. */
+async function sharedBooking(bookingId: string, clinicianId: string) {
+  if (!ID.safeParse(bookingId).success) throw Object.assign(new Error('Invalid request'), { status: 400 });
+  const b = await Booking.findOne({ _id: bookingId, clinician: clinicianId, status: { $in: ['requested', 'confirmed', 'completed'] } }).lean();
+  if (!b) throw Object.assign(new Error('Not found'), { status: 404 });
+  if (!b.shareRecord) throw Object.assign(new Error('The patient has not shared their record with you for this consultation'), { status: 403 });
+  if (Date.now() - +b.endsAt > RECORD_DAYS * 86_400_000) throw Object.assign(new Error('The shared record closed 30 days after the consultation'), { status: 403 });
+  return b;
+}
+
+clinicRoutes.get('/bookings/:id/record', async (req: AuthReq, res, next) => {
+  try {
+    const b = await sharedBooking(req.params.id, req.user!.id);
+    const patient = b.patient;
+    const [u, allergies, medications, conditions, disabilities, consultations, emergencies] = await Promise.all([
+      User.findById(patient).select('name gender bloodType dateOfBirth age illnesses').lean(),
+      Allergy.find({ user: patient }).lean(),
+      Medication.find({ user: patient, isActive: true }).lean(),
+      Condition.find({ user: patient }).lean(),
+      Disability.find({ user: patient }).lean(),
+      Booking.find({ patient, status: 'completed', 'summary.summary': { $exists: true } }).populate('doctor', 'name specialty').sort('-startsAt').limit(50).lean(),
+      Emergency.find({ citizen: patient, status: { $in: ['resolved', 'handed_over'] } }).select('type createdAt status').sort('-createdAt').limit(20).lean(),
+    ]);
+    const reports = await IncidentReport.find({ emergency: { $in: emergencies.map(e => e._id) } }).populate('author', 'name role').lean();
+    await logAccess({ subject: patient, actor: req.user!.id, actorRole: req.user!.role, kind: 'clinician_record', booking: b._id });
+    // One chronological list: consultations with their summaries, emergencies with the responders' reports.
+    const timeline = [
+      ...consultations.map((c: any) => ({
+        kind: 'consultation', at: c.startsAt, title: `${c.type?.name ?? 'Consultation'} with ${c.doctor?.name ?? 'a clinician'}`,
+        detail: c.summary, own: String(c.clinician) === req.user!.id,
+      })),
+      ...emergencies.map((e: any) => ({
+        kind: 'emergency', at: e.createdAt, title: `Emergency: ${e.type}`,
+        reports: reports.filter(r => String(r.emergency) === String(e._id)).map((r: any) => ({
+          author: r.author?.name, role: r.author?.role, conscious: r.conscious, breathing: r.breathing, cprPerformed: r.cprPerformed,
+          aedUsed: r.aedUsed, shocks: r.shocks, actions: r.actions, notes: r.notes, handover: r.handover,
+        })),
+      })),
+    ].sort((a, b) => +new Date(b.at) - +new Date(a.at));
+    res.json({
+      patient: { name: u?.name, age: u ? ageOf(u) : undefined, gender: u?.gender, bloodType: u?.bloodType },
+      allergies: allergies.map(a => ({ allergen: a.allergen, severity: a.severity })),
+      medications: medications.map(m => [m.name, m.dosage].filter(Boolean).join(' ')),
+      conditions: [...new Set([...conditions.map(c => c.name), ...(u?.illnesses ?? [])])],
+      disabilities: disabilities.map(d => d.name),
+      timeline,
+      accessNote: 'This view was logged. The patient can see who opened their record.',
+    });
+  } catch (e) { next(e); }
+});
+
+const summarySchema = z.object({
+  observations: z.string().trim().max(4000).optional(),
+  recommendations: z.string().trim().max(4000).optional(),
+  summary: z.string().trim().min(3).max(4000),
+}).strict();
+
+// Completes the consultation. Editable for a week after it was first written.
+clinicRoutes.put('/bookings/:id/summary', validate(summarySchema), async (req: AuthReq, res, next) => {
+  try {
+    if (!ID.safeParse(req.params.id).success) return res.status(400).json({ error: 'Invalid request' });
+    const weekAgo = new Date(Date.now() - 7 * 86_400_000);
+    const b = await Booking.findOneAndUpdate(
+      {
+        _id: req.params.id, clinician: req.user!.id, startsAt: { $lte: new Date(Date.now() + 3600_000) },
+        $or: [{ status: 'confirmed' }, { status: 'completed', 'summary.writtenAt': { $gte: weekAgo } }],
+      },
+      {
+        $set: { status: 'completed', active: false, summary: { ...req.body, writtenAt: new Date() } },
+        $push: { history: { by: req.user!.id, action: 'summary_written' } },
+      },
+      { new: true },
+    ).populate('patient', 'name').lean();
+    if (!b) return res.status(409).json({ error: 'Only a confirmed consultation that has started, or a summary less than a week old, can be written' });
+    res.json(bookingView(b));
+  } catch (e) { next(e); }
+});
+
+clinicRoutes.post('/bookings/:id/follow-up', validate(z.object({ typeId: ID, startsAt: z.string().datetime() }).strict()), async (req: AuthReq, res, next) => {
+  try {
+    if (!ID.safeParse(req.params.id).success) return res.status(400).json({ error: 'Invalid request' });
+    const original = await Booking.findOne({ _id: req.params.id, clinician: req.user!.id, status: { $in: ['confirmed', 'completed'] } }).lean();
+    if (!original) return res.status(404).json({ error: 'Not found' });
+    const d = await myDoctor(req.user!.id);
+    const b = await book(d, String(original.patient), { typeId: req.body.typeId, startsAt: req.body.startsAt, reason: `Follow-up of ${original.type?.name ?? 'a consultation'}`, shareRecord: !!original.shareRecord }, original._id);
+    res.status(201).json(bookingView(await Booking.findById(b._id).populate('patient', 'name').lean()));
+  } catch (e) { next(e); }
 });
