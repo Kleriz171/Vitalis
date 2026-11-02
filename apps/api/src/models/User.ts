@@ -2,7 +2,7 @@ import { Schema, model } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
 // Bump when the privacy policy changes in substance (landing /privacy).
-export const PRIVACY_VERSION = '2026-10-01';
+export const PRIVACY_VERSION = '2026-11-02';
 
 // Phone app: citizen (blood_donor is a citizen who said so at sign-up), first responders, clinicians.
 // Desktop console (staff, accounts made by an administrator): 'eso' = emergency services operator

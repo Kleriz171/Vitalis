@@ -60,6 +60,8 @@ r.use(authRequired);
 // User submits an application
 r.post('/', upload.single('certificate'), async (req: AuthReq, res, next) => {
   try {
+    // The declared type is the browser's guess; the file itself must start like a PDF.
+    if (req.file && req.file.buffer.subarray(0, 5).toString('latin1') !== '%PDF-') return res.status(400).json({ error: 'Only PDF files are allowed' });
     const parsed = applicationSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: 'All fields are required', issues: parsed.error.issues });
     const { fullName, email, phone, profession, specialty, yearsExperience, bio } = parsed.data;

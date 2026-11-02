@@ -23,10 +23,11 @@ services:
       # Phone sign-in without SMS codes. Remove once Twilio (TWILIO_*) is set up.
       - key: DEMO_MODE
         value: "true"
-      # Browsers allowed to call the API (desktop console, website). The phone app needs no entry.
+      # Browsers allowed to call the API (website, installed desktop app). The phone app needs no entry.
       # tauri://localhost (macOS) and http://tauri.localhost (Windows) are the installed desktop app.
+      # Local dev servers are left out on purpose; develop against a local API.
       - key: CORS_ORIGIN
-        value: http://localhost:5173,http://localhost:5175,https://vitalis-web.onrender.com,tauri://localhost,http://tauri.localhost
+        value: https://vitalis-web.onrender.com,tauri://localhost,http://tauri.localhost
       # Shared secret for drone bridges (apps/drone). Same value on every bridge.
       - key: DRONE_BRIDGE_KEY
         sync: false
@@ -51,6 +52,22 @@ services:
     runtime: static
     buildCommand: npm ci -w @vitalis/landing --include=dev && npm run build -w @vitalis/landing
     staticPublishPath: apps/landing/dist
+    # Render already sends HSTS and nosniff. The page's own Content-Security-Policy is in its HTML
+    # (vite.config.ts); framing is refused here because a <meta> policy cannot do that.
+    headers:
+      - path: /*
+        name: Content-Security-Policy
+        value: "frame-ancestors 'none'"
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /*
+        name: Permissions-Policy
+        value: "camera=(), microphone=(), geolocation=(), payment=()"
+    # /privacy and /terms are real files (the build copies the page), so they need no rewrite.
     routes:
       - type: rewrite
         source: /verify/*
@@ -63,3 +80,9 @@ services:
         value: "24"
       - key: VITE_API_URL
         value: https://vitalis-api-7c3m.onrender.com/api
+      # The site's own address (custom domain later): share images and canonical links use it.
+      - key: VITE_SITE_URL
+        value: https://vitalis-web.onrender.com
+      # Partnerships inbox for "Talk to us". Unset = the button is hidden.
+      - key: VITE_PARTNERS_EMAIL
+        sync: false

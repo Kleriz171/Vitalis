@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authRequired } from '../../middleware/auth';
+import { authRequired, AuthReq } from '../../middleware/auth';
 import { env } from '../../config/env';
 import { logger } from '../../config/logger';
 
@@ -67,10 +67,22 @@ const callGemini = async (userMessage: string): Promise<string> => {
   return reply;
 };
 
-r.post('/chat', async (req, res) => {
+// ponytail: in-memory per process, resets on restart; move to the database if the API runs on several.
+const DAILY_LIMIT = Number(process.env.AI_DAILY_LIMIT ?? 60);
+const usage = new Map<string, { day: string; n: number }>();
+const overDailyLimit = (userId: string) => {
+  const day = new Date().toISOString().slice(0, 10);
+  const u = usage.get(userId);
+  const n = u?.day === day ? u.n + 1 : 1;
+  usage.set(userId, { day, n });
+  return n > DAILY_LIMIT;
+};
+
+r.post('/chat', async (req: AuthReq, res) => {
   const message = String(req.body?.message ?? '').trim();
   if (!message) return res.status(400).json({ error: 'message is required' });
   if (message.length > 2000) return res.status(400).json({ error: 'message too long' });
+  if (overDailyLimit(req.user!.id)) return res.status(429).json({ error: 'You have reached today’s limit for the assistant. In an emergency, call 127.' });
 
   try {
     const reply = await callGemini(message);

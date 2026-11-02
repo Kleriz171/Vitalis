@@ -1,8 +1,8 @@
 import { ArrowRight } from 'lucide-react';
 import { useLang } from '../i18n';
 
-// ponytail: placeholder until the partnerships inbox exists; the .example domain can never receive mail.
-export const PARTNERS_EMAIL = 'partners@vitalis.example';
+// The partnerships inbox. Unset = no button: a link to an address nobody reads would be a dead end.
+const PARTNERS_EMAIL = import.meta.env.VITE_PARTNERS_EMAIL as string | undefined;
 
 /** The business offer: defibrillators kept ready, staff trained, help on site. */
 export const OrganisationsSection = () => {
@@ -13,13 +13,15 @@ export const OrganisationsSection = () => {
         <div className="lg:sticky lg:top-28 lg:self-start">
           <h2 className="section-title max-w-[15ch]">{t.orgs.title}</h2>
           <p className="mt-6 max-w-[40ch] text-lg text-mist leading-relaxed">{t.orgs.lead}</p>
-          <a
-            href={`mailto:${PARTNERS_EMAIL}`}
-            className="group mt-10 inline-flex h-14 items-center gap-3 rounded-full bg-white pl-7 pr-6 text-lg font-semibold text-ink transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0"
-          >
-            {t.orgs.cta}
-            <ArrowRight size={20} className="transition-transform duration-200 group-hover:translate-x-1" aria-hidden />
-          </a>
+          {PARTNERS_EMAIL && (
+            <a
+              href={`mailto:${PARTNERS_EMAIL}`}
+              className="group mt-10 inline-flex h-14 items-center gap-3 rounded-xl bg-white pl-7 pr-6 text-lg font-semibold text-ink transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0"
+            >
+              {t.orgs.cta}
+              <ArrowRight size={20} className="transition-transform duration-200 group-hover:translate-x-1" aria-hidden />
+            </a>
+          )}
         </div>
         <ul className="divide-y divide-white/15 border-y border-white/15">
           {t.orgs.items.map((it) => (

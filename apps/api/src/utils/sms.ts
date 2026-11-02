@@ -27,7 +27,8 @@ export async function sendSms(to: string, body: string) {
     return;
   }
   if (smsIsFake()) {
-    logger.info(`[sms:dev] to ${to}: ${body}`);
+    if (env.nodeEnv === 'production') logger.info(`[sms:demo] not sent (no provider) to …${to.slice(-3)}`);
+    else logger.info(`[sms:dev] to ${to}: ${body}`);
     return;
   }
   throw Object.assign(new Error('SMS is not configured'), { status: 503 });

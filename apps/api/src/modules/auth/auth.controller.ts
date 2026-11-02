@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { authService } from './auth.service';
+import { AuthReq } from '../../middleware/auth';
 import { z } from 'zod';
 import { BLOOD_TYPES, GENDERS } from '../../models/User';
 
@@ -88,6 +89,9 @@ export const authController = {
   },
   phoneRegister: async (req: Request, res: Response, next: NextFunction) => {
     try { res.json(await authService.registerPhone(req.body)); } catch (e) { next(e); }
+  },
+  logout: async (req: AuthReq, res: Response, next: NextFunction) => {
+    try { await authService.logout(req.user!.id); res.status(204).end(); } catch (e) { next(e); }
   },
   refresh: async (req: Request, res: Response, next: NextFunction) => {
     try { res.json(await authService.refresh(req.body.refreshToken)); } catch (e) { next(e); }

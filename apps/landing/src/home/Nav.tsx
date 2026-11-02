@@ -5,7 +5,7 @@ import logo from '../assets/logo.png';
 export const LangSwitch = ({ light = true }: { light?: boolean }) => {
   const { lang, setLang, t } = useLang();
   return (
-    <div role="group" aria-label={t.nav.language} className={`inline-flex rounded-full p-1 text-sm font-semibold ${light ? 'bg-white/10' : 'bg-ink/[0.06]'}`}>
+    <div role="group" aria-label={t.nav.language} className={`inline-flex rounded-xl p-1 text-sm font-semibold ${light ? 'bg-white/10' : 'bg-ink/[0.06]'}`}>
       {(['sq', 'en'] as Lang[]).map((l) => (
         <button
           key={l}
@@ -13,7 +13,7 @@ export const LangSwitch = ({ light = true }: { light?: boolean }) => {
           lang={l}
           aria-pressed={lang === l}
           onClick={() => setLang(l)}
-          className={`min-w-11 h-9 rounded-full px-3 uppercase transition-colors duration-200 ${
+          className={`min-w-11 h-9 rounded-lg px-3 uppercase transition-colors duration-200 ${
             lang === l ? (light ? 'bg-white text-ink' : 'bg-ink text-white') : light ? 'text-white/80 hover:text-white' : 'text-ink/70 hover:text-ink'}`}
         >
           {l === 'sq' ? 'SQ' : 'EN'}
@@ -51,7 +51,7 @@ export const Nav = () => {
           <LangSwitch light={!solid} />
           <a
             href="#get"
-            className={`hidden sm:inline-flex h-10 items-center rounded-full px-5 text-sm font-semibold transition-colors duration-200 ${
+            className={`hidden sm:inline-flex h-10 items-center rounded-xl px-5 text-sm font-semibold transition-colors duration-200 ${
               solid ? 'bg-ink text-white hover:bg-green' : 'bg-white text-ink hover:bg-mint'}`}
           >
             {t.nav.getApp}

@@ -5,7 +5,7 @@ import logo from '../assets/logo.png';
 
 /** Last call to action on the logo's own teal, then the footer. */
 export const Closing = () => {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   return (
     <>
       <section className="bg-logo text-white py-24 sm:py-32 lg:py-40 overflow-hidden">
@@ -29,7 +29,8 @@ export const Closing = () => {
             {t.footer.disclaimer}{' '}
             <a className="font-semibold text-white underline underline-offset-2" href="tel:127">127</a> {t.footer.or}{' '}
             <a className="font-semibold text-white underline underline-offset-2" href="tel:112">112</a>.{' '}
-            <a className="underline underline-offset-2 hover:text-white" href="/privacy">{t.footer.privacy}</a>
+            <a className="underline underline-offset-2 hover:text-white" href={lang === 'en' ? '/privacy?l=en' : '/privacy'}>{t.footer.privacy}</a>{' · '}
+            <a className="underline underline-offset-2 hover:text-white" href={lang === 'en' ? '/terms?l=en' : '/terms'}>{t.footer.terms}</a>
             <span className="block mt-2 text-xs text-mist/80">{t.footer.map}</span>
           </p>
           <LangSwitch />

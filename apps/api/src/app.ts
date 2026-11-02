@@ -58,7 +58,8 @@ export function buildApp() {
     app.use((req, res, next) => {
       const start = Date.now();
       res.on('finish', () => {
-        logger.info(`${req.method} ${req.originalUrl} ${res.statusCode} ${Date.now() - start}ms`);
+        const path = req.originalUrl.split('?')[0].replace(/\/(track|verify)\/[^/]+/, '/$1/…');
+        logger.info(`${req.method} ${path} ${res.statusCode} ${Date.now() - start}ms`);
       });
       next();
     });
@@ -94,8 +95,8 @@ export function buildApp() {
   app.use('/api/doctor-applications', doctorApplicationsRoutes);
   app.use('/api/aeds', aedRoutes);
   app.use('/api/push', pushRoutes);
-
   app.use('/api/hospital', hospitalRoutes); // hospital staff accounts
+
   app.use(errorHandler);
   return app;
 }

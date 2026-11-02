@@ -95,7 +95,7 @@ const TYPE_ICON: Record<string, [Icon, TileTone]> = {
 const typeTile = (type: string) => TYPE_ICON[type] ?? TYPE_ICON.other;
 
 export const StatusPill = ({ status }: { status: string }) => (
-  <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset', STATUS_TONE[status] ?? STATUS_TONE.resolved)}>
+  <span className={cn('inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset', STATUS_TONE[status] ?? STATUS_TONE.resolved)}>
     {STATUS_LABEL[status] ?? status}
   </span>
 );
@@ -275,7 +275,7 @@ export const LiveCalls = () => {
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder="Search calls, case numbers, responders"
-            className="w-full h-11 rounded-full bg-white/[0.12] pl-10 pr-4 text-[14px] text-white placeholder:text-white/55 outline-none border border-white/10 focus:bg-white/[0.18] focus:border-white/30 transition-colors"
+            className="w-full h-11 rounded-xl bg-white/[0.12] pl-10 pr-4 text-[14px] text-white placeholder:text-white/55 outline-none border border-white/10 focus:bg-white/[0.18] focus:border-white/30 transition-colors"
           />
         </label>
       </header>

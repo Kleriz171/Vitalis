@@ -159,6 +159,10 @@ export const authService = {
 
     return this.issueTokens(user);
   },
+  /** Sign-out: the refresh token stops working (access tokens die within ACCESS_TTL). */
+  async logout(userId: string) {
+    await User.updateOne({ _id: userId }, { $unset: { refreshTokenHash: 1 } });
+  },
   /** Sends a 6-digit code. Rate-limited per number on top of the per-IP limiter. */
   async startPhone(phone: string) {
     const now = Date.now();

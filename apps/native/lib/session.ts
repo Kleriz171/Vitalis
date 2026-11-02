@@ -6,6 +6,8 @@ import { stopDutyTracking } from './dutyLocation';
 /** Full sign-out: stop alerts and tracking for this account before dropping the session. */
 export async function signOut() {
   await Promise.all([unregisterPush(), stopDutyTracking().catch(() => {})]);
+  // Last, so no request above refreshes the session again: the server forgets the refresh token.
+  await api.post('/auth/logout').catch(() => {});
   store.dispatch(logout());
 }
 

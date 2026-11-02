@@ -12,6 +12,7 @@ import { motion } from 'framer-motion';
 import { BASE } from '../../lib/motion';
 import { RootState, logout } from '../../store';
 import { socket } from '../../realtime/socket';
+import { api } from '../../api/client';
 import { cn } from '../../lib/utils';
 import { exportPdf } from '../../lib/exportPdf';
 import { pushToast } from '../toast/toast';
@@ -93,7 +94,8 @@ export const CommandShell = () => {
     return () => { socket.off('aed:alert', onAlert); };
   }, []);
 
-  const signOut = () => { dispatch(logout()); nav('/login'); };
+  // The server forgets the refresh token first, so a copied one stops working too.
+  const signOut = async () => { await api.post('/auth/logout').catch(() => {}); dispatch(logout()); nav('/login'); };
 
   // A page outside this role's sections (an old link, the index for a non-operator): go home.
   const home = CONSOLE_HOME[user?.role ?? ''];
@@ -213,12 +215,12 @@ export const PageHeader = ({ title, subtitle, actions, icon }: { title: string; 
           </div>
         </div>
         {tabs && (
-          <nav className="print:hidden relative z-10 mt-5 inline-flex gap-1 rounded-full bg-white/[0.1] p-1" aria-label="Pages in this section">
+          <nav className="print:hidden relative z-10 mt-5 inline-flex gap-1 rounded-xl bg-white/[0.1] p-1" aria-label="Pages in this section">
             {tabs.map(t => {
               const on = pathname.startsWith(t.to);
               return (
                 <Link key={t.to} to={t.to} aria-current={on ? 'page' : undefined}
-                  className={cn('h-8 px-4 grid place-items-center rounded-full text-[13px] font-semibold transition-colors',
+                  className={cn('h-8 px-4 grid place-items-center rounded-lg text-[13px] font-semibold transition-colors',
                     on ? 'bg-white text-primary' : 'text-white/80 hover:text-white hover:bg-white/[0.08]')}>
                   {t.label}
                 </Link>

@@ -36,5 +36,7 @@ if (env.nodeEnv === 'production') {
   if (weak(env.jwtAccess) || weak(env.jwtRefresh)) {
     throw new Error('JWT_ACCESS and JWT_REFRESH must be set to strong secrets (32+ chars) in production');
   }
+  // With one secret a 7-day refresh token would also pass as an access token.
+  if (env.jwtAccess === env.jwtRefresh) throw new Error('JWT_ACCESS and JWT_REFRESH must be different');
   if (!process.env.MONGO_URI) throw new Error('MONGO_URI must be set in production');
 }
