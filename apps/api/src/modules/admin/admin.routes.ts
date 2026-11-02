@@ -6,7 +6,9 @@ import { Emergency } from '../../models/Emergency';
 import { Certification, Enrollment, RESPONDER_COURSES } from '../../models/Training';
 import { Doctor } from '../../models/Doctor';
 import { Hospital } from '../../models/Hospital';
-import { logAccess } from '../../models/AccessLog';
+import { AccessLog, logAccess } from '../../models/AccessLog';
+import { AdminAction, recordAdminAction } from '../../models/AdminAction';
+import { revokeUser } from '../../middleware/auth';
 import { authRequired, AuthReq } from '../../middleware/auth';
 import { allow } from '../../middleware/rbac';
 import { validate } from '../../middleware/validate';
@@ -32,13 +34,14 @@ r.post('/staff', validate(createStaffSchema), async (req, res, next) => {
     const user = await User.create({
       email, password, firstName, lastName, name: `${firstName} ${lastName}`, role, hospital: hospitalId,
     });
+    await recordAdminAction((req as AuthReq).user!.id, 'staff_created', user._id, role);
     res.status(201).json({ id: user._id, email: user.email, name: user.name, role: user.role });
   } catch (e) { next(e); }
 });
 
 r.get('/users', async (_req, res, next) => {
   try {
-    const users = await User.find().sort('-createdAt').limit(500).select('email name role createdAt hospital').populate('hospital', 'name').lean();
+    const users = await User.find().sort('-createdAt').limit(500).select('email name role createdAt hospital suspendedAt').populate('hospital', 'name').lean();
     res.json(users);
   } catch (e) { next(e); }
 });
@@ -89,6 +92,7 @@ r.post('/users/:id/remove-responder', async (req: AuthReq, res, next) => {
     );
     await Doctor.deleteMany({ user: user._id });
     await User.updateOne({ _id: user._id }, { $set: { role: 'citizen', available: false } });
+    await recordAdminAction(req.user!.id, 'responder_removed', user._id, `was ${user.role}`);
     res.json({ role: 'citizen' });
   } catch (e) { next(e); }
 });
@@ -99,8 +103,45 @@ r.delete('/users/:id', async (req: AuthReq, res, next) => {
     if (!user) return res.status(404).json({ error: 'Not found' });
     // Administrators may remove each other, never themselves: someone must always be left to run the console.
     if (String(user._id) === req.user!.id) return res.status(400).json({ error: 'You cannot remove your own account' });
+    await recordAdminAction(req.user!.id, 'user_removed', user._id, `${user.role} ${user.email ?? user.phone ?? ''}`.trim());
     await user.deleteOne();
+    revokeUser(String(user._id));
     res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+
+// Suspend: no sign-in, no API, off duty, from the next request. Restore undoes it. Never yourself.
+r.post('/users/:id/suspend', validate(z.object({ reason: z.string().trim().min(3).max(300) }).strict()), async (req: AuthReq, res, next) => {
+  try {
+    if (req.params.id === req.user!.id) return res.status(400).json({ error: 'You cannot suspend your own account' });
+    const u = await User.findOneAndUpdate({ _id: req.params.id, suspendedAt: null }, { $set: { suspendedAt: new Date(), suspendedReason: req.body.reason, available: false }, $unset: { refreshTokenHash: 1 } }, { new: true }).lean();
+    if (!u) return res.status(409).json({ error: 'Not found, or already suspended' });
+    await recordAdminAction(req.user!.id, 'suspended', u._id, req.body.reason);
+    res.json({ suspendedAt: u.suspendedAt, suspendedReason: u.suspendedReason });
+  } catch (e) { next(e); }
+});
+
+r.post('/users/:id/restore', async (req: AuthReq, res, next) => {
+  try {
+    const u = await User.findOneAndUpdate({ _id: req.params.id, suspendedAt: { $ne: null } }, { $unset: { suspendedAt: 1, suspendedReason: 1 } }, { new: true }).lean();
+    if (!u) return res.status(409).json({ error: 'Not found, or not suspended' });
+    await recordAdminAction(req.user!.id, 'restored', u._id);
+    res.json({ suspendedAt: null });
+  } catch (e) { next(e); }
+});
+
+// The audit trail: what administrators did, and who opened whose medical record. Read only.
+r.get('/audit', async (req, res, next) => {
+  try {
+    const kind = req.query.kind === 'access' ? 'access' : 'actions';
+    const list = kind === 'access'
+      ? await AccessLog.find().sort('-at').limit(300).populate('actor subject', 'name role').lean()
+      : await AdminAction.find().sort('-at').limit(300).populate('actor target', 'name role').lean();
+    res.json(list.map((x: any) => ({
+      id: String(x._id), at: x.at, action: x.action ?? x.kind, detail: x.detail,
+      actor: x.actor ? { name: x.actor.name, role: x.actor.role } : null,
+      target: (x.target ?? x.subject) ? { id: String((x.target ?? x.subject)._id), name: (x.target ?? x.subject).name } : null,
+    })));
   } catch (e) { next(e); }
 });
 

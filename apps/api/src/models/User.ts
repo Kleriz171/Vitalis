@@ -62,6 +62,9 @@ const UserSchema = new Schema({
     type: { type: String, enum: ['Point'], default: 'Point' },
     coordinates: { type: [Number], default: [0, 0] },
   },
+  // Suspended by an administrator: no sign-in and no API access until restored.
+  suspendedAt: Date,
+  suspendedReason: String,
   available: { type: Boolean, default: false },
   // On duty but temporarily unavailable until then: no new SOS alerts meanwhile.
   pausedUntil: Date,

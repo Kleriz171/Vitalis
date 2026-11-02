@@ -51,8 +51,8 @@ export const initSocket = (server: http.Server) => {
       const token = socket.handshake.auth?.token;
       if (!token) return next(new Error('no token'));
       const decoded = verifyAccess(token);
-      const u = isRevoked(decoded.sub) ? null : await User.findById(decoded.sub).select('role hospital').lean();
-      if (!u) return next(new Error('auth failed'));
+      const u = isRevoked(decoded.sub) ? null : await User.findById(decoded.sub).select('role hospital suspendedAt').lean();
+      if (!u || u.suspendedAt) return next(new Error('auth failed'));
       // Rooms follow this role until the socket reconnects.
       (socket.data as any).user = { id: decoded.sub, role: u.role, hospital: u.hospital ? String(u.hospital) : undefined };
       (socket.data as any).responding = new Set<string>();

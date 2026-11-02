@@ -16,9 +16,14 @@ export const isRevoked = (id: string) => {
   return !!until && until >= Date.now();
 };
 
-/** The role is read from the database, not the token: a changed role counts from the next request. */
-export const currentRole = async (id: string) =>
-  (await User.findById(id).select('role').lean())?.role as string | undefined;
+/**
+ * The role is read from the database, not the token: a changed role or a suspension counts from the
+ * next request. A suspended account has no role.
+ */
+export const currentRole = async (id: string) => {
+  const u = await User.findById(id).select('role suspendedAt').lean();
+  return u && !u.suspendedAt ? (u.role as string) : undefined;
+};
 
 export const authRequired = async (req: AuthReq, res: Response, next: NextFunction) => {
   const header = req.headers.authorization;

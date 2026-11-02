@@ -257,6 +257,8 @@ export const authService = {
   },
 
   async issueTokens(user: any) {
+    // Every way in (password, phone code, refresh) ends here: a suspended account gets no session.
+    if (user.suspendedAt) throw Object.assign(new Error('This account is suspended. Contact Vitalis.'), { status: 403 });
     const payload = { sub: user._id.toString(), role: user.role };
     const accessToken = signAccess(payload);
     const refreshToken = signRefresh(payload);

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { recordAdminAction } from '../../models/AdminAction';
 import { randomBytes } from 'crypto';
 import mongoose from 'mongoose';
 import { authRequired, AuthReq } from '../../middleware/auth';
@@ -318,6 +319,7 @@ r.post('/certifications/:id/revoke', allow('admin'), validate(revokeSchema), asy
     if (RESPONDER_COURSES.includes(cert.courseSlug) && !(await hasResponderCertification(String(cert.user)))) {
       await User.updateOne({ _id: cert.user, role: 'student_responder' }, { $set: { role: 'citizen', available: false } });
     }
+    await recordAdminAction(req.user!.id, 'certificate_revoked', cert.user, `${cert.courseSlug}${(req.body as any).reason ? `: ${(req.body as any).reason}` : ''}`);
     res.json(certToView(cert));
   } catch (e) { next(e); }
 });

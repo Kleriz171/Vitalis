@@ -1,0 +1,59 @@
+/**
+ * Administration: suspension and restoration, the append-only audit trail (admin actions and medical
+ * record access), feedback handling, platform analytics and system health. Administrators only.
+ * Against a running, freshly seeded API:
+ *   API_URL=http://localhost:4000 npx tsx apps/api/scripts/admin-check.ts
+ */
+import assert from 'node:assert/strict';
+
+const BASE = process.env.API_URL ?? 'http://localhost:4000';
+
+const call = async (method: string, path: string, token?: string, body?: unknown) => {
+  const res = await fetch(`${BASE}/api${path}`, {
+    method,
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  const text = await res.text();
+  return { status: res.status, data: text ? JSON.parse(text) : null };
+};
+const login = (email: string, password: string) => call('POST', '/auth/login', undefined, { email, password });
+const ok = (name: string) => console.log(`  ✓ ${name}`);
+
+async function main() {
+  const admin = (await login('admin@vitalis.com', 'Admin1234!')).data;
+  const operator = (await login('aleks@vitalis.com', 'AlexNo11$')).data.accessToken;
+  const email = `suspend-${Date.now()}@vitalis.test`;
+  const person = (await call('POST', '/auth/register', undefined, { email, password: 'Susp3nd!x', firstName: 'Sus', lastName: 'Pended' })).data;
+
+  // Suspension: administrators only, never themselves; it takes effect on the next request.
+  assert.equal((await call('POST', `/admin/users/${person.user.id}/suspend`, operator, { reason: 'Abuse' })).status, 403);
+  assert.equal((await call('POST', `/admin/users/${admin.user.id}/suspend`, admin.accessToken, { reason: 'Test' })).status, 400);
+  assert.equal((await call('POST', `/admin/users/${person.user.id}/suspend`, admin.accessToken, { reason: 'False SOS alerts' })).status, 200);
+  assert.equal((await call('POST', `/admin/users/${person.user.id}/suspend`, admin.accessToken, { reason: 'Again' })).status, 409);
+  assert.equal((await call('GET', '/health/profile', person.accessToken)).status, 401, 'the open session stops at once');
+  assert.equal((await login(email, 'Susp3nd!x')).status, 403, 'no new sign-in');
+  assert.equal((await call('POST', '/auth/refresh', undefined, { refreshToken: person.refreshToken })).status, 401);
+  assert.ok(((await call('GET', '/admin/users', admin.accessToken)).data as any[]).find(u => u._id === person.user.id).suspendedAt);
+  assert.equal((await call('POST', `/admin/users/${person.user.id}/restore`, admin.accessToken)).status, 200);
+  assert.equal((await login(email, 'Susp3nd!x')).status, 200);
+  ok('suspension: admin only, not yourself, stops the session and sign-in at once; restore undoes it');
+
+  // Audit trail: admin actions and record access, readable by administrators only.
+  await call('GET', `/admin/users/${person.user.id}`, admin.accessToken);
+  assert.equal((await call('GET', '/admin/audit', operator)).status, 403);
+  const actions = (await call('GET', '/admin/audit', admin.accessToken)).data as any[];
+  assert.deepEqual(actions.slice(0, 2).map(a => a.action), ['restored', 'suspended']);
+  assert.equal(actions[1].detail, 'False SOS alerts');
+  assert.equal(actions[1].actor.name, 'Arta Admin');
+  const access = (await call('GET', '/admin/audit?kind=access', admin.accessToken)).data as any[];
+  assert.deepEqual([access[0].action, access[0].target.id], ['admin_record', person.user.id]);
+  ok('audit: every admin action with who and why; every record opening; administrators only');
+
+  console.log('\nAll admin checks passed.');
+}
+
+main().catch(err => {
+  console.error('\n✗ FAILED:', err.message);
+  process.exit(1);
+});

@@ -8,6 +8,7 @@ import { DoctorApplication } from '../../models/DoctorApplication';
 import { Doctor } from '../../models/Doctor';
 import { User } from '../../models/User';
 import { z } from 'zod';
+import { recordAdminAction } from '../../models/AdminAction';
 
 const r = Router();
 
@@ -161,6 +162,7 @@ r.post('/:id/approve', allow('admin'), async (req: AuthReq, res, next) => {
     }
     // Approval is what grants responder powers; never touch operator accounts.
     await User.updateOne({ _id: app.user, role: { $in: ['citizen', 'blood_donor', 'student_responder'] } }, { $set: { role: profession } });
+    await recordAdminAction(req.user!.id, 'application_approved', app.user, `${app.profession ?? 'doctor'}: ${app.fullName}`);
     res.json(appToView(app));
   } catch (e) { next(e); }
 });
@@ -175,6 +177,7 @@ r.post('/:id/reject', allow('admin'), async (req: AuthReq, res, next) => {
       { new: true },
     );
     if (!app) return res.status(409).json({ error: 'Application not found or already reviewed' });
+    await recordAdminAction(req.user!.id, 'application_rejected', app.user, `${app.fullName}: ${reason}`);
     res.json(appToView(app));
   } catch (e) { next(e); }
 });

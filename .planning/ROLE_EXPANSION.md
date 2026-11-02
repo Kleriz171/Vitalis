@@ -76,5 +76,10 @@ its own e2e check in `scripts/e2e.sh` and screenshots before anything visual is 
    public GET /api/medical-id/:token logged as AccessLog 'qr_profile'), rotate = revoke, phone settings screen
    and "who viewed my records" (GET /account/access-log).
 5. **Admin.** Suspension, approval history, analytics from real data, feedback, audit view, health page.
+   ✅ 5a API: suspension (User.suspendedAt; currentRole/socket/issueTokens refuse), AdminAction log (staff created,
+   removed, responder removed, suspended, restored, applications decided, certificates revoked), GET /admin/audit
+   (?kind=access for AccessLog). admin-check in e2e.
+   ⏳ 5a console UI: Suspend/Restore on UserDetail, "Suspended" chip on Users, Audit page (admin section).
+   ⏳ 5b feedback (model, phone submit, admin triage page). ⏳ 5c platform analytics + system health page.
 6. **Relay end to end.** One incident record through every role; permission boundaries test.
 7. **Polish and QA** within the existing look; screenshots per role; full e2e.
