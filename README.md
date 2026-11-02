@@ -61,7 +61,7 @@ On a physical phone set `EXPO_PUBLIC_API_URL=http://<your-laptop-LAN-ip>:4000/ap
 | `admin@vitalis.com` | see below | administrator (console: people, doctor applications, reports, call log) |
 | `hospital@vitalis.com` | see below | hospital staff, linked to Spitali Universitar i Traumës (console) |
 
-Console accounts see medical data, so their passwords are never in the repo for a remote database: on this machine the seed uses fixed dev passwords (the checks sign in with them); for any other database set `SEED_OPERATOR_PASSWORD`, `SEED_ADMIN_PASSWORD` and `SEED_HOSPITAL_PASSWORD`, or the seed refuses to start. Console accounts are made by an administrator (People → New staff account); nobody can sign up for one.
+Console accounts see medical data, so their passwords are never in the repo for a remote database: on this machine the seed uses fixed dev passwords (the checks sign in with them); for any other database set `SEED_OPERATOR_PASSWORD`, `SEED_ADMIN_PASSWORD` and `SEED_HOSPITAL_PASSWORD`, or the seed refuses to start. Console accounts are made by an administrator (People → New staff account); nobody can sign up for one. On a database without an administrator (an existing deployment), create the first one with `MONGO_URI=<database> npx tsx apps/api/scripts/create-admin.ts <email>`.
 
 Change these before any real deployment. The console only shows demo-account shortcuts in development builds.
 
