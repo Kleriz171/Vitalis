@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
+import { AppState } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import '@/lib/dutyLocation'; // registers the background task at startup
 import { registerForPush, routeForNotification } from '@/lib/push';
@@ -16,6 +17,7 @@ import 'react-native-reanimated';
 
 import { colors } from '@/lib/theme';
 import { loadSession, RootState, store } from '@/lib/store';
+import { refreshUser } from '@/lib/session';
 
 export default function RootLayout() {
   useEffect(() => { void loadSession(); }, []);
@@ -85,6 +87,15 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     const sub = Notifications.addNotificationResponseReceivedListener(open);
     return () => sub.remove();
   }, [hydrated, token, router]);
+
+  // Fresh account (role) whenever the app opens or comes back to the front.
+  const signedIn = hydrated && !!token; // not the token itself: it rotates every 15 minutes
+  useEffect(() => {
+    if (!signedIn) return;
+    refreshUser().catch(() => {});
+    const sub = AppState.addEventListener('change', s => { if (s === 'active') refreshUser().catch(() => {}); });
+    return () => sub.remove();
+  }, [signedIn]);
 
   useEffect(() => {
     if (!hydrated) return;

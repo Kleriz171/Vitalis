@@ -1,13 +1,14 @@
 import { Router } from 'express';
 import { Emergency } from '../../models/Emergency';
-import { User } from '../../models/User';
+import { User, RESPONDER_ROLES } from '../../models/User';
 import { authRequired } from '../../middleware/auth';
 import { allow } from '../../middleware/rbac';
 
 const r = Router();
-r.use(authRequired, allow('eso'));
+r.use(authRequired);
 
-r.get('/kpis', async (_req, res, next) => {
+// Headline numbers are on the operator's live calls page too; the rest is for administrators.
+r.get('/kpis', allow('eso', 'admin'), async (_req, res, next) => {
   try {
     const since = new Date(Date.now() - 86400000);
     const [total, active, pending, resolvedToday, onDuty, recent] = await Promise.all([
@@ -15,7 +16,7 @@ r.get('/kpis', async (_req, res, next) => {
       Emergency.countDocuments({ status: { $in: ['pending','assigned','en_route','on_scene'] } }),
       Emergency.countDocuments({ status: 'pending' }),
       Emergency.countDocuments({ status: 'resolved', updatedAt: { $gte: since } }),
-      User.countDocuments({ available: true, role: { $in: ['doctor','nurse','student_responder','blood_donor'] } }),
+      User.countDocuments({ available: true, role: { $in: RESPONDER_ROLES } }),
       Emergency.find({ createdAt: { $gte: since }, 'timeline.status': 'assigned' }).select('createdAt timeline').lean(),
     ]);
     const byType = await Emergency.aggregate([{ $group: { _id: '$type', count: { $sum: 1 } } }]);
@@ -35,7 +36,7 @@ r.get('/kpis', async (_req, res, next) => {
 });
 
 // Daily emergencies for the last 14 days
-r.get('/timeseries', async (_req, res, next) => {
+r.get('/timeseries', allow('admin'), async (_req, res, next) => {
   try {
     const days = 14;
     const since = new Date(Date.now() - days * 86400000);
@@ -63,7 +64,7 @@ r.get('/timeseries', async (_req, res, next) => {
 });
 
 // Average response time (assigned timestamp - created), resolution rate
-r.get('/performance', async (_req, res, next) => {
+r.get('/performance', allow('admin'), async (_req, res, next) => {
   try {
     const totals = await Emergency.aggregate([
       {
@@ -88,7 +89,7 @@ r.get('/performance', async (_req, res, next) => {
 });
 
 // Top citizens by number of emergencies triggered (last 90 days)
-r.get('/top-callers', async (_req, res, next) => {
+r.get('/top-callers', allow('admin'), async (_req, res, next) => {
   try {
     const since = new Date(Date.now() - 90 * 86400000);
     const rows = await Emergency.aggregate([

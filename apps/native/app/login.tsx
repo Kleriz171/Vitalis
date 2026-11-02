@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { api, PRIVACY_URL } from '@/lib/api';
 import { setSession } from '@/lib/store';
+import { STAFF_ROLES } from '@/lib/roles';
 import { colors, radius, shadows } from '@/lib/theme';
 import { apiError, t } from '@/lib/i18n';
 import { isE164, toE164 } from '@/lib/geo';
@@ -127,7 +128,7 @@ export default function SignIn() {
 
   const emailSignIn = () => run(async () => {
     const { data } = await api.post('/auth/login', { email: email.trim(), password });
-    if (['eso', 'admin', 'dispatcher'].includes(data.user.role)) {
+    if (STAFF_ROLES.includes(data.user.role)) {
       toast.error(t('This account is for the Vitalis desktop console.'));
       return;
     }

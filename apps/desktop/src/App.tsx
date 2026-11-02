@@ -11,6 +11,7 @@ import { ReportsOverview } from './features/reports/Overview';
 import { Users } from './features/people/Users';
 import { UserDetail } from './features/people/UserDetail';
 import { DoctorApplications } from './features/people/DoctorApplications';
+import { HospitalPage } from './features/hospital/Hospital';
 import { Toaster } from './components/ui/sonner';
 
 const Protected = ({ children }: { children: JSX.Element }) => {
@@ -18,7 +19,8 @@ const Protected = ({ children }: { children: JSX.Element }) => {
   return t ? children : <Navigate to="/login" replace />;
 };
 
-// Operator console only. Marketing and certificate verification live on the public website.
+// Staff console (operators, administrators, hospital staff); CommandShell shows each role its own
+// sections. Marketing and certificate verification live on the public website.
 export const App = () => (
   <>
     <Toaster position="top-center" />
@@ -33,6 +35,7 @@ export const App = () => (
         <Route path="admin/users" element={<Users />} />
         <Route path="admin/users/:id" element={<UserDetail />} />
         <Route path="admin/doctor-applications" element={<DoctorApplications />} />
+        <Route path="hospital" element={<HospitalPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/command" replace />} />
     </Routes>

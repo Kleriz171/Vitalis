@@ -5,6 +5,7 @@ import { validate } from '../../middleware/validate';
 import { emergencyController, createEmergencySchema, statusSchema, aedStatusSchema } from './emergency.controller';
 import { nearQuery } from '../../utils/geo';
 import { Hospital } from '../../models/Hospital';
+import { RESPONDER_ROLES } from '../../models/User';
 
 const r = Router();
 r.use(authRequired);
@@ -36,14 +37,12 @@ r.get('/hospitals', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-const RESPONDERS = ['doctor', 'nurse', 'student_responder', 'blood_donor'] as const;
-
 r.post('/', allow('citizen', 'blood_donor', 'student_responder', 'doctor', 'nurse'), validate(createEmergencySchema), emergencyController.create);
 r.get('/mine', emergencyController.mine);
-r.post('/:id/accept', allow(...RESPONDERS), emergencyController.accept);
+r.post('/:id/accept', allow(...RESPONDER_ROLES), emergencyController.accept);
 // Fine-grained checks (caller may cancel, assigned responder may progress) live in the service.
 r.patch('/:id/status', validate(statusSchema), emergencyController.updateStatus);
-r.patch('/:id/aed', allow(...RESPONDERS), validate(aedStatusSchema), emergencyController.aedStatus);
+r.patch('/:id/aed', allow(...RESPONDER_ROLES), validate(aedStatusSchema), emergencyController.aedStatus);
 r.get('/:id/handover', emergencyController.handover);
-r.get('/', allow('eso', ...RESPONDERS), emergencyController.list);
+r.get('/', allow('eso', ...RESPONDER_ROLES), emergencyController.list);
 export default r;

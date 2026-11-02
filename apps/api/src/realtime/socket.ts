@@ -2,15 +2,14 @@ import { Server, Socket } from 'socket.io';
 import http from 'http';
 import { env } from '../config/env';
 import { verifyAccess } from '../utils/jwt';
-import { normalizeRole } from '../models/User';
-import { isRevoked } from '../middleware/auth';
+import { RESPONDER_ROLES } from '../models/User';
+import { currentRole, isRevoked } from '../middleware/auth';
 import { logger } from '../config/logger';
 import { Emergency } from '../models/Emergency';
 import { registerDrones, registerOperatorDroneControls } from './drones';
 
 let io: Server;
 
-export const RESPONDER_ROLES = ['doctor', 'nurse', 'student_responder', 'blood_donor'];
 export const OPERATOR_ROLES = ['eso'];
 
 type SocketUser = { id: string; role: string };
@@ -47,13 +46,15 @@ export const initSocket = (server: http.Server) => {
       : { origin: true, credentials: true },
   });
 
-  io.use((socket, next) => {
+  io.use(async (socket, next) => {
     try {
       const token = socket.handshake.auth?.token;
       if (!token) return next(new Error('no token'));
       const decoded = verifyAccess(token);
-      if (isRevoked(decoded.sub)) return next(new Error('auth failed'));
-      (socket.data as any).user = { id: decoded.sub, role: normalizeRole(decoded.role) };
+      const role = isRevoked(decoded.sub) ? undefined : await currentRole(decoded.sub);
+      if (!role) return next(new Error('auth failed'));
+      // Rooms follow this role until the socket reconnects.
+      (socket.data as any).user = { id: decoded.sub, role };
       (socket.data as any).responding = new Set<string>();
       next();
     } catch {

@@ -1,7 +1,7 @@
-import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-  Siren, ChartBar, Drone, FilePdf, SignOut, UsersThree, type Icon,
+  Siren, ChartBar, Drone, FilePdf, Hospital, SealCheck, SignOut, UsersThree, type Icon,
 } from '@phosphor-icons/react';
 import { Defibrillator } from '../ui/aed-icon';
 import { Tile } from '../ui/tile';
@@ -16,28 +16,33 @@ import { cn } from '../../lib/utils';
 import { exportPdf } from '../../lib/exportPdf';
 import { pushToast } from '../toast/toast';
 import { Logo } from '../ui/logo';
+import { CONSOLE_HOME, roleLabel } from '../../lib/roles';
 
-/** Sections named for what operators do; a section with several pages shows them as tabs. */
-type Section = { label: string; icon: Icon; to: string; tabs?: { to: string; label: string }[] };
+/**
+ * Sections named for what each role does; a section with several pages shows them as tabs.
+ * The API checks every route again: this only decides what each role is shown.
+ */
+type Section = { label: string; icon: Icon; to: string; roles: string[]; tabs?: { to: string; label: string }[] };
 
 const SECTIONS: Section[] = [
-  { label: 'Live calls', icon: Siren, to: '/command' },
-  { label: 'Defibrillators', icon: Defibrillator, to: '/command/aeds' },
-  { label: 'Drones', icon: Drone, to: '/command/drones' },
-  { label: 'People', icon: UsersThree, to: '/command/admin/users', tabs: [
+  { label: 'Live calls', icon: Siren, to: '/command', roles: ['eso'] },
+  { label: 'Defibrillators', icon: Defibrillator, to: '/command/aeds', roles: ['eso'] },
+  { label: 'Drones', icon: Drone, to: '/command/drones', roles: ['eso'] },
+  { label: 'Call log', icon: SealCheck, to: '/command/ledger', roles: ['eso'] },
+  { label: 'Hospital', icon: Hospital, to: '/command/hospital', roles: ['hospital'] },
+  { label: 'People', icon: UsersThree, to: '/command/admin/users', roles: ['admin'], tabs: [
     { to: '/command/admin/users', label: 'Users' },
     { to: '/command/admin/doctor-applications', label: 'Applications' },
   ] },
-  { label: 'Reports', icon: ChartBar, to: '/command/analytics', tabs: [
+  { label: 'Reports', icon: ChartBar, to: '/command/analytics', roles: ['admin'], tabs: [
     { to: '/command/analytics', label: 'Overview' },
     { to: '/command/ledger', label: 'Call log' },
   ] },
 ];
 
-const sectionOf = (path: string) =>
-  SECTIONS.find(s => s.tabs ? s.tabs.some(t => path.startsWith(t.to)) : path === s.to || path === `${s.to}/`);
-
-const ROLE_NAME: Record<string, string> = { eso: 'Operator', dispatcher: 'Operator', admin: 'Operator' };
+const sectionsFor = (role?: string) => SECTIONS.filter(s => s.roles.includes(role ?? ''));
+const sectionOf = (path: string, role?: string) =>
+  sectionsFor(role).find(s => s.tabs ? s.tabs.some(t => path.startsWith(t.to)) : path === s.to || path === `${s.to}/`);
 
 const time = (d: Date, timeZone?: string) => d.toLocaleTimeString('en-GB', { hourCycle: 'h23', timeZone });
 
@@ -73,7 +78,8 @@ export const CommandShell = () => {
   const nav = useNavigate();
   const location = useLocation();
   const live = useLive();
-  const current = sectionOf(location.pathname);
+  const sections = sectionsFor(user?.role);
+  const current = sectionOf(location.pathname, user?.role);
 
   // A connected cabinet opened with nobody given its code: whatever page the operator is on.
   useEffect(() => {
@@ -88,6 +94,11 @@ export const CommandShell = () => {
   }, []);
 
   const signOut = () => { dispatch(logout()); nav('/login'); };
+
+  // A page outside this role's sections (an old link, the index for a non-operator): go home.
+  const home = CONSOLE_HOME[user?.role ?? ''];
+  if (!home) return <Navigate to="/login" replace />;
+  if (!current) return <Navigate to={home} replace />;
 
   return (
     // The green frame (sidebar + top bar) with the work sheet laid on it.
@@ -118,7 +129,7 @@ export const CommandShell = () => {
         <div className="ml-auto flex items-center gap-3">
           <div className="text-right leading-tight">
             <div className="text-sm font-medium text-white">{user?.name ?? 'Operator'}</div>
-            <div className="text-[12px] text-sidebar-foreground/65">{ROLE_NAME[user?.role ?? ''] ?? user?.role ?? ''}</div>
+            <div className="text-[12px] text-sidebar-foreground/65">{roleLabel(user?.role ?? '')}</div>
           </div>
           <div className="w-8 h-8 rounded-full bg-white/10 grid place-items-center text-sm font-semibold text-white">
             {(user?.name ?? '?').slice(0, 1).toUpperCase()}
@@ -136,7 +147,7 @@ export const CommandShell = () => {
 
       <aside className="flex flex-col min-h-0 pt-4 print:hidden">
         <nav className="flex flex-col gap-1 px-3">
-          {SECTIONS.map(section => {
+          {sections.map(section => {
             const { to, label, icon: I } = section;
             const isActive = section === current;
             return (
@@ -189,7 +200,8 @@ export const CommandShell = () => {
  */
 export const PageHeader = ({ title, subtitle, actions, icon }: { title: string; subtitle?: string; actions?: ReactNode; icon?: Icon }) => {
   const { pathname } = useLocation();
-  const tabs = sectionOf(pathname)?.tabs;
+  const role = useSelector((s: RootState) => s.auth.user?.role);
+  const tabs = sectionOf(pathname, role)?.tabs;
   return (
     <header className="page-band frame-texture flex items-start justify-between gap-4 px-6 pt-7 pb-[4.75rem]">
       <div className="min-w-0">

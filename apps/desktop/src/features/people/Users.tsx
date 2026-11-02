@@ -1,4 +1,4 @@
-import { FirstAidKit, Headset, MagnifyingGlass, Stethoscope, User, UserPlus, UsersThree, type Icon } from '@phosphor-icons/react';
+import { FirstAidKit, Headset, Hospital, MagnifyingGlass, ShieldCheck, Stethoscope, User, UserPlus, UsersThree, type Icon } from '@phosphor-icons/react';
 import { KPI } from '../../components/widgets/KPI';
 import { cn } from '../../lib/utils';
 import type { TileTone } from '../../components/ui/tile';
@@ -13,7 +13,7 @@ import { Label } from '../../components/ui/label';
 import { pushToast } from '../../components/toast/toast';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../store';
-import { roleLabel } from '../../lib/roles';
+import { RESPONDER_ROLES, STAFF_ROLES, roleLabel } from '../../lib/roles';
 
 interface AdminUser {
   _id: string;
@@ -21,18 +21,24 @@ interface AdminUser {
   name: string;
   role: string;
   createdAt: string;
+  hospital?: { _id: string; name: string };
 }
 
 const ROLE_TILE: Record<string, [Icon, TileTone]> = {
   eso: [Headset, 'teal'],
+  admin: [ShieldCheck, 'deep'],
+  hospital: [Hospital, 'teal'],
   doctor: [Stethoscope, 'blue'],
   nurse: [FirstAidKit, 'blue'],
   student_responder: [FirstAidKit, 'amber'],
   citizen: [User, 'slate'],
 };
 
-type Group = 'operators' | 'responders' | 'citizens';
-const GROUPS: [Group, string][] = [['operators', 'Operators'], ['responders', 'Responders'], ['citizens', 'Citizens']];
+type Group = 'staff' | 'responders' | 'citizens';
+const GROUPS: [Group, string][] = [['staff', 'Staff'], ['responders', 'Responders'], ['citizens', 'Citizens']];
+// Console accounts an administrator can make (the API refuses any other role).
+const STAFF_KINDS: [string, string][] = [['eso', 'Operator'], ['admin', 'Administrator'], ['hospital', 'Hospital staff']];
+const SELECT = 'h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]';
 
 export const Users = () => {
   const me = useSelector((s: RootState) => s.auth.user);
@@ -42,8 +48,11 @@ export const Users = () => {
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [staffRole, setStaffRole] = useState('eso');
+  const [hospitalId, setHospitalId] = useState('');
+  const [hospitals, setHospitals] = useState<{ id: string; name: string; address?: string }[]>([]);
   const [creating, setCreating] = useState(false);
-  const [group, setGroup] = useState<Group>('operators');
+  const [group, setGroup] = useState<Group>('staff');
   const [query, setQuery] = useState('');
   const [showNew, setShowNew] = useState(false);
 
@@ -59,24 +68,28 @@ export const Users = () => {
   };
 
   useEffect(() => { void load(); }, []);
+  // Hospitals for the hospital-staff picker, loaded the first time the form opens.
+  useEffect(() => {
+    if (showNew && !hospitals.length) api.get('/emergencies/hospitals').then(r => setHospitals(r.data)).catch(() => {});
+  }, [showNew, hospitals.length]);
 
-  const createOperator = async (e: React.FormEvent) => {
+  const createStaff = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreating(true);
     try {
-      await api.post('/admin/operators', { email, password, firstName, lastName });
-      pushToast({ tone: 'success', title: 'Operator created', body: email });
-      setEmail(''); setPassword(''); setFirstName(''); setLastName(''); setShowNew(false); setGroup('operators');
+      await api.post('/admin/staff', { email, password, firstName, lastName, role: staffRole, ...(staffRole === 'hospital' ? { hospitalId } : {}) });
+      pushToast({ tone: 'success', title: 'Account created', body: `${roleLabel(staffRole)} · ${email}` });
+      setEmail(''); setPassword(''); setFirstName(''); setLastName(''); setHospitalId(''); setShowNew(false); setGroup('staff');
       await load();
     } catch (err: any) {
-      pushToast({ tone: 'error', title: 'Create failed', body: err.response?.data?.error ?? 'Could not create the operator' });
+      pushToast({ tone: 'error', title: 'Create failed', body: err.response?.data?.error ?? 'Could not create the account' });
     } finally {
       setCreating(false);
     }
   };
 
-  const groupOf = (role: string): Group => (role === 'eso' ? 'operators' : role === 'citizen' ? 'citizens' : 'responders');
-  const counts = { operators: 0, responders: 0, citizens: 0 } as Record<Group, number>;
+  const groupOf = (role: string): Group => (STAFF_ROLES.includes(role) ? 'staff' : RESPONDER_ROLES.includes(role) ? 'responders' : 'citizens');
+  const counts = { staff: 0, responders: 0, citizens: 0 } as Record<Group, number>;
   users.forEach(u => { counts[groupOf(u.role)]++; });
   const q = query.trim().toLowerCase();
   const shown = users.filter(u => groupOf(u.role) === group && (!q || `${u.name} ${u.email}`.toLowerCase().includes(q)));
@@ -93,17 +106,36 @@ export const Users = () => {
 
   return (
     <>
-      <PageHeader icon={UsersThree} title="Users" subtitle="Everyone on Vitalis: operators, responders and the public. Click a person to see their record." actions={<Button onClick={() => setShowNew(v => !v)} className="rounded-xl bg-white text-primary hover:bg-white/90 h-10 px-4 font-semibold"><UserPlus size={18} weight="bold" /> New operator</Button>} />
+      <PageHeader icon={UsersThree} title="Users" subtitle="Everyone on Vitalis: staff, responders and the public. Click a person to see their record." actions={<Button onClick={() => setShowNew(v => !v)} className="rounded-xl bg-white text-primary hover:bg-white/90 h-10 px-4 font-semibold"><UserPlus size={18} weight="bold" /> New staff account</Button>} />
       <div className="p-6 space-y-5">
         <div className="grid grid-cols-3 gap-4 stagger">
-          <KPI icon={Headset} iconTone="deep" label="Operators" value={counts.operators} />
+          <KPI icon={Headset} iconTone="deep" label="Staff (operators, administrators, hospitals)" value={counts.staff} />
           <KPI icon={FirstAidKit} iconTone="teal" label="Responders (clinicians and certified)" value={counts.responders} />
           <KPI icon={User} iconTone="mint" label="Citizens" value={counts.citizens} />
         </div>
         {showNew && (
-        <Panel title="New operator account" aside={<button onClick={() => setShowNew(false)} className="text-sm text-muted-foreground hover:text-foreground">Close</button>}>
+        <Panel title="New staff account" aside={<button onClick={() => setShowNew(false)} className="text-sm text-muted-foreground hover:text-foreground">Close</button>}>
           <div className="p-5">
-            <form onSubmit={createOperator} className="grid grid-cols-2 gap-4">
+            <form onSubmit={createStaff} className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="kind">Account</Label>
+                <select id="kind" value={staffRole} onChange={e => setStaffRole(e.target.value)} className={SELECT}>
+                  {STAFF_KINDS.map(([role, label]) => <option key={role} value={role}>{label}</option>)}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                {staffRole === 'hospital' ? <>
+                  <Label htmlFor="hosp">Hospital</Label>
+                  <select id="hosp" value={hospitalId} onChange={e => setHospitalId(e.target.value)} required className={SELECT}>
+                    <option value="" disabled>{hospitals.length ? 'Choose the hospital' : 'Loading hospitals…'}</option>
+                    {hospitals.map(h => <option key={h.id} value={h.id}>{h.name}{h.address ? ` · ${h.address}` : ''}</option>)}
+                  </select>
+                </> : (
+                  <p className="pt-6 text-[13px] text-muted-foreground">
+                    {staffRole === 'admin' ? 'Manages people, doctor applications and reports.' : 'Runs live calls, defibrillators and drones.'}
+                  </p>
+                )}
+              </div>
               <div className="space-y-1.5">
                 <Label htmlFor="fn">First name</Label>
                 <Input id="fn" value={firstName} onChange={e => setFirstName(e.target.value)} required />
@@ -121,7 +153,7 @@ export const Users = () => {
                 <Input id="pw" type="password" minLength={8} value={password} onChange={e => setPassword(e.target.value)} required />
               </div>
               <div className="col-span-2">
-                <Button type="submit" loading={creating} className="rounded-lg">Create operator</Button>
+                <Button type="submit" loading={creating} className="rounded-lg">Create account</Button>
               </div>
             </form>
           </div>
@@ -154,9 +186,9 @@ export const Users = () => {
                 icon={icon}
                 tone={tone}
                 title={<Link to={`/command/admin/users/${u._id}`} className="hover:underline underline-offset-2">{u.name}</Link>}
-                summary={u.email}
+                summary={u.hospital ? `${u.email} · ${u.hospital.name}` : u.email}
                 right={<>
-                  <Chip tone={u.role === 'eso' ? 'teal' : 'muted'}>{roleLabel(u.role)}</Chip>
+                  <Chip tone={STAFF_ROLES.includes(u.role) ? 'teal' : 'muted'}>{roleLabel(u.role)}</Chip>
                   <Link to={`/command/admin/users/${u._id}`}><Button variant="outline" size="sm" className="rounded-lg">View</Button></Link>
                   {u._id !== me?.id ? <Button variant="ghost" size="sm" className="rounded-lg text-muted-foreground hover:text-destructive" onClick={() => remove(u._id)}>Remove</Button> : null}
                 </>}

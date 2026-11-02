@@ -4,11 +4,13 @@ import bcrypt from 'bcryptjs';
 // Bump when the privacy policy changes in substance (landing /privacy).
 export const PRIVACY_VERSION = '2026-10-01';
 
-// 'eso' = emergency services operator: runs the console and administers it (one role since 2026-10-05).
-export const ROLES = ['citizen','blood_donor','doctor','nurse','student_responder','eso'] as const;
-// Roles merged into 'eso'. Accounts are migrated at start-up; tokens signed before that still say these.
-const LEGACY_OPERATOR_ROLES = ['dispatcher', 'admin'];
-export const normalizeRole = (role: string) => (LEGACY_OPERATOR_ROLES.includes(role) ? 'eso' : role);
+// Phone app: citizen (blood_donor is a citizen who said so at sign-up), first responders, clinicians.
+// Desktop console (staff, accounts made by an administrator): 'eso' = emergency services operator
+// (dispatch, equipment), 'admin' (people, verification, reports), 'hospital' (one hospital's staff).
+export const ROLES = ['citizen','blood_donor','doctor','nurse','student_responder','eso','admin','hospital'] as const;
+// Alerted to an SOS and allowed on duty. Doctors and nurses are also clinicians.
+export const RESPONDER_ROLES: string[] = ['doctor', 'nurse', 'student_responder'];
+export const STAFF_ROLES: string[] = ['eso', 'admin', 'hospital'];
 export type Role = typeof ROLES[number];
 export const BLOOD_TYPES = ['A+','A-','B+','B-','AB+','AB-','O+','O-'] as const;
 export const GENDERS = ['female', 'male', 'non_binary', 'other', 'prefer_not_to_say'] as const;
@@ -24,6 +26,8 @@ const UserSchema = new Schema({
   phone: { type: String, trim: true }, // E.164, set only after SMS verification
   dateOfBirth: Date,
   role: { type: String, enum: ROLES, default: 'citizen', index: true },
+  // Hospital staff work for exactly one hospital.
+  hospital: { type: Schema.Types.ObjectId, ref: 'Hospital', required: function (this: any) { return this.role === 'hospital'; } },
   bloodType: { type: String, enum: BLOOD_TYPES },
   age: { type: Number, min: 0, max: 130 },
   gender: { type: String, enum: GENDERS },

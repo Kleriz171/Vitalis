@@ -87,11 +87,18 @@ const jitter = (c: [number, number], r = 0.03): [number, number] =>
 async function seed() {
   // The seed wipes every collection and creates accounts with known passwords.
   if (process.env.NODE_ENV === 'production') throw new Error('Refusing to seed a production database');
-  // One emergency services operator: runs dispatch and administers the console, so it sees every
-  // Medical ID. The known dev password is for a database on this machine only (checks use it).
+  // Console accounts: an operator (dispatch, sees Medical IDs on live calls), an administrator (people,
+  // verification, reports, every user's record) and one hospital's staff. The known dev passwords are
+  // for a database on this machine only (checks use them); anywhere else they come from the environment.
   const localDb = /^mongodb:\/\/(localhost|127\.0\.0\.1)[:/]/.test(process.env.MONGO_URI ?? 'mongodb://localhost/');
-  const operatorPassword = process.env.SEED_OPERATOR_PASSWORD || (localDb ? 'AlexNo11$' : '');
-  if (!operatorPassword) throw new Error('Set SEED_OPERATOR_PASSWORD to seed a database that is not on this machine');
+  const secret = (name: string, dev: string) => {
+    const value = process.env[name] || (localDb ? dev : '');
+    if (!value) throw new Error(`Set ${name} to seed a database that is not on this machine`);
+    return value;
+  };
+  const operatorPassword = secret('SEED_OPERATOR_PASSWORD', 'AlexNo11$');
+  const adminPassword = secret('SEED_ADMIN_PASSWORD', 'Admin1234!');
+  const hospitalPassword = secret('SEED_HOSPITAL_PASSWORD', 'Hospital1!');
   await connectDB();
 
   logger.info('Clearing collections…');
@@ -129,6 +136,14 @@ async function seed() {
     lastName: 'Operator',
     name: 'Aleks Operator',
     role: 'eso',
+  });
+  await User.create({
+    email: 'admin@vitalis.com',
+    password: adminPassword,
+    firstName: 'Arta',
+    lastName: 'Admin',
+    name: 'Arta Admin',
+    role: 'admin',
   });
 
   const demoCitizen = await User.create({
@@ -192,6 +207,15 @@ async function seed() {
   })));
   const pick = (part: string) => hospitals.find(h => h.name.includes(part)) ?? hospitals[0];
   const main = [pick('Nënë Teresa'), pick('Spitali Amerikan 1'), pick('Hygeia'), pick('Traumës')];
+  await User.create({
+    email: 'hospital@vitalis.com',
+    password: hospitalPassword,
+    firstName: 'Drita',
+    lastName: 'Emergency Ward',
+    name: 'Drita Emergency Ward',
+    role: 'hospital',
+    hospital: pick('Traumës')._id,
+  });
 
   // Blood inventory: the four main hospitals, each type
   logger.info('Seeding blood inventory…');

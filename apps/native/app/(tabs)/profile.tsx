@@ -36,6 +36,7 @@ import { setFallDetection, useFallDetectionEnabled } from '@/lib/fallDetection';
 import { setWakeWord, useWakeWordEnabled, wakeWordSupported } from '@/lib/wakeWord';
 import { medicalIdSupported, setMedicalId, showMedicalId, useMedicalIdEnabled, type MedicalFacts } from '@/lib/medicalId';
 import { speech } from '@/lib/speech';
+import { roleLabel } from '@/lib/roles';
 
 type Severity = 'mild' | 'moderate' | 'severe';
 
@@ -433,7 +434,7 @@ export default function Profile() {
       tone="dark"
       eyebrow={t('Bio Passport')}
       title={profile?.user.name ?? auth.user?.name ?? t('Your profile')}
-      subtitle={formatPhone(profile?.user.phone ?? auth.user?.phone) || profile?.user.email || auth.user?.email || t('Citizen account')}
+      subtitle={[formatPhone(profile?.user.phone ?? auth.user?.phone) || profile?.user.email || auth.user?.email, roleLabel(profile?.user.role ?? auth.user?.role)].filter(Boolean).join(' · ')}
       icon={<UserCircle size={24} color="#fff" />}
       action={
         <Pressable

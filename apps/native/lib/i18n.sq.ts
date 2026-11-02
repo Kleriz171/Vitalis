@@ -656,7 +656,6 @@ export const ui: Record<string, string> = {
   'Care discovery': 'Gjej kujdes',
   'Care providers': 'Ofrues kujdesi',
   'Citizen': 'Qytetar',
-  'Citizen account': 'Llogari qytetari',
   'Completed': 'I kryer',
   'Condition name': 'Emri i sëmundjes',
   'Connected to your Vitalis profile and live supply matching.': 'I lidhur me profilin tuaj në Vitalis dhe me përputhjen e furnizimeve në kohë reale.',

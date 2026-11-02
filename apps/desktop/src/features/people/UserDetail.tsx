@@ -7,7 +7,7 @@ import { PageHeader } from '../../components/layout/CommandShell';
 import { Panel, Row as ListRow, Chip } from '../../components/ui/list';
 import { Button } from '../../components/ui/button';
 import { pushToast } from '../../components/toast/toast';
-import { roleLabel } from '../../lib/roles';
+import { RESPONDER_ROLES, roleLabel } from '../../lib/roles';
 
 interface UserDetail {
   user: {
@@ -38,7 +38,6 @@ interface UserDetail {
   enrollments: Array<{ _id: string; lastScore?: number; attempts: number; completedAt?: string }>;
 }
 
-const RESPONDER_ROLES = ['student_responder', 'doctor', 'nurse'];
 
 const fmt = (iso?: string) => iso ? new Date(iso).toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
 

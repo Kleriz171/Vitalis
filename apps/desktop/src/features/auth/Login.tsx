@@ -11,9 +11,8 @@ import { Alert, AlertDescription } from '../../components/ui/alert';
 import { pushToast } from '../../components/toast/toast';
 import { ConvergeMap } from '../../components/widgets/ConvergeMap';
 import { Logo } from '../../components/ui/logo';
+import { CONSOLE_HOME } from '../../lib/roles';
 
-// The console is for emergency services operators ('eso'); older sessions may still say dispatcher/admin.
-const OPERATOR_ROLES = ['eso', 'dispatcher', 'admin'];
 // Which API this build talks to, shown under the form: a console pointed at the wrong server
 // otherwise just says "wrong password".
 const SERVER = new URL(api.defaults.baseURL ?? '/', window.location.href).host;
@@ -23,6 +22,8 @@ const SERVER = new URL(api.defaults.baseURL ?? '/', window.location.href).host;
 const DEMO_OPERATOR_ACCOUNTS = import.meta.env.DEV && /^(localhost|127\.0\.0\.1)(:|$)/.test(SERVER)
   ? [
       { label: 'Emergency services operator', email: 'aleks@vitalis.com', password: 'AlexNo11$' },
+      { label: 'Administrator', email: 'admin@vitalis.com', password: 'Admin1234!' },
+      { label: 'Hospital staff', email: 'hospital@vitalis.com', password: 'Hospital1!' },
     ]
   : [];
 
@@ -42,8 +43,10 @@ export const Login = () => {
     try {
       const { data } = await api.post('/auth/login', { email, password });
 
-      if (!OPERATOR_ROLES.includes(data.user.role)) {
-        setErr('This portal is for operators. Use the mobile app instead.');
+      // Staff only: operators, administrators, hospital staff. Everyone else uses the phone app.
+      const home = CONSOLE_HOME[data.user.role];
+      if (!home) {
+        setErr('This console is for staff accounts. Use the mobile app instead.');
         pushToast({ tone: 'warn', title: 'Wrong portal', body: 'Citizens use the mobile app.' });
         setLoading(false);
         return;
@@ -51,7 +54,7 @@ export const Login = () => {
 
       dispatch(setSession(data));
       pushToast({ tone: 'success', title: 'Welcome back', body: data.user.email });
-      nav('/command');
+      nav(home);
     } catch (e: any) {
       const msg = e.response?.data?.error
         ?? (e.response ? 'Sign in failed' : `Can't reach the server at ${SERVER}. Check that it's running and that this computer is online.`);
@@ -71,7 +74,7 @@ export const Login = () => {
           <h1 className="mt-6 text-[38px] font-extrabold leading-[1.08] tracking-[-0.03em] text-balance">Every call, every responder, every defibrillator on one screen.</h1>
           <p className="mt-3 text-[15px] text-white/75 max-w-[46ch] text-pretty">Live SOS intake, responder tracking and patient handover for dispatch centres and hospital coordinators.</p>
         </div>
-        <p className="text-[13px] text-white/55">Authorised operators only. Every action is recorded in the call log.</p>
+        <p className="text-[13px] text-white/55">Authorised staff only. Every action is recorded in the call log.</p>
       </section>
 
       <section className="flex items-center justify-center p-6 lg:p-10">

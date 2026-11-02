@@ -5,7 +5,7 @@ import { allow } from '../../middleware/rbac';
 import { blockchainService } from './blockchain.service';
 
 const r = Router();
-r.use(authRequired, allow('eso','doctor'));
+r.use(authRequired, allow('eso', 'admin'));
 
 // 200 entries, oldest first: the newest ones, or with ?before=<index> the ones before that entry.
 r.get('/', async (req, res) => {

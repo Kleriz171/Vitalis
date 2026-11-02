@@ -20,6 +20,7 @@ import { RootState } from '@/lib/store';
 import { startDutyTracking, stopDutyTracking } from '@/lib/dutyLocation';
 import { colors, radius } from '@/lib/theme';
 import { apiError, t } from '@/lib/i18n';
+import { RESPONDER_ROLES } from '@/lib/roles';
 
 type Status = 'pending' | 'assigned' | 'en_route' | 'on_scene' | 'resolved' | 'cancelled';
 
@@ -39,7 +40,6 @@ interface Incident {
   aed?: { name: string; placement?: string; coordinates: LngLat; cabinetCode?: string };
 }
 
-const RESPONDER_ROLES = ['doctor', 'nurse', 'student_responder', 'blood_donor'];
 
 const TYPE_LABEL: Record<string, string> = {
   cardiac: t('Cardiac arrest'),

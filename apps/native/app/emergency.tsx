@@ -14,6 +14,7 @@ import { socket } from '@/lib/socket';
 import { callNumber, distanceM, etaMinutes, formatDistance, LngLat } from '@/lib/geo';
 import { colors, radius } from '@/lib/theme';
 import { apiError, t, tn } from '@/lib/i18n';
+import { RESPONDER_ROLES, roleLabel } from '@/lib/roles';
 
 type Phase = 'countdown' | 'sending' | 'live' | 'ended';
 type Person = { _id: string; name: string; role: string } | string | null | undefined;
@@ -41,16 +42,10 @@ const COUNTDOWN_S = 3;
 // Vitalis SMS number (Twilio). Unset → the text-message fallback is not offered.
 const SOS_SMS = process.env.EXPO_PUBLIC_SOS_SMS_NUMBER;
 const CPR_BPM = 110;
-const ROLE_LABEL: Record<string, string> = {
-  doctor: t('Doctor'),
-  nurse: t('Nurse'),
-  student_responder: t('Certified first-aider'),
-  blood_donor: t('Certified first-aider'),
-};
 
 const idOf = (p: Person) => (p && typeof p === 'object' ? p._id : p ?? null);
 const nameOf = (p: Person) => (p && typeof p === 'object' ? p.name : null);
-const roleOf = (p: Person) => (p && typeof p === 'object' ? ROLE_LABEL[p.role] ?? t('Responder') : t('Responder'));
+const roleOf = (p: Person) => (p && typeof p === 'object' && RESPONDER_ROLES.includes(p.role) ? roleLabel(p.role) : t('Responder'));
 
 export default function EmergencyScreen() {
   const router = useRouter();

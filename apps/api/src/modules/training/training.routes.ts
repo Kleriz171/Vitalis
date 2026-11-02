@@ -240,11 +240,11 @@ r.post('/enrollments/:courseId/quiz', validate(quizSchema), async (req: AuthReq,
 
     let certification: any = null;
     let roleChanged = false;
-    // An operator revoked this certificate: passing again neither re-issues it nor makes a responder.
+    // An administrator revoked this certificate: passing again neither re-issues it nor makes a responder.
     const revoked = passed && !!(await Certification.exists({ user: req.user!.id, course: course._id, revokedAt: { $ne: null } }));
     if (passed && !revoked && RESPONDER_COURSES.includes(course.slug)) {
       // Training is the way into the responder network. Clients refresh their token to pick this up.
-      const r = await User.updateOne({ _id: req.user!.id, role: 'citizen' }, { $set: { role: 'student_responder' } });
+      const r = await User.updateOne({ _id: req.user!.id, role: { $in: ['citizen', 'blood_donor'] } }, { $set: { role: 'student_responder' } });
       roleChanged = r.modifiedCount > 0;
     }
     if (passed && !revoked) {
@@ -305,9 +305,9 @@ r.get('/certifications/:id', async (req: AuthReq, res, next) => {
 
 const revokeSchema = z.object({ reason: z.string().trim().max(240).optional() });
 
-// Operator revokes a certificate. Without another valid CPR or AED certificate the holder stops
+// An administrator revokes a certificate. Without another valid CPR or AED certificate the holder stops
 // being a responder at once: alerts follow the role in the database, not the one in their token.
-r.post('/certifications/:id/revoke', allow('eso'), validate(revokeSchema), async (req: AuthReq, res, next) => {
+r.post('/certifications/:id/revoke', allow('admin'), validate(revokeSchema), async (req: AuthReq, res, next) => {
   try {
     const cert = await Certification.findOneAndUpdate(
       { _id: req.params.id, revokedAt: null },

@@ -11,6 +11,7 @@ import { AppScreen } from '@/components/AppScreen';
 import { Group, Press, Row } from '@/components/ui/List';
 import { colors, radius } from '@/lib/theme';
 import { t } from '@/lib/i18n';
+import { RESPONDER_ROLES } from '@/lib/roles';
 
 export default function Home() {
   const user = useSelector((s: RootState) => s.auth.user);
@@ -35,7 +36,7 @@ export default function Home() {
   const sosStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.get() }] }));
 
   const firstName = user?.name?.split(' ')[0];
-  const isResponder = ['doctor', 'nurse', 'student_responder', 'blood_donor'].includes(user?.role ?? '');
+  const isResponder = RESPONDER_ROLES.includes(user?.role ?? '');
 
   const openSos = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});

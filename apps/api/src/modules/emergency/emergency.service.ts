@@ -12,7 +12,8 @@ import { unseal } from '../../utils/sealed';
 import { Allergy, Medication, Condition } from '../../models/HealthRecord';
 import { nearQuery, haversineKm, roadEtaSeconds } from '../../utils/geo';
 import { blockchainService } from '../blockchain/blockchain.service';
-import { RESPONDER_ROLES, OPERATOR_ROLES } from '../../realtime/socket';
+import { OPERATOR_ROLES } from '../../realtime/socket';
+import { RESPONDER_ROLES } from '../../models/User';
 
 export const ACTIVE_STATUSES = ['pending', 'assigned', 'en_route', 'on_scene'] as const;
 

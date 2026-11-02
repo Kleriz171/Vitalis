@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authRequired, AuthReq } from '../../middleware/auth';
 import { validate } from '../../middleware/validate';
-import { User, ageOf } from '../../models/User';
+import { User, ageOf, RESPONDER_ROLES } from '../../models/User';
 import { generateTextQR } from '../../utils/qr';
 import { Allergy, Medication, Vaccination, Condition, Disability } from '../../models/HealthRecord';
 import { hasResponderCertification } from '../../models/Training';
@@ -84,12 +84,11 @@ const dutySchema = z.object({
 
 r.patch('/me', validate(dutySchema), async (req: AuthReq, res, next) => {
   try {
-    // Only clinicians or people with a valid CPR/AED certificate may receive SOS alerts. The role is
-    // read from the database: an operator may have removed responder status minutes ago.
-    const current = req.body.available === true ? await User.findById(req.user!.id).select('role').lean() : null;
+    // Only responders receive SOS alerts: clinicians, or first responders whose CPR/AED certificate
+    // is still valid. Staff and citizens never go on duty, certificate or not.
+    const role = req.user!.role;
     if (req.body.available === true
-      && !['doctor', 'nurse'].includes(current?.role ?? '')
-      && !(await hasResponderCertification(req.user!.id))) {
+      && !(RESPONDER_ROLES.includes(role) && (['doctor', 'nurse'].includes(role) || await hasResponderCertification(req.user!.id)))) {
       return res.status(403).json({ error: 'Complete the CPR or AED course to go on duty' });
     }
     const set = req.body.location ? { ...req.body, locationAt: new Date() } : req.body;

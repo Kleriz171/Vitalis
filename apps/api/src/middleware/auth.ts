@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyAccess } from '../utils/jwt';
-import { normalizeRole } from '../models/User';
+import { User } from '../models/User';
 
 export interface AuthReq extends Request {
   user?: { id: string; role: string };
@@ -16,15 +16,24 @@ export const isRevoked = (id: string) => {
   return !!until && until >= Date.now();
 };
 
-export const authRequired = (req: AuthReq, res: Response, next: NextFunction) => {
+/** The role is read from the database, not the token: a changed role counts from the next request. */
+export const currentRole = async (id: string) =>
+  (await User.findById(id).select('role').lean())?.role as string | undefined;
+
+export const authRequired = async (req: AuthReq, res: Response, next: NextFunction) => {
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Missing token' });
+  let sub: string;
   try {
-    const decoded = verifyAccess(header.slice(7));
-    if (isRevoked(decoded.sub)) return res.status(401).json({ error: 'Invalid token' });
-    req.user = { id: decoded.sub, role: normalizeRole(decoded.role) };
-    next();
+    sub = verifyAccess(header.slice(7)).sub;
   } catch {
     return res.status(401).json({ error: 'Invalid token' });
   }
+  if (isRevoked(sub)) return res.status(401).json({ error: 'Invalid token' });
+  try {
+    const role = await currentRole(sub);
+    if (!role) return res.status(401).json({ error: 'Invalid token' });
+    req.user = { id: sub, role };
+    next();
+  } catch (e) { next(e); }
 };

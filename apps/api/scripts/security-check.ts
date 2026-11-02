@@ -90,14 +90,12 @@ async function main() {
   const nurse = await login('nurse@vitalis.com', 'Nurse1!');
   const dispatcher = await login('aleks@vitalis.com', 'AlexNo11$');
 
-  // One operator role (eso) holds both former dispatcher and admin powers, but cannot remove itself.
+  // Operators (eso) run dispatch; administering is the admin role's (roles-check covers the split).
   assert.equal(dispatcher.user.role, 'eso');
-  assert.equal((await call('GET', '/admin/users', dispatcher.accessToken)).status, 200);
   assert.equal((await call('GET', '/analytics/kpis', dispatcher.accessToken)).status, 200);
-  assert.equal((await call('GET', '/doctor-applications', dispatcher.accessToken)).status, 200);
-  assert.equal((await call('DELETE', `/admin/users/${dispatcher.user.id}`, dispatcher.accessToken)).status, 400);
+  assert.equal((await call('GET', '/admin/users', dispatcher.accessToken)).status, 403);
   assert.equal((await call('GET', '/admin/users', doctor.accessToken)).status, 403);
-  ok('operator (eso) reaches dispatch and admin, cannot delete itself; doctors cannot administer');
+  ok('operator reaches dispatch, not admin; doctors cannot administer');
 
   // Clear any live SOS the demo citizen has from previous runs.
   const prior = await call('GET', '/emergencies/mine', citizen.accessToken);

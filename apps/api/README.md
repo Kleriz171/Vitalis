@@ -38,7 +38,7 @@ a `.controller.ts` and `.service.ts` (`auth`, `emergency`) so the routes file st
 | `biopassport`, `training`, `doctor-applications` | mobile, console | Medical ID, courses and certificates, doctors applying to respond |
 | `aed`, `drone`, `track`, `checkin`, `sms`, `push` | various | Defibrillators, drones and their photos/videos (`drone/media.*`: MongoDB GridFS or Firebase Storage, kept 30 days), the public tracking link, safety check-ins, Twilio SMS fallback, push tokens |
 | `blood`, `supply`, `medicine`, `doctors`, `community`, `health`, `ai` | mobile | The citizen app's other tabs and the assistant |
-| `admin`, `analytics`, `blockchain` | console | Operators and users, reports, the tamper-proof call log |
+| `admin`, `analytics`, `blockchain`, `hospital` | console | Users and staff accounts, reports, the tamper-proof call log, a hospital's own page |
 
 ## Checks
 
@@ -74,5 +74,7 @@ any change to the API.
 ## Conventions
 
 - Validate every request body with zod (`validate(schema)`), check roles with `allow(...)`.
-- Operators have one role, `eso`. `normalizeRole()` in `models/User.ts` maps older role names.
+- Roles live in `models/User.ts` (`ROLES`, `RESPONDER_ROLES`, `STAFF_ROLES`). `eso` runs dispatch, `admin` runs people,
+  verification and reports, `hospital` is one hospital's staff. `authRequired` reads the role from the database on
+  every request, so a role change counts at once; never trust the role inside a token.
 - Patient locations never go to third-party services in production (OSRM is self-hosted; see the root README).
