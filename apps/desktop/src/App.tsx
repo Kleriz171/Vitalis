@@ -13,6 +13,8 @@ import { UserDetail } from './features/people/UserDetail';
 import { DoctorApplications } from './features/people/DoctorApplications';
 import { HospitalPage } from './features/hospital/Hospital';
 import { Incoming } from './features/hospital/Incoming';
+import { ClinicCalendar } from './features/clinic/Calendar';
+import { ClinicSettings } from './features/clinic/Settings';
 import { Toaster } from './components/ui/sonner';
 
 const Protected = ({ children }: { children: JSX.Element }) => {
@@ -38,6 +40,8 @@ export const App = () => (
         <Route path="admin/doctor-applications" element={<DoctorApplications />} />
         <Route path="hospital" element={<HospitalPage />} />
         <Route path="hospital/incoming" element={<Incoming />} />
+        <Route path="clinic" element={<ClinicCalendar />} />
+        <Route path="clinic/settings" element={<ClinicSettings />} />
       </Route>
       <Route path="*" element={<Navigate to="/command" replace />} />
     </Routes>

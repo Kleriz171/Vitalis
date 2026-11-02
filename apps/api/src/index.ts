@@ -7,6 +7,7 @@ import { initSocket } from './realtime/socket';
 import { User } from './models/User';
 import { startRedispatch } from './modules/emergency/redispatch';
 import { startCheckInSweep } from './modules/checkin/checkin.service';
+import { startBookingReminders } from './modules/bookings/bookings.service';
 
 async function main() {
   await connectDB();
@@ -20,6 +21,7 @@ async function main() {
   if (env.demoMode) logger.warn('DEMO_MODE is on: phone sign-in needs no SMS code. Test demos only.');
   startRedispatch();
   startCheckInSweep();
+  startBookingReminders();
 }
 
 main().catch(err => {

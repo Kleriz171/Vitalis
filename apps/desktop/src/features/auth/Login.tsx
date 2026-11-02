@@ -24,6 +24,7 @@ const DEMO_OPERATOR_ACCOUNTS = import.meta.env.DEV && /^(localhost|127\.0\.0\.1)
       { label: 'Emergency services operator', email: 'aleks@vitalis.com', password: 'AlexNo11$' },
       { label: 'Administrator', email: 'admin@vitalis.com', password: 'Admin1234!' },
       { label: 'Hospital staff', email: 'hospital@vitalis.com', password: 'Hospital1!' },
+      { label: 'Clinician', email: 'doctor@vitalis.com', password: 'Doctor1!' },
     ]
   : [];
 
@@ -43,10 +44,10 @@ export const Login = () => {
     try {
       const { data } = await api.post('/auth/login', { email, password });
 
-      // Staff only: operators, administrators, hospital staff. Everyone else uses the phone app.
+      // Staff and clinicians (doctor, nurse). Everyone else uses the phone app.
       const home = CONSOLE_HOME[data.user.role];
       if (!home) {
-        setErr('This console is for staff accounts. Use the mobile app instead.');
+        setErr('This console is for staff and clinicians. Use the mobile app instead.');
         pushToast({ tone: 'warn', title: 'Wrong portal', body: 'Citizens use the mobile app.' });
         setLoading(false);
         return;

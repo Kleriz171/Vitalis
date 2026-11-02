@@ -1,7 +1,7 @@
 import { Link, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-  Ambulance, Siren, ChartBar, Drone, FilePdf, Hospital, SealCheck, SignOut, UsersThree, type Icon,
+  Ambulance, CalendarDots, Sliders, Siren, ChartBar, Drone, FilePdf, Hospital, SealCheck, SignOut, UsersThree, type Icon,
 } from '@phosphor-icons/react';
 import { Defibrillator } from '../ui/aed-icon';
 import { Tile } from '../ui/tile';
@@ -32,6 +32,8 @@ const SECTIONS: Section[] = [
   { label: 'Call log', icon: SealCheck, to: '/command/ledger', roles: ['eso'] },
   { label: 'Incoming patients', icon: Ambulance, to: '/command/hospital/incoming', roles: ['hospital'] },
   { label: 'Hospital', icon: Hospital, to: '/command/hospital', roles: ['hospital'] },
+  { label: 'Consultations', icon: CalendarDots, to: '/command/clinic', roles: ['doctor', 'nurse'] },
+  { label: 'Clinic settings', icon: Sliders, to: '/command/clinic/settings', roles: ['doctor', 'nurse'] },
   { label: 'People', icon: UsersThree, to: '/command/admin/users', roles: ['admin'], tabs: [
     { to: '/command/admin/users', label: 'Users' },
     { to: '/command/admin/doctor-applications', label: 'Applications' },

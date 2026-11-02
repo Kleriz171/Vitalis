@@ -1,9 +1,6 @@
 import { Router } from 'express';
-import { z } from 'zod';
-import { authRequired, AuthReq } from '../../middleware/auth';
-import { validate } from '../../middleware/validate';
+import { authRequired } from '../../middleware/auth';
 import { Doctor } from '../../models/Doctor';
-import { Appointment } from '../../models/HealthRecord';
 import { escapeRegex } from '../../utils/regex';
 
 const r = Router();
@@ -36,6 +33,8 @@ r.get('/', async (req, res, next) => {
       priceConsultation: d.priceConsultation,
       availableOnline: d.availableOnline,
       availableNow: d.availableNow,
+      // Has a Vitalis account with hours and fees: patients can book in the app.
+      bookable: !!d.user && (d.consultationTypes ?? []).some(t => t.active),
     })));
   } catch (e) { next(e); }
 });
@@ -44,29 +43,14 @@ r.get('/:id', async (req, res, next) => {
   try {
     const d = await Doctor.findById(req.params.id).lean();
     if (!d) return res.status(404).json({ error: 'Not found' });
-    res.json({ ...d, id: String(d._id) });
-  } catch (e) { next(e); }
-});
-
-const bookSchema = z.object({
-  scheduledAt: z.string().datetime(),
-  appointmentType: z.enum(['consultation', 'emergency', 'checkup']).default('consultation'),
-  notes: z.string().optional(),
-});
-
-r.post('/:id/book', validate(bookSchema), async (req: AuthReq, res, next) => {
-  try {
-    const body = req.body as z.infer<typeof bookSchema>;
-    if (!(await Doctor.exists({ _id: req.params.id }))) return res.status(404).json({ error: 'Doctor not found' });
-    if (new Date(body.scheduledAt).getTime() < Date.now()) return res.status(400).json({ error: 'Pick a future time' });
-    const apt = await Appointment.create({
-      user: req.user!.id,
-      doctor: req.params.id,
-      appointmentType: body.appointmentType,
-      scheduledAt: new Date(body.scheduledAt),
-      notes: body.notes,
+    const { user, workingHours, daysOff, consultationTypes, ...rest } = d as any;
+    res.json({
+      ...rest,
+      id: String(d._id),
+      bookable: !!user && (consultationTypes ?? []).some((t: any) => t.active),
+      consultationTypes: (consultationTypes ?? []).filter((t: any) => t.active)
+        .map((t: any) => ({ id: String(t._id), name: t.name, minutes: t.minutes, price: t.price, online: t.online })),
     });
-    res.status(201).json({ id: String(apt._id), status: apt.status });
   } catch (e) { next(e); }
 });
 

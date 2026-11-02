@@ -35,7 +35,8 @@
     "check:roles": "npx tsx apps/api/scripts/roles-check.ts",
     "check:hardening": "npx tsx apps/api/scripts/hardening-check.ts",
     "check:relay": "npx tsx apps/api/scripts/relay-check.ts",
-    "check:hospital": "npx tsx apps/api/scripts/hospital-check.ts"
+    "check:hospital": "npx tsx apps/api/scripts/hospital-check.ts",
+    "check:appointments": "npx tsx apps/api/scripts/appointments-check.ts"
   },
   "overrides": {
     "react": "19.2.3",

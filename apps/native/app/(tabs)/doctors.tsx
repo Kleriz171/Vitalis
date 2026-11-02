@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { MessageCircle, Search, Star, Stethoscope, UserPlus, Video } from 'lucide-react-native';
+import { MessageCircle, Search, Star, Stethoscope, UserPlus, Video, CalendarPlus, Calendar } from 'lucide-react-native';
 import { toast } from 'sonner-native';
 import { api } from '@/lib/api';
 import { AppScreen } from '@/components/AppScreen';
@@ -23,6 +23,7 @@ interface Doctor {
   experience?: number;
   rating?: number;
   reviewCount?: number;
+  bookable?: boolean;
   availableOnline?: boolean;
   phone?: string;
 }
@@ -162,6 +163,12 @@ export default function Doctors() {
                 </Text>
               </View>
               {doctor.biography ? <Text style={styles.bio}>{doctor.biography}</Text> : null}
+              {doctor.bookable ? (
+                <Button style={styles.whatsApp} onPress={() => router.push({ pathname: '/book/[id]', params: { id: doctor.id } } as never)}>
+                  <CalendarPlus size={16} color="#fff" />
+                  {t('Book a consultation')}
+                </Button>
+              ) : null}
               {doctor.phone ? (
                 <Button style={styles.whatsApp} onPress={() => void openWhatsApp(doctor.phone!, doctor.name)}>
                   <MessageCircle size={16} color="#fff" />
@@ -178,6 +185,10 @@ export default function Doctors() {
           <Empty icon={Search} title={t('No doctors matched')} description={t('Try widening the specialty or turning off online-only.')} />
         </Group>
       )}
+
+      <Group>
+        <Row first icon={<Calendar size={18} color={colors.primary} />} title={t('My consultations')} summary={t('Requests, confirmed times and summaries')} onPress={() => router.push('/consultations' as never)} />
+      </Group>
 
       <Group>
         <Row

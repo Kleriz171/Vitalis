@@ -4,6 +4,9 @@ import { connectDB } from '../config/db';
 import { logger } from '../config/logger';
 import { User } from '../models/User';
 import { Hospital } from '../models/Hospital';
+import { Booking } from '../models/Booking';
+import { HospitalHandover } from '../models/HospitalHandover';
+import { IncidentReport } from '../models/IncidentReport';
 import hospitalsAl from './hospitals.al.json';
 import { BloodRequest } from '../models/BloodRequest';
 import { BloodInventory } from '../models/BloodInventory';
@@ -125,6 +128,9 @@ async function seed() {
     Disability.deleteMany({}),
     Emergency.deleteMany({}),
     DoctorApplication.deleteMany({}),
+    Booking.deleteMany({}),
+    HospitalHandover.deleteMany({}),
+    IncidentReport.deleteMany({}),
   ]);
 
   logger.info('Seeding the operator + demo users…');
@@ -324,6 +330,19 @@ async function seed() {
     { name: 'Dr. Klodian Rama', specialty: 'Psychology', hospital: main[1]._id, experience: 6, rating: 4.9, reviewCount: 178, priceConsultation: 3000, availableOnline: true, availableNow: true, phone: '+355691234567', biography: 'Anxiety, depression, CBT.' },
   ];
   await Doctor.insertMany(doctors);
+  // The seeded doctor account takes bookings: weekday clinic hours, three kinds of consultation.
+  const doctorUser = await User.findOne({ email: 'doctor@vitalis.com' }).select('_id').lean();
+  const weekdays = [1, 2, 3, 4, 5].flatMap(day => [{ day, start: '09:00', end: '13:00' }, { day, start: '14:00', end: '17:00' }]);
+  await Doctor.create({
+    user: doctorUser!._id, name: 'Sara Doctor', specialty: 'Emergency Medicine', hospital: main[3]._id, experience: 9,
+    biography: 'Emergency physician. Follow-up after an emergency, general consultations and online advice.',
+    workingHours: [...weekdays, { day: 6, start: '09:00', end: '12:00' }],
+    consultationTypes: [
+      { name: 'Consultation', minutes: 30, price: 3000 },
+      { name: 'Follow-up', minutes: 15, price: 1500 },
+      { name: 'Online consultation', minutes: 30, price: 2500, online: true },
+    ],
+  });
 
   // Community groups
   logger.info('Seeding community groups…');

@@ -32,6 +32,7 @@ import trackRoutes from './modules/track/track.routes';
 import accountRoutes from './modules/account/account.routes';
 import watchRoutes from './modules/watch/watch.routes';
 import hospitalRoutes from './modules/hospital/hospital.routes';
+import { bookingRoutes, clinicRoutes, doctorBookingRoutes } from './modules/bookings/bookings.routes';
 import mongoose from 'mongoose';
 
 export function buildApp() {
@@ -85,7 +86,9 @@ export function buildApp() {
   app.use('/api/blockchain', blockchainRoutes);
   app.use('/api/analytics', analyticsRoutes);
   app.use('/api/blood', bloodRoutes);
-  app.use('/api/doctors', doctorsRoutes);
+  app.use('/api/doctors', doctorBookingRoutes, doctorsRoutes); // slots and bookings, then the directory
+  app.use('/api/bookings', strict(60), bookingRoutes); // a patient's own consultations
+  app.use('/api/clinic', clinicRoutes); // clinicians: hours, fees, consultations
   app.use('/api/community', communityRoutes);
   app.use('/api/health', healthRoutes);
   app.use('/api/supply', supplyRoutes);

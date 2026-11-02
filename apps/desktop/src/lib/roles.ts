@@ -6,11 +6,14 @@ const LABELS: Record<string, string> = {
 };
 export const roleLabel = (role: string) => LABELS[role] ?? role.replace('_', ' ');
 
-// Console accounts (models/User.ts STAFF_ROLES) and the page each one opens on.
+// Who may sign in to the console and the page each one opens on: staff (models/User.ts STAFF_ROLES)
+// and clinicians, whose consultation workspace lives here because a calendar needs a wide screen.
 export const CONSOLE_HOME: Record<string, string> = {
   eso: '/command',
   admin: '/command/analytics',
   hospital: '/command/hospital/incoming',
+  doctor: '/command/clinic',
+  nurse: '/command/clinic',
 };
-export const STAFF_ROLES = Object.keys(CONSOLE_HOME);
+export const STAFF_ROLES = ['eso', 'admin', 'hospital'];
 export const RESPONDER_ROLES = ['doctor', 'nurse', 'student_responder'];
