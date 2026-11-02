@@ -10,7 +10,7 @@ export const roleLabel = (role: string) => LABELS[role] ?? role.replace('_', ' '
 export const CONSOLE_HOME: Record<string, string> = {
   eso: '/command',
   admin: '/command/analytics',
-  hospital: '/command/hospital',
+  hospital: '/command/hospital/incoming',
 };
 export const STAFF_ROLES = Object.keys(CONSOLE_HOME);
 export const RESPONDER_ROLES = ['doctor', 'nurse', 'student_responder'];

@@ -18,6 +18,8 @@ import { KPI } from '../../components/widgets/KPI';
 import { pushToast } from '../../components/toast/toast';
 import { timeAgo, shortId, formatEta } from '../../lib/format';
 import { cn } from '../../lib/utils';
+import { HANDOVER_STATUS, type Handover as HospitalHandover } from '../hospital/Incoming';
+import { Chip } from '../../components/ui/list';
 import { formatCoords } from '../../lib/geo';
 import type { MapAed, MapResponder } from '../../components/map/MapView';
 import { TYPE_LABEL } from '../../components/map/MapView';
@@ -616,6 +618,8 @@ const IncidentPanel = ({ incident, onClose, onChanged }: { incident: Emergency; 
           </section>
         )}
 
+        {h && <HospitalHandoverSection incident={incident} reportCount={reports.length} />}
+
         {isActive && (
           <section className={cn('rounded-xl border px-4 py-3', incident.escalatedAt && !incident.escalationAckAt ? 'border-[hsl(var(--sos)/0.4)] bg-[hsl(var(--sos)/0.06)]' : 'border-border')}>
             {incident.escalatedAt && !incident.escalationAckAt ? (
@@ -648,6 +652,133 @@ const IncidentPanel = ({ incident, onClose, onChanged }: { incident: Emergency; 
         )}
       </motion.div>
     </motion.aside>
+  );
+};
+
+type DirectoryHospital = { id: string; name: string; address?: string; distanceKm?: number | null; capacity: { status: string; updatedAt: string } | null };
+const CAPACITY_LABEL: Record<string, [string, 'teal' | 'amber' | 'sos']> = {
+  accepting: ['Accepting', 'teal'], limited: ['Limited capacity', 'amber'], unavailable: ['Temporarily unavailable', 'sos'],
+};
+// A responder has taken the call (or it ended within the day): the API checks the same.
+const SENDABLE = ['assigned', 'en_route', 'on_scene', 'assistance', 'handed_over', 'resolved'];
+const hhmm = (iso?: string) => (iso ? new Date(iso).toLocaleTimeString('en-GB', { hourCycle: 'h23', hour: '2-digit', minute: '2-digit' }) : '');
+
+/**
+ * Digital handover to a participating hospital. The operator chooses the hospital (nearest first,
+ * with the capacity the hospital itself reported); Vitalis never chooses one.
+ */
+const HospitalHandoverSection = ({ incident, reportCount }: { incident: Emergency; reportCount: number }) => {
+  const [items, setItems] = useState<HospitalHandover[]>([]);
+  const [picking, setPicking] = useState(false);
+  const [directory, setDirectory] = useState<DirectoryHospital[] | null>(null);
+  const [choice, setChoice] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(() => api.get<HospitalHandover[]>('/hospital/handovers', { params: { emergencyId: incident._id } }).then(r => setItems(r.data)).catch(() => {}), [incident._id]);
+  const loadDirectory = useCallback(() => {
+    const [lng, lat] = incident.location?.coordinates ?? [];
+    api.get<DirectoryHospital[]>('/hospital/directory', { params: lng != null ? { lng, lat } : {} }).then(r => setDirectory(r.data)).catch(() => setDirectory([]));
+  }, [incident.location]);
+
+  useEffect(() => {
+    void load();
+    setPicking(false);
+    setChoice(null);
+    const onHandover = (m: { emergencyId: string }) => { if (m.emergencyId === incident._id) void load(); };
+    socket.on('dashboard:handover', onHandover);
+    return () => { socket.off('dashboard:handover', onHandover); };
+  }, [incident._id, load]);
+  useEffect(() => {
+    if (!picking) return;
+    loadDirectory();
+    socket.on('hospital:capacity', loadDirectory);
+    return () => { socket.off('hospital:capacity', loadDirectory); };
+  }, [picking, loadDirectory]);
+
+  const send = async () => {
+    if (!choice) return;
+    setBusy(true);
+    try {
+      const { data } = await api.post<HospitalHandover>('/hospital/handovers', { emergencyId: incident._id, hospitalId: choice });
+      pushToast({ tone: 'success', title: 'Handover sent', body: data.deliveredLive ? 'The hospital has Vitalis open and sees it now.' : 'Nobody at the hospital has Vitalis open. They will see it when they do: consider calling them.' });
+      setPicking(false);
+      await load();
+    } catch (err: any) {
+      pushToast({ tone: 'error', title: 'Not sent', body: err?.response?.data?.error ?? 'Try again' });
+    } finally {
+      setBusy(false);
+    }
+  };
+  const withdraw = async (id: string) => {
+    if (!window.confirm('Withdraw this handover? The hospital is told at once.')) return;
+    setBusy(true);
+    try {
+      await api.post(`/hospital/handovers/${id}/withdraw`);
+      await load();
+    } catch (err: any) {
+      pushToast({ tone: 'error', title: 'Not withdrawn', body: err?.response?.data?.error ?? 'Try again' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const open = items.find(h => ['sent', 'acknowledged', 'arrived'].includes(h.status));
+  const past = items.filter(h => h !== open);
+  if (!open && !past.length && !SENDABLE.includes(incident.status)) return null;
+
+  return (
+    <section>
+      <h3 className="text-[13px] font-medium text-muted-foreground">Hospital handover</h3>
+      {open ? (
+        <div className={cn('mt-2 rounded-xl border px-4 py-3 text-[14px] space-y-1', open.status === 'sent' ? 'border-[hsl(var(--warn)/0.5)]' : 'border-border')}>
+          <div className="flex items-center gap-2">
+            <span className="font-semibold flex-1">{open.hospital.name}</span>
+            <Chip tone={open.status === 'sent' ? 'amber' : 'teal'}>{HANDOVER_STATUS[open.status]}</Chip>
+          </div>
+          <div className="text-muted-foreground">Sent {hhmm(open.sentAt)}{open.deliveredLive ? ', seen live at the hospital' : ', nobody at the hospital had Vitalis open'}</div>
+          {open.acknowledgedAt && <div>Acknowledged {hhmm(open.acknowledgedAt)}{open.acknowledgedBy ? ` by ${open.acknowledgedBy}` : ''}</div>}
+          {open.arrivedAt && <div>Patient checked in {hhmm(open.arrivedAt)}{open.intake && open.intake !== 'arrived' ? ` · ${open.intake.replace('_', ' ')}` : ''}</div>}
+          {open.status !== 'arrived' && (
+            <Button size="sm" variant="ghost" className="rounded-lg -ml-2 text-muted-foreground" disabled={busy} onClick={() => withdraw(open.id)}>Withdraw</Button>
+          )}
+        </div>
+      ) : SENDABLE.includes(incident.status) && !picking ? (
+        <Button size="sm" variant="outline" className="mt-2 rounded-lg" onClick={() => setPicking(true)}>Send to a hospital</Button>
+      ) : null}
+
+      {picking && !open && (
+        <div className="mt-2 rounded-xl border border-border">
+          {!directory ? <p className="px-4 py-3 text-sm text-muted-foreground">Loading hospitals…</p>
+            : directory.length === 0 ? <p className="px-4 py-3 text-sm text-muted-foreground">No hospital is on Vitalis yet. Call the hospital instead.</p>
+            : directory.map(h => {
+              const cap = h.capacity ? CAPACITY_LABEL[h.capacity.status] : null;
+              return (
+                <label key={h.id} className={cn('flex items-center gap-3 px-4 py-2.5 border-b border-border last:border-b-0 cursor-pointer', choice === h.id && 'bg-accent/60')}>
+                  <input type="radio" name={`hospital-${incident._id}`} checked={choice === h.id} onChange={() => setChoice(h.id)} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-medium truncate">{h.name}</span>
+                    <span className="block text-[12px] text-muted-foreground">{h.distanceKm != null ? `${h.distanceKm} km · ` : ''}{h.capacity ? `reported ${timeAgo(h.capacity.updatedAt)}` : 'capacity not reported'}</span>
+                  </span>
+                  {cap && <Chip tone={cap[1]}>{cap[0]}</Chip>}
+                </label>
+              );
+            })}
+          <div className="px-4 py-3 border-t border-border bg-muted/30 text-[13px] text-muted-foreground space-y-2">
+            <p>The hospital receives the patient details shown above (without contact numbers), the responders, {reportCount === 1 ? 'one responder report' : `${reportCount} responder reports`} and the timeline, as they are now.</p>
+            <div className="flex gap-2">
+              <Button size="sm" className="rounded-lg" disabled={!choice || busy} onClick={send}>Send handover</Button>
+              <Button size="sm" variant="ghost" className="rounded-lg" onClick={() => setPicking(false)}>Cancel</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {past.length > 0 && (
+        <ul className="mt-2 space-y-1 text-[13px] text-muted-foreground">
+          {past.map(h => <li key={h.id}>{h.hospital.name}: {HANDOVER_STATUS[h.status].toLowerCase()} ({hhmm(h.sentAt)})</li>)}
+        </ul>
+      )}
+    </section>
   );
 };
 

@@ -55,8 +55,14 @@ its own e2e check in `scripts/e2e.sh` and screenshots before anything visual is 
    (`action_*` timeline entries with notes). Phone: pause control, six-step buttons, Quick report screen.
    Console: six-step progress, escalation acknowledge, "what you did by phone", notes, responder reports.
    Watches and /track map the new steps to "help is with you".
-3. **Hospital.** Hospital accounts, incoming board, handover dispatch from operator, acknowledgment,
+3. **Hospital.** ✅ 2026-11-02. Hospital accounts, incoming board, handover dispatch from operator, acknowledgment,
    check-in, capacity status. Check: hospital-check.
+   Landed: `Hospital.capacity` (set by its staff, read by operators with the time; never auto-selects);
+   `HospitalHandover` snapshot (patient essentials without contact, responders, reports, timeline) sent by
+   operators to participating hospitals only, one open per call, live to the `hospital:<id>` room
+   (`deliveredLive`), acknowledge / check-in (+ hospital record no.) / intake / duplicate (same person within a
+   day) / withdraw, each on the call's timeline. Console: hospital Incoming board + capacity; operator "Hospital
+   handover" in the call panel. ETA is not shown: there is no ambulance tracking to base it on.
 4. **Citizen and clinician.** Emergency circle, QR visibility + access log, clinician schedule,
    types/fees (price copied onto booking), booking with overlap prevention (unique index + transaction),
    timeline with consent, summaries. Check: appointments-check.

@@ -12,6 +12,7 @@ import { Users } from './features/people/Users';
 import { UserDetail } from './features/people/UserDetail';
 import { DoctorApplications } from './features/people/DoctorApplications';
 import { HospitalPage } from './features/hospital/Hospital';
+import { Incoming } from './features/hospital/Incoming';
 import { Toaster } from './components/ui/sonner';
 
 const Protected = ({ children }: { children: JSX.Element }) => {
@@ -36,6 +37,7 @@ export const App = () => (
         <Route path="admin/users/:id" element={<UserDetail />} />
         <Route path="admin/doctor-applications" element={<DoctorApplications />} />
         <Route path="hospital" element={<HospitalPage />} />
+        <Route path="hospital/incoming" element={<Incoming />} />
       </Route>
       <Route path="*" element={<Navigate to="/command" replace />} />
     </Routes>

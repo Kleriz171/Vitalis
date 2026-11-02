@@ -2,8 +2,8 @@ import { Server, Socket } from 'socket.io';
 import http from 'http';
 import { env } from '../config/env';
 import { verifyAccess } from '../utils/jwt';
-import { RESPONDER_ROLES } from '../models/User';
-import { currentRole, isRevoked } from '../middleware/auth';
+import { RESPONDER_ROLES, User } from '../models/User';
+import { isRevoked } from '../middleware/auth';
 import { logger } from '../config/logger';
 import { Emergency } from '../models/Emergency';
 import { registerDrones, registerOperatorDroneControls } from './drones';
@@ -12,7 +12,7 @@ let io: Server;
 
 export const OPERATOR_ROLES = ['eso'];
 
-type SocketUser = { id: string; role: string };
+type SocketUser = { id: string; role: string; hospital?: string };
 const userOf = (socket: Socket) => (socket.data as { user: SocketUser }).user;
 
 /**
@@ -51,10 +51,10 @@ export const initSocket = (server: http.Server) => {
       const token = socket.handshake.auth?.token;
       if (!token) return next(new Error('no token'));
       const decoded = verifyAccess(token);
-      const role = isRevoked(decoded.sub) ? undefined : await currentRole(decoded.sub);
-      if (!role) return next(new Error('auth failed'));
+      const u = isRevoked(decoded.sub) ? null : await User.findById(decoded.sub).select('role hospital').lean();
+      if (!u) return next(new Error('auth failed'));
       // Rooms follow this role until the socket reconnects.
-      (socket.data as any).user = { id: decoded.sub, role };
+      (socket.data as any).user = { id: decoded.sub, role: u.role, hospital: u.hospital ? String(u.hospital) : undefined };
       (socket.data as any).responding = new Set<string>();
       next();
     } catch {
@@ -71,6 +71,7 @@ export const initSocket = (server: http.Server) => {
     socket.join(`user:${user.id}`);
     if (RESPONDER_ROLES.includes(user.role)) socket.join('responders');
     if (OPERATOR_ROLES.includes(user.role)) socket.join('dispatchers');
+    if (user.role === 'hospital' && user.hospital) socket.join(`hospital:${user.hospital}`);
 
     // Kept for older clients; membership is decided by role at connect time.
     socket.on('dispatcher:join', () => {
