@@ -61,6 +61,7 @@ r.get('/me', async (req: AuthReq, res, next) => {
         weightKg: u.weightKg,
         illnesses: u.illnesses ?? [],
         available: !!u.available,
+        pausedUntil: u.pausedUntil && u.pausedUntil > new Date() ? u.pausedUntil : null,
         disabilities: disabilities.map(d => ({ id: String(d._id), name: d.name, notes: d.notes })),
         allergies: allergies.map(a => ({ id: String(a._id), allergen: a.allergen, severity: a.severity })),
         medications: medications.map(m => ({ id: String(m._id), name: m.name, dosage: m.dosage, isActive: m.isActive })),
@@ -76,6 +77,8 @@ r.get('/me', async (req: AuthReq, res, next) => {
 // PATCH /health/profile (validated). Never pass req.body straight to the model.
 const dutySchema = z.object({
   available: z.boolean().optional(),
+  // Temporarily unavailable for this many minutes; 0 ends the pause.
+  pauseMinutes: z.union([z.literal(0), z.literal(15), z.literal(30), z.literal(60)]).optional(),
   location: z.object({
     type: z.literal('Point'),
     coordinates: z.tuple([z.number().min(-180).max(180), z.number().min(-90).max(90)]),
@@ -91,11 +94,14 @@ r.patch('/me', validate(dutySchema), async (req: AuthReq, res, next) => {
       && !(RESPONDER_ROLES.includes(role) && (['doctor', 'nurse'].includes(role) || await hasResponderCertification(req.user!.id)))) {
       return res.status(403).json({ error: 'Complete the CPR or AED course to go on duty' });
     }
-    const set = req.body.location ? { ...req.body, locationAt: new Date() } : req.body;
+    const { pauseMinutes, ...rest } = req.body as z.infer<typeof dutySchema>;
+    const set: Record<string, unknown> = rest.location ? { ...rest, locationAt: new Date() } : { ...rest };
+    // Going off duty or back on duty also ends a pause.
+    if (pauseMinutes !== undefined || rest.available !== undefined) set.pausedUntil = pauseMinutes ? new Date(Date.now() + pauseMinutes * 60_000) : null;
     const u = await User.findByIdAndUpdate(req.user!.id, { $set: set }, { new: true, runValidators: true })
-      .select('available location role').lean();
+      .select('available location role pausedUntil').lean();
     if (!u) return res.status(404).json({ error: 'Not found' });
-    res.json({ available: u.available, location: u.location, role: u.role });
+    res.json({ available: u.available, pausedUntil: u.pausedUntil ?? null, location: u.location, role: u.role });
   } catch (e) { next(e); }
 });
 

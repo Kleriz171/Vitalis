@@ -20,6 +20,7 @@ Neither has been tried on a real watch yet; the heart sensors in particular need
    follows that can still be cancelled. The SOS goes out with the watch's location.
 3. **Status.** Finding help → help is coming (responder name, ETA) → help is with you. Call 127
    and "I'm OK, cancel SOS" (tap twice) are always there.
+   `assistance` and `handed_over` show as "help is with you" (the fourth step).
 4. **Heart check** (on by default, can be switched off). Watches the *resting* heart rate. If it
    stays ≥ 150 bpm or ≤ 40 bpm (Wear OS: ≤ 35 asleep) for 4+ minutes, the watch asks
    **"Are you OK?"**. No answer in 30 s sends a heart SOS. "I'm OK" silences it for 30 minutes.

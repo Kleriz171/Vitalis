@@ -33,7 +33,8 @@
     "check:account": "npx tsx apps/api/scripts/account-check.ts",
     "check:watch": "npx tsx apps/api/scripts/watch-check.ts",
     "check:roles": "npx tsx apps/api/scripts/roles-check.ts",
-    "check:hardening": "npx tsx apps/api/scripts/hardening-check.ts"
+    "check:hardening": "npx tsx apps/api/scripts/hardening-check.ts",
+    "check:relay": "npx tsx apps/api/scripts/relay-check.ts"
   },
   "overrides": {
     "react": "19.2.3",

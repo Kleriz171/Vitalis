@@ -307,7 +307,7 @@ const DeviceDialog = ({ aed, onClose, onChanged }: { aed: Aed; onClose: () => vo
   useEffect(() => {
     ref.current?.showModal();
     void loadEvents();
-    api.get('/emergencies').then(r => setCalls(r.data.filter((c: LiveCall) => ['pending', 'assigned', 'en_route', 'on_scene'].includes(c.status)))).catch(() => {});
+    api.get('/emergencies').then(r => setCalls(r.data.filter((c: LiveCall) => ['pending', 'assigned', 'en_route', 'on_scene', 'assistance', 'handed_over'].includes(c.status)))).catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // The code stays on screen long enough to read it out, then hides itself.
   useEffect(() => {

@@ -25,8 +25,8 @@ import { roleLabel } from '../../lib/roles';
 
 const MapView = lazy(() => import('../../components/map/MapView'));
 
-const ACTIVE = ['pending', 'assigned', 'en_route', 'on_scene'];
-// Past this with nobody accepting, the dispatcher should intervene.
+const ACTIVE = ['pending', 'assigned', 'en_route', 'on_scene', 'assistance', 'handed_over'];
+// Past this with nobody accepting, the dispatcher should intervene (the API escalates at the same point).
 const ESCALATE_AFTER_S = 60;
 
 const STATUS_LABEL: Record<string, string> = {
@@ -34,7 +34,9 @@ const STATUS_LABEL: Record<string, string> = {
   assigned: 'Responder accepted',
   en_route: 'Responder on the way',
   on_scene: 'Responder on scene',
-  resolved: 'Closed',
+  assistance: 'Responder helping',
+  handed_over: 'Patient handed over',
+  resolved: 'Completed',
   cancelled: 'Cancelled',
 };
 
@@ -43,6 +45,8 @@ const STATUS_TONE: Record<string, string> = {
   assigned: 'bg-amber-500/10 text-amber-700 ring-amber-500/30',
   en_route: 'bg-sky-500/10 text-sky-700 ring-sky-500/30',
   on_scene: 'bg-emerald-500/10 text-emerald-700 ring-emerald-500/30',
+  assistance: 'bg-emerald-500/10 text-emerald-700 ring-emerald-500/30',
+  handed_over: 'bg-emerald-500/10 text-emerald-700 ring-emerald-500/30',
   resolved: 'bg-muted text-muted-foreground ring-border',
   cancelled: 'bg-muted text-muted-foreground ring-border',
 };
@@ -61,7 +65,9 @@ interface Emergency {
   responder?: Person;
   aedRunner?: Person;
   aedStatus?: 'to_aed' | 'has_aed' | 'delivered';
-  timeline?: { status: string; at: string }[];
+  timeline?: { status: string; at: string; note?: string }[];
+  escalatedAt?: string;
+  escalationAckAt?: string;
   callerCertifications?: { badgeLabel: string; courseSlug: string; expiresAt: string }[];
 }
 
@@ -82,7 +88,7 @@ const clock = (s: number) => {
   const ss = String(t % 60).padStart(2, '0');
   return h ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 };
-const STEPS = ['pending', 'assigned', 'en_route', 'on_scene'];
+const STEPS = ['pending', 'assigned', 'en_route', 'on_scene', 'assistance', 'handed_over'];
 // The phone app's habit: every kind of call has its own icon and tint.
 const TYPE_ICON: Record<string, [Icon, TileTone]> = {
   cardiac: [Heartbeat, 'sos'],
@@ -133,7 +139,7 @@ const HeroClock = () => {
 const CallRow = memo(({ e, selected, onSelect, delay }: { e: Emergency; selected: boolean; onSelect: (id: string) => void; delay: number }) => {
   const now = useNow();
   const waited = Math.max(0, (now - new Date(e.createdAt).getTime()) / 1000);
-  const waiting = e.status === 'pending' && waited > ESCALATE_AFTER_S;
+  const waiting = e.status === 'pending' && (!!e.escalatedAt || waited > ESCALATE_AFTER_S);
   const step = STEPS.indexOf(e.status);
   return (
     <motion.button
@@ -165,8 +171,8 @@ const CallRow = memo(({ e, selected, onSelect, delay }: { e: Emergency; selected
           <Digits value={clock(waited)} className={cn('text-[17px] font-extrabold tracking-[-0.02em]', waiting ? 'text-[hsl(var(--sos))]' : 'text-foreground')} />
         </span>
       </div>
-      {/* Progress: received, accepted, on the way, on scene. */}
-      <div className="mt-3 ml-[52px] grid grid-cols-4 gap-1" aria-hidden>
+      {/* Progress: received, accepted, on the way, on scene, helping, handed over. */}
+      <div className="mt-3 ml-[52px] grid grid-cols-6 gap-1" aria-hidden>
         {STEPS.map((s, i) => (
           <span key={s} className={cn('h-1.5 rounded-full transition-colors duration-500', i <= step ? (step === 0 ? 'bg-[hsl(var(--sos))]' : 'bg-[hsl(var(--teal))]') : 'bg-muted')} />
         ))}
@@ -179,7 +185,7 @@ const CallRow = memo(({ e, selected, onSelect, delay }: { e: Emergency; selected
       )}
       {waiting && (
         <div className="mt-3 ml-[52px] flex items-start gap-2 rounded-lg bg-[hsl(var(--sos))] text-white px-3 py-2 text-[13px] font-semibold">
-          <Ambulance size={18} weight="fill" className="shrink-0" /> Nobody accepted for over a minute. Send an ambulance.
+          <Ambulance size={18} weight="fill" className="shrink-0" /> {e.escalationAckAt ? 'Still unanswered. An operator is handling it.' : 'Nobody accepted for over a minute. Send an ambulance.'}
         </div>
       )}
     </motion.button>
@@ -227,7 +233,9 @@ export const LiveCalls = () => {
     const onLocation = (p: { userId: string; coordinates: [number, number] }) =>
       setResponders(prev => ({ ...prev, [p.userId]: p }));
 
+    const onEscalation = () => pushToast({ tone: 'error', title: 'SOS unanswered', body: 'Nobody has accepted a call for a minute. Open it and acknowledge.', ttl: 30_000 });
     socket.on('dashboard:emergency', onEmergency);
+    socket.on('dashboard:escalation', onEscalation);
     socket.on('responder:location', onLocation);
     api.get('/emergencies').then(r => setEmergencies(r.data)).catch(() => {}).finally(() => setLoading(false));
     api.get('/aeds').then(r => setAeds(r.data)).catch(() => {});
@@ -235,6 +243,7 @@ export const LiveCalls = () => {
     const kpiTimer = setInterval(loadKpis, 15_000);
     return () => {
       socket.off('dashboard:emergency', onEmergency);
+      socket.off('dashboard:escalation', onEscalation);
       socket.off('responder:location', onLocation);
       clearInterval(kpiTimer);
     };
@@ -379,7 +388,22 @@ interface Handover {
   responder?: { name: string; role: string };
   aedRunner?: { name: string; role: string };
   aed?: { name: string; placement?: string; status?: string };
-  timeline: { status: string; at: string; by: string | null }[];
+  timeline: { status: string; at: string; by: string | null; note?: string }[];
+}
+
+interface QuickReport {
+  _id: string;
+  author: { name: string; role: string };
+  arrivedAt?: string;
+  conscious: string;
+  breathing: string;
+  cprPerformed: boolean;
+  aedUsed: boolean;
+  shocks?: number;
+  actions: string[];
+  notes?: string;
+  handover: string;
+  updatedAt: string;
 }
 
 const STEP: Record<string, string> = {
@@ -389,21 +413,69 @@ const STEP: Record<string, string> = {
   released: 'Responder did not move, re-alerted',
   en_route: 'Responder on the way',
   on_scene: 'Responder on scene',
+  assistance: 'Responder helping the patient',
+  handed_over: 'Patient handed over',
   aed_has_aed: 'AED collected',
   aed_delivered: 'AED at patient',
-  resolved: 'Closed',
+  escalated: 'Unanswered, escalated to operators',
+  escalation_acknowledged: 'Escalation acknowledged',
+  action_called_caller: 'Operator called the caller',
+  action_called_ambulance: 'Operator called the ambulance (127)',
+  action_called_contact: 'Operator called the emergency contact',
+  action_note: 'Operator note',
+  resolved: 'Completed',
   cancelled: 'Cancelled',
 };
 
+const REPORT_ACTION: Record<string, string> = {
+  cpr: 'CPR', aed_shock: 'Defibrillator shock', recovery_position: 'Recovery position', bleeding_control: 'Bleeding controlled',
+  airway: 'Airway cleared', reassurance: 'Stayed and reassured', called_ambulance: 'Called the ambulance',
+};
+const REPORT_HANDOVER: Record<string, string> = {
+  ambulance: 'Handed to the ambulance crew', hospital: 'Taken to a hospital', stayed_on_scene: 'Stayed at home or on scene',
+  refused_care: 'Refused help', none: 'Not handed over',
+};
+const BREATHING: Record<string, string> = { normal: 'normal', abnormal: 'abnormal', none: 'not breathing', unknown: 'not recorded' };
+const CONSCIOUS: Record<string, string> = { yes: 'conscious', no: 'unconscious', unknown: 'consciousness not recorded' };
+
+/** Manual operator actions: what the operator did by phone, recorded on the call. Vitalis places none of these calls. */
+const MANUAL_ACTIONS: [string, string][] = [['called_caller', 'Called the caller'], ['called_ambulance', 'Called 127'], ['called_contact', 'Called the contact']];
+
 const IncidentPanel = ({ incident, onClose, onChanged }: { incident: Emergency; onClose: () => void; onChanged: (e: Emergency) => void }) => {
   const [h, setH] = useState<Handover | null>(null);
+  const [reports, setReports] = useState<QuickReport[]>([]);
+  const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const isActive = ACTIVE.includes(incident.status);
+  const steps = incident.timeline?.length ?? 0;
 
   useEffect(() => {
-    setH(null);
     api.get(`/emergencies/${incident._id}/handover`).then(r => setH(r.data)).catch(() => {});
-  }, [incident._id, incident.status, incident.aedStatus]);
+  }, [incident._id, incident.status, incident.aedStatus, steps]);
+  useEffect(() => { setH(null); setNote(''); }, [incident._id]);
+
+  useEffect(() => {
+    const load = () => api.get(`/emergencies/${incident._id}/reports`).then(r => setReports(r.data)).catch(() => setReports([]));
+    void load();
+    const onReport = (m: { emergencyId: string }) => { if (m.emergencyId === incident._id) void load(); };
+    socket.on('emergency:report', onReport);
+    return () => { socket.off('emergency:report', onReport); };
+  }, [incident._id]);
+
+  const act = async (path: string, body: object | undefined, done: string) => {
+    setBusy(true);
+    try {
+      const { data } = await api.post(`/emergencies/${incident._id}/${path}`, body);
+      onChanged(data);
+      pushToast({ tone: 'success', title: done });
+      return true;
+    } catch (err: any) {
+      pushToast({ tone: 'error', title: 'Not saved', body: err?.response?.data?.error ?? 'Try again' });
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
 
   useEffect(() => {
     const onKey = (ev: KeyboardEvent) => ev.key === 'Escape' && onClose();
@@ -521,7 +593,7 @@ const IncidentPanel = ({ incident, onClose, onChanged }: { incident: Emergency; 
                       {i < h.timeline.length - 1 && <span className="absolute top-4 bottom-[-6px] w-px bg-border" />}
                     </span>
                     <Digits value={new Date(t.at).toLocaleTimeString('en-GB', { hourCycle: 'h23' })} className="text-muted-foreground" />
-                    <span>{STEP[t.status] ?? t.status}{t.by ? <span className="text-muted-foreground"> · {t.by}</span> : null}</span>
+                    <span>{STEP[t.status] ?? t.status}{t.by ? <span className="text-muted-foreground"> · {t.by}</span> : null}{t.note ? <span className="block text-muted-foreground">“{t.note}”</span> : null}</span>
                   </li>
                 ))}
               </ol>
@@ -529,9 +601,48 @@ const IncidentPanel = ({ incident, onClose, onChanged }: { incident: Emergency; 
           </>
         )}
 
+        {reports.length > 0 && (
+          <section>
+            <h3 className="text-[13px] font-medium text-muted-foreground">Responder reports</h3>
+            {reports.map(r => (
+              <div key={r._id} className="mt-3 rounded-xl border border-border px-4 py-3 text-[14px] space-y-1.5">
+                <div className="font-semibold">{r.author.name} <span className="font-normal text-muted-foreground">{roleLabel(r.author.role)}{r.arrivedAt ? ` · arrived ${new Date(r.arrivedAt).toLocaleTimeString('en-GB', { hourCycle: 'h23', hour: '2-digit', minute: '2-digit' })}` : ''}</span></div>
+                <div>On arrival: {CONSCIOUS[r.conscious] ?? r.conscious}, breathing {BREATHING[r.breathing] ?? r.breathing}.</div>
+                <div>{[r.cprPerformed && 'CPR performed', r.aedUsed && `Defibrillator used${r.shocks != null ? ` (${r.shocks} shock${r.shocks === 1 ? '' : 's'})` : ''}`, ...r.actions.filter(a => !(a === 'cpr' && r.cprPerformed) && !(a === 'aed_shock' && r.aedUsed)).map(a => REPORT_ACTION[a] ?? a)].filter(Boolean).join(' · ') || 'No interventions recorded.'}</div>
+                <div className="text-muted-foreground">{REPORT_HANDOVER[r.handover] ?? r.handover}</div>
+                {r.notes && <div className="text-muted-foreground">“{r.notes}”</div>}
+              </div>
+            ))}
+          </section>
+        )}
+
+        {isActive && (
+          <section className={cn('rounded-xl border px-4 py-3', incident.escalatedAt && !incident.escalationAckAt ? 'border-[hsl(var(--sos)/0.4)] bg-[hsl(var(--sos)/0.06)]' : 'border-border')}>
+            {incident.escalatedAt && !incident.escalationAckAt ? (
+              <div className="flex items-center gap-3">
+                <Warning size={20} weight="fill" className="shrink-0 text-[hsl(var(--sos))]" />
+                <p className="flex-1 text-[14px] font-semibold">Nobody accepted this SOS. Acknowledge it, then call the caller or 127.</p>
+                <Button size="sm" className="rounded-lg" disabled={busy} onClick={() => act('escalation/ack', undefined, 'Escalation acknowledged')}>Acknowledge</Button>
+              </div>
+            ) : (
+              <h3 className="text-[13px] font-medium text-muted-foreground">What you did by phone</h3>
+            )}
+            <div className="mt-3 flex flex-wrap gap-2">
+              {MANUAL_ACTIONS.map(([kind, label]) => (
+                <Button key={kind} size="sm" variant="outline" className="rounded-lg" disabled={busy} onClick={() => act('actions', { kind }, 'Recorded on the call')}>{label}</Button>
+              ))}
+            </div>
+            <form className="mt-2 flex gap-2" onSubmit={async ev => { ev.preventDefault(); if (note.trim() && await act('actions', { kind: 'note', note: note.trim() }, 'Note added')) setNote(''); }}>
+              <input value={note} onChange={ev => setNote(ev.target.value)} maxLength={500} placeholder="Add a note to the call" aria-label="Note" className="flex-1 h-9 rounded-lg border border-border bg-card px-3 text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-ring/20" />
+              <Button type="submit" size="sm" variant="outline" className="rounded-lg h-9" disabled={busy || !note.trim()}>Add</Button>
+            </form>
+            <p className="mt-2 text-[12px] text-muted-foreground">Recorded on the call’s timeline. Vitalis does not place these calls for you.</p>
+          </section>
+        )}
+
         {isActive && (
           <div className="flex gap-2 pt-4 border-t border-border">
-            <Button className="flex-1 h-10 rounded-xl" disabled={busy} onClick={() => setStatus('resolved')}>Close call</Button>
+            <Button className="flex-1 h-10 rounded-xl" disabled={busy} onClick={() => setStatus('resolved')}>Complete call</Button>
             <Button className="flex-1 h-10 rounded-xl" variant="outline" disabled={busy} onClick={() => setStatus('cancelled')}>Cancel call</Button>
           </div>
         )}

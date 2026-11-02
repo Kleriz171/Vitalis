@@ -4,7 +4,7 @@ import { Logo } from './components/Logo';
 
 interface Live {
   firstName: string;
-  status: 'pending' | 'assigned' | 'en_route' | 'on_scene' | 'resolved' | 'cancelled';
+  status: 'pending' | 'assigned' | 'en_route' | 'on_scene' | 'assistance' | 'handed_over' | 'resolved' | 'cancelled';
   startedAt: string;
   endedAt: string | null;
   location: { lat: number; lng: number } | null;
@@ -114,7 +114,7 @@ export const Track = ({ token }: { token: string }) => {
             <section className={`rounded-2xl p-6 text-white ${ended ? 'bg-ink' : data.status === 'pending' ? 'bg-sos' : 'bg-teal-deep'}`}>
               <h1 className="text-3xl font-extrabold leading-tight">
                 {data.status === 'pending' ? T.pending(name)
-                  : data.status === 'on_scene' ? T.onScene(name)
+                  : ['on_scene', 'assistance', 'handed_over'].includes(data.status) ? T.onScene(name)
                   : data.status === 'resolved' ? T.resolved
                   : data.status === 'cancelled' ? T.cancelled
                   : T.coming}

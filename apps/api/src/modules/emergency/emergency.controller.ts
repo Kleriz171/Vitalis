@@ -2,6 +2,7 @@ import { Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { AuthReq } from '../../middleware/auth';
 import { EMERGENCY_STATUS, EMERGENCY_TYPE } from '../../models/Emergency';
+import { REPORT_ACTIONS, REPORT_HANDOVER } from '../../models/IncidentReport';
 import { emergencyService, fetchActiveCertifications, toResponderView } from './emergency.service';
 import { getIO, OPERATOR_ROLES, emergencyAccess } from '../../realtime/socket';
 import { PushText, sendPush } from '../push/push.service';
@@ -34,6 +35,21 @@ export const createEmergencySchema = z.object({
 
 export const statusSchema = z.object({ status: z.enum(EMERGENCY_STATUS) });
 export const aedStatusSchema = z.object({ status: z.enum(['has_aed', 'delivered']) });
+export const reportSchema = z.object({
+  conscious: z.enum(['yes', 'no', 'unknown']),
+  breathing: z.enum(['normal', 'abnormal', 'none', 'unknown']),
+  cprPerformed: z.boolean(),
+  aedUsed: z.boolean(),
+  shocks: z.number().int().min(0).max(50).optional(),
+  actions: z.array(z.enum(REPORT_ACTIONS)).max(REPORT_ACTIONS.length).default([]),
+  notes: z.string().trim().max(1000).optional(),
+  handover: z.enum(REPORT_HANDOVER),
+}).strict();
+// Manual operator actions: Vitalis records them; it does not place these calls itself.
+export const actionSchema = z.object({
+  kind: z.enum(['called_caller', 'called_ambulance', 'called_contact', 'note']),
+  note: z.string().trim().max(500).optional(),
+}).strict().refine(b => b.kind !== 'note' || !!b.note, { message: 'Write the note', path: ['note'] });
 
 // Everyone with a stake in the incident hears about changes: its room, the caller, operators.
 export const broadcast = (event: string, e: any) => {
@@ -153,6 +169,34 @@ export const emergencyController = {
         const crew = [e.responder, e.aedRunner].filter(Boolean).map(String).filter(id => id !== req.user!.id);
         push({ userIds: crew, kind: 'update', title: status === 'cancelled' ? { en: 'Call cancelled', sq: 'Thirrja u anulua' } : { en: 'Call closed by dispatch', sq: 'Dispeçeria e mbylli thirrjen' }, body: { en: 'You can stand down.', sq: 'Mund të tërhiqeni.' }, data: { type: 'update', emergencyId: String(e._id) } });
       }
+      res.json(e);
+    } catch (err) { next(err); }
+  },
+  saveReport: async (req: AuthReq, res: Response, next: NextFunction) => {
+    try {
+      const report = await emergencyService.saveReport(req.params.id, req.user!.id, req.body);
+      getIO().to('dispatchers').emit('emergency:report', { emergencyId: req.params.id });
+      res.json(report);
+    } catch (err) { next(err); }
+  },
+  reports: async (req: AuthReq, res: Response, next: NextFunction) => {
+    try {
+      const access = await emergencyAccess(req.user!, req.params.id);
+      if (access !== 'operator' && access !== 'responder') return res.status(403).json({ error: 'Not your emergency' });
+      res.json(await emergencyService.reports(req.params.id, req.user!));
+    } catch (err) { next(err); }
+  },
+  acknowledgeEscalation: async (req: AuthReq, res: Response, next: NextFunction) => {
+    try {
+      const e = await emergencyService.acknowledgeEscalation(req.params.id, req.user!.id);
+      getIO().to('dispatchers').emit('dashboard:emergency', e);
+      res.json(e);
+    } catch (err) { next(err); }
+  },
+  recordAction: async (req: AuthReq, res: Response, next: NextFunction) => {
+    try {
+      const e = await emergencyService.recordAction(req.params.id, req.user!.id, req.body.kind, req.body.note);
+      getIO().to('dispatchers').emit('dashboard:emergency', e);
       res.json(e);
     } catch (err) { next(err); }
   },

@@ -1,5 +1,6 @@
 import crypto from 'crypto';
-import { Emergency } from '../../models/Emergency';
+import { Emergency, ACTIVE_STATUSES, STATUS_ORDER } from '../../models/Emergency';
+import { IncidentReport } from '../../models/IncidentReport';
 import { env } from '../../config/env';
 import { logger } from '../../config/logger';
 import { sha256 } from '../../utils/hash';
@@ -15,7 +16,18 @@ import { blockchainService } from '../blockchain/blockchain.service';
 import { OPERATOR_ROLES } from '../../realtime/socket';
 import { RESPONDER_ROLES } from '../../models/User';
 
-export const ACTIVE_STATUSES = ['pending', 'assigned', 'en_route', 'on_scene'] as const;
+export { ACTIVE_STATUSES };
+const REPORT_WINDOW_MS = 24 * 3600_000;
+
+/** Responders already holding an open call (as the primary or the defibrillator runner). */
+export async function busyResponderIds() {
+  const open = { status: { $in: ACTIVE_STATUSES } };
+  const [primary, runners] = await Promise.all([
+    Emergency.distinct('responder', { ...open, responder: { $ne: null } }),
+    Emergency.distinct('aedRunner', { ...open, aedRunner: { $ne: null } }),
+  ]);
+  return [...primary, ...runners].map(String);
+}
 
 // Search rings for responders: try close first, widen only if nobody is there.
 const RINGS_M = [5_000, 20_000];
@@ -118,13 +130,16 @@ export const emergencyService = {
     return { emergency: e, duplicate: false };
   },
 
+  /** On duty, not paused, and not already on an open call. */
   async findNearbyResponders(coords: [number, number], exclude: string | string[]) {
-    const ids = Array.isArray(exclude) ? exclude : [exclude];
+    const busy = await busyResponderIds();
+    const ids = [...(Array.isArray(exclude) ? exclude : [exclude]), ...busy];
     for (const radius of RINGS_M) {
       const found = await User.find({
         _id: { $nin: ids },
         role: { $in: RESPONDER_ROLES },
         available: true,
+        $or: [{ pausedUntil: null }, { pausedUntil: { $lte: new Date() } }],
         ...nearQuery(coords[0], coords[1], radius),
       }).select('_id location').limit(15).lean();
       if (found.length) return found;
@@ -172,7 +187,7 @@ export const emergencyService = {
         const runner = await Emergency.findOneAndUpdate(
           {
             _id: emergencyId,
-            status: { $in: ['assigned', 'en_route', 'on_scene'] },
+            status: { $in: ['assigned', 'en_route', 'on_scene', 'assistance'] },
             responder: { $ne: responderId },
             aedRunner: null,
           },
@@ -258,35 +273,95 @@ export const emergencyService = {
       responder: e.responder && { name: e.responder.name, role: e.responder.role },
       aedRunner: e.aedRunner && { name: e.aedRunner.name, role: e.aedRunner.role },
       aed: e.aed && { name: e.aed.name, placement: e.aed.placement, status: e.aedStatus },
-      timeline: e.timeline.map((t: any) => ({ status: t.status, at: t.at, by: t.by?.name ?? null })),
+      timeline: e.timeline.map((t: any) => ({ status: t.status, at: t.at, by: t.by?.name ?? null, ...(t.note ? { note: t.note } : {}) })),
     };
   },
 
+  /**
+   * One status change on the shared incident. Callers may only cancel; the assigned responder moves
+   * the call forward (accepted → on my way → arrived → assistance → handed over → completed);
+   * operators may close or cancel any open call and move a staffed one forward. Never backwards.
+   * Compare-and-set on the current status, so two taps at once cannot both apply.
+   */
   async updateStatus(emergencyId: string, status: string, actor: { id: string; role: string }) {
-    const e = await Emergency.findById(emergencyId);
+    const e = await Emergency.findById(emergencyId).select('status citizen responder').lean();
     if (!e) throw httpError(404, 'Not found');
     if (!ACTIVE_STATUSES.includes(e.status as any)) throw httpError(409, `Emergency already ${e.status}`);
 
     const isOperator = OPERATOR_ROLES.includes(actor.role);
     const isCaller = String(e.citizen) === actor.id;
     const isResponder = e.responder != null && String(e.responder) === actor.id;
+    const rank = (s: string) => STATUS_ORDER.indexOf(s as any);
+    const forward = rank(status) > rank(e.status as string) && rank(status) > rank('assigned');
 
     if (isOperator) {
-      // operators may set any status
+      if (!['resolved', 'cancelled'].includes(status) && !(forward && e.responder)) throw httpError(409, `Cannot move a call from ${e.status} to ${status}`);
     } else if (isCaller) {
       if (status !== 'cancelled') throw httpError(403, 'Callers can only cancel');
     } else if (isResponder) {
-      if (!['en_route', 'on_scene', 'resolved'].includes(status)) throw httpError(403, 'Not allowed');
+      if (rank(status) <= rank('assigned')) throw httpError(403, 'Not allowed');
+      if (!forward) throw httpError(409, `Cannot move a call from ${e.status} to ${status}`);
     } else {
       throw httpError(403, 'Not your emergency');
     }
 
-    e.status = status as any;
-    e.timeline.push({ status, by: actor.id as any } as any);
-    await e.save();
+    const updated = await Emergency.findOneAndUpdate(
+      { _id: emergencyId, status: e.status },
+      { $set: { status }, $push: { timeline: { status, by: actor.id, at: new Date() } } },
+      { new: true },
+    );
+    if (!updated) throw httpError(409, 'The call changed meanwhile. Reload it and try again.');
     await blockchainService.append({
-      entity: 'emergency', entityId: e._id.toString(), action: status, actor: actor.id,
+      entity: 'emergency', entityId: updated._id.toString(), action: status, actor: actor.id,
     });
+    return updated;
+  },
+
+  /** A responder's quick report: once they have arrived, editable until a day after the call ends. */
+  async saveReport(emergencyId: string, authorId: string, body: Record<string, unknown>) {
+    const e = await Emergency.findById(emergencyId).select('status responder aedRunner timeline').lean();
+    if (!e) throw httpError(404, 'Not found');
+    if (![e.responder, e.aedRunner].some(r => r && String(r) === authorId)) throw httpError(403, 'Only responders on this call can report on it');
+    const at = (s: string) => ((e.timeline ?? []) as any[]).find(t => t.status === s)?.at as Date | undefined;
+    if (!['on_scene', 'assistance', 'handed_over', 'resolved'].includes(e.status as string)) throw httpError(409, 'Report once you have arrived');
+    const closed = at('resolved');
+    if (closed && Date.now() - new Date(closed).getTime() > REPORT_WINDOW_MS) throw httpError(409, 'Reports close a day after the call ends');
+    const report = await IncidentReport.findOneAndUpdate(
+      { emergency: emergencyId, author: authorId },
+      { $set: { ...body, arrivedAt: at('on_scene') ?? null } },
+      { upsert: true, new: true, runValidators: true },
+    ).lean();
+    await blockchainService.append({ entity: 'emergency', entityId: emergencyId, action: 'report_saved', actor: authorId });
+    return report;
+  },
+
+  /** Operators see every report on a call; a responder sees their own. */
+  async reports(emergencyId: string, user: { id: string; role: string }) {
+    const filter = OPERATOR_ROLES.includes(user.role) ? { emergency: emergencyId } : { emergency: emergencyId, author: user.id };
+    return IncidentReport.find(filter).populate('author', 'name role').sort('createdAt').lean();
+  },
+
+  /** Operator acknowledges an escalated (unanswered) call. Once only. */
+  async acknowledgeEscalation(emergencyId: string, actorId: string) {
+    const e = await Emergency.findOneAndUpdate(
+      { _id: emergencyId, escalatedAt: { $ne: null }, escalationAckAt: null },
+      { $set: { escalationAckAt: new Date(), escalationAckBy: actorId }, $push: { timeline: { status: 'escalation_acknowledged', by: actorId, at: new Date() } } },
+      { new: true },
+    );
+    if (!e) throw httpError(409, 'Not escalated, or already acknowledged');
+    await blockchainService.append({ entity: 'emergency', entityId: emergencyId, action: 'escalation_acknowledged', actor: actorId });
+    return e;
+  },
+
+  /** Something an operator did by hand (a phone call, a note). Recorded, never simulated. */
+  async recordAction(emergencyId: string, actorId: string, kind: string, note?: string) {
+    const e = await Emergency.findOneAndUpdate(
+      { _id: emergencyId },
+      { $push: { timeline: { status: `action_${kind}`, by: actorId, at: new Date(), ...(note ? { note } : {}) } } },
+      { new: true },
+    );
+    if (!e) throw httpError(404, 'Not found');
+    await blockchainService.append({ entity: 'emergency', entityId: emergencyId, action: `action_${kind}`, actor: actorId });
     return e;
   },
 

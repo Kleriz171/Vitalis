@@ -22,7 +22,7 @@ type Person = { _id: string; name: string; role: string } | string | null | unde
 interface LiveEmergency {
   _id: string;
   type: string;
-  status: 'pending' | 'assigned' | 'en_route' | 'on_scene' | 'resolved' | 'cancelled';
+  status: 'pending' | 'assigned' | 'en_route' | 'on_scene' | 'assistance' | 'handed_over' | 'resolved' | 'cancelled';
   location: { coordinates: LngLat };
   responder?: Person;
   aedRunner?: Person;
@@ -266,7 +266,8 @@ export default function EmergencyScreen() {
     ? emergency?.status === 'cancelled' ? t('SOS cancelled') : t('Incident closed')
     : phase === 'sending' ? t('Sending your SOS…')
     : !responderId ? t('Alerting responders nearby')
-    : emergency?.status === 'on_scene' ? t('Help is with you')
+    : emergency?.status === 'handed_over' ? t('You are in the care of the crew')
+    : ['on_scene', 'assistance'].includes(emergency?.status ?? '') ? t('Help is with you')
     : t('Help is on the way');
 
   return (
@@ -309,7 +310,7 @@ export default function EmergencyScreen() {
             title={nameOf(emergency?.responder) ?? t('Responder')}
             subtitle={roleOf(emergency?.responder)}
             meta={
-              emergency?.status === 'on_scene' ? t('On scene')
+              ['on_scene', 'assistance', 'handed_over'].includes(emergency?.status ?? '') ? t('On scene')
               : rDist != null ? `${formatDistance(rDist)} · ${t('~{n} min', { n: liveEtaMinutes(rDist, emergency) })}`
               : emergency?.etaSeconds ? t('~{n} min', { n: Math.max(1, Math.round(emergency.etaSeconds / 60)) })
               : t('On the way')

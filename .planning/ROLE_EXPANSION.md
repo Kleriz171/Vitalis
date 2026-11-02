@@ -46,9 +46,15 @@ its own e2e check in `scripts/e2e.sh` and screenshots before anything visual is 
    analytics, call log; seed adds admin@ and hospital@ (SEED_ADMIN_PASSWORD / SEED_HOSPITAL_PASSWORD off this
    machine); console sections per role (CommandShell `roles`), Hospital page, staff form on Users; app shows
    the role on Profile and reloads the account on open/foreground. roles-check: 26-route role matrix and more.
-2. **Emergency operations (Relay core).** Extend `Emergency` states (`assistance`, `handed_over`,
+2. **Emergency operations (Relay core).** ✅ 2026-11-02. Extend `Emergency` states (`assistance`, `handed_over`,
    `completed`) with an allowed-transition table and timestamps; responder statuses; quick report
    model; escalation acknowledge + action log. Check: relay-check (SOS → accept → states → report).
+   Landed: `resolved` is "completed"; `STATUS_ORDER` forward-only (skips allowed), compare-and-set per change;
+   `pausedUntil` (pause 15/30/60) and busy responders skipped by dispatch; `IncidentReport` (PUT/GET
+   /emergencies/:id/report(s)); escalation sweep (ESCALATE_AFTER_MS, once per call) + ack + manual actions
+   (`action_*` timeline entries with notes). Phone: pause control, six-step buttons, Quick report screen.
+   Console: six-step progress, escalation acknowledge, "what you did by phone", notes, responder reports.
+   Watches and /track map the new steps to "help is with you".
 3. **Hospital.** Hospital accounts, incoming board, handover dispatch from operator, acknowledgment,
    check-in, capacity status. Check: hospital-check.
 4. **Citizen and clinician.** Emergency circle, QR visibility + access log, clinician schedule,

@@ -6,7 +6,7 @@ import { authRequired, AuthReq, revokeUser } from '../../middleware/auth';
 import { getIO } from '../../realtime/socket';
 import { validate } from '../../middleware/validate';
 import { User, STAFF_ROLES } from '../../models/User';
-import { Emergency } from '../../models/Emergency';
+import { Emergency, ACTIVE_STATUSES } from '../../models/Emergency';
 import { Allergy, Appointment, Condition, Disability, Medication, Vaccination } from '../../models/HealthRecord';
 import { Certification, Enrollment } from '../../models/Training';
 import { CheckIn } from '../../models/CheckIn';
@@ -27,7 +27,7 @@ import { logger } from '../../config/logger';
 const r = Router();
 r.use(authRequired);
 
-const ACTIVE = ['pending', 'assigned', 'en_route', 'on_scene'];
+const ACTIVE = ACTIVE_STATUSES;
 const HEALTH = { allergies: Allergy, medications: Medication, conditions: Condition, disabilities: Disability, vaccinations: Vaccination, appointments: Appointment };
 const SECRETS = '-password -refreshTokenHash -checkInPinHash -duressPinHash -pushTokens';
 

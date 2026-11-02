@@ -42,6 +42,8 @@ const UserSchema = new Schema({
     coordinates: { type: [Number], default: [0, 0] },
   },
   available: { type: Boolean, default: false },
+  // On duty but temporarily unavailable until then: no new SOS alerts meanwhile.
+  pausedUntil: Date,
   locationAt: Date,
   // Safety check-in PINs (bcrypt). The duress PIN checks in normally but raises a silent alarm.
   checkInPinHash: { type: String, select: false },

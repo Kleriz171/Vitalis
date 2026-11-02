@@ -17,6 +17,7 @@ export const REDISPATCH = {
   lateGraceMs: ms(process.env.REDISPATCH_LATE_MS, 8 * 60_000), // added to the ETA before "late"
   minProgressM: 150, // must be this much closer than where they accepted
   closeM: 200, // within this distance counts as there
+  escalateMs: ms(process.env.ESCALATE_AFTER_MS, 60_000), // SOS with nobody accepting: tell the operators
 };
 
 export type StallInput = {
@@ -107,12 +108,36 @@ export async function sweepStalledResponders(now = Date.now()) {
   }
 }
 
+/**
+ * An SOS nobody has accepted within REDISPATCH.escalateMs is escalated to the operators: marked
+ * on the call, put on its timeline and pushed to every console. Once per call (atomic), so a slow
+ * sweep or two API processes never raise it twice.
+ * ponytail: once per call; a call released back to pending after that is not escalated again.
+ */
+export async function sweepUnanswered(now = Date.now()) {
+  const due = await Emergency.find({
+    status: 'pending', escalatedAt: null, createdAt: { $lte: new Date(now - REDISPATCH.escalateMs) },
+  }).select('_id').lean();
+  for (const { _id } of due) {
+    const e = await Emergency.findOneAndUpdate(
+      { _id, status: 'pending', escalatedAt: null },
+      { $set: { escalatedAt: new Date(now) }, $push: { timeline: { status: 'escalated', at: new Date(now) } } },
+      { new: true },
+    );
+    if (!e) continue;
+    logger.warn(`escalated unanswered SOS ${e._id}`);
+    await blockchainService.append({ entity: 'emergency', entityId: String(e._id), action: 'escalated', actor: 'system' });
+    getIO().to('dispatchers').emit('dashboard:emergency', e);
+    getIO().to('dispatchers').emit('dashboard:escalation', { _id: String(e._id) });
+  }
+}
+
 export function startRedispatch() {
   let running = false;
   const timer = setInterval(async () => {
     if (running) return; // a slow sweep must not overlap the next one
     running = true;
-    try { await sweepStalledResponders(); } catch (err: any) { logger.error(`redispatch sweep: ${err?.message}`); }
+    try { await sweepStalledResponders(); await sweepUnanswered(); } catch (err: any) { logger.error(`redispatch sweep: ${err?.message}`); }
     finally { running = false; }
   }, REDISPATCH.tickMs);
   timer.unref();

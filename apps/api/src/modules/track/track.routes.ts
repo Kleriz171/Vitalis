@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { Emergency } from '../../models/Emergency';
+import { Emergency, ACTIVE_STATUSES } from '../../models/Emergency';
 import { User } from '../../models/User';
 import { haversineKm } from '../../utils/geo';
 import { sha256 } from '../../utils/hash';
@@ -9,7 +9,7 @@ import { sha256 } from '../../utils/hash';
 // far help is. Never the responder's name or position. Dead 2 hours after the SOS ends.
 const r = Router();
 const OPEN_AFTER_END_MS = 2 * 3600_000;
-const ACTIVE = ['pending', 'assigned', 'en_route', 'on_scene'];
+const ACTIVE: readonly string[] = ACTIVE_STATUSES;
 
 r.get('/:token', async (req, res, next) => {
   try {

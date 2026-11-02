@@ -5,7 +5,7 @@ import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { useSelector } from 'react-redux';
 import { toast } from 'sonner-native';
-import { ArrowLeft, ClipboardList, Inbox as InboxIcon, Navigation, Radio, ShieldCheck, Zap, Siren } from 'lucide-react-native';
+import { ArrowLeft, ClipboardList, FileText, Inbox as InboxIcon, Navigation, Radio, ShieldCheck, Zap, Siren } from 'lucide-react-native';
 import Animated, { FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
 
 import { AppScreen } from '@/components/AppScreen';
@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Empty } from '@/components/ui/Empty';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { Segmented } from '@/components/ui/List';
 import { api } from '@/lib/api';
 import { socket } from '@/lib/socket';
 import { distanceM, formatDistance, LngLat, openDirections } from '@/lib/geo';
@@ -22,7 +23,7 @@ import { colors, radius } from '@/lib/theme';
 import { apiError, t } from '@/lib/i18n';
 import { RESPONDER_ROLES } from '@/lib/roles';
 
-type Status = 'pending' | 'assigned' | 'en_route' | 'on_scene' | 'resolved' | 'cancelled';
+type Status = 'pending' | 'assigned' | 'en_route' | 'on_scene' | 'assistance' | 'handed_over' | 'resolved' | 'cancelled';
 
 interface Incident {
   _id: string;
@@ -55,6 +56,8 @@ const STATUS_LABEL: Record<Status, string> = {
   assigned: t('Accepted'),
   en_route: t('On the way'),
   on_scene: t('On scene'),
+  assistance: t('Helping the patient'),
+  handed_over: t('Patient handed over'),
   resolved: t('Closed'),
   cancelled: t('Cancelled'),
 };
@@ -74,6 +77,8 @@ export default function ResponderInbox() {
   const canAccess = !!user && RESPONDER_ROLES.includes(user.role);
 
   const [available, setAvailable] = useState(false);
+  // On duty but paused ("temporarily unavailable") until then: no new calls meanwhile.
+  const [pausedUntil, setPausedUntil] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [active, setActive] = useState<Incident | null>(null);
@@ -89,6 +94,7 @@ export default function ResponderInbox() {
       ]);
       const onDuty = !!passport?.profile?.available;
       setAvailable(onDuty);
+      setPausedUntil(passport?.profile?.pausedUntil ?? null);
       // Resume background tracking after an app restart; the OS may have stopped it.
       if (onDuty) startDutyTracking().catch(() => {});
       const mine = list.find(e => e.responder === me || e.aedRunner === me) ?? null;
@@ -236,6 +242,7 @@ export default function ResponderInbox() {
         await api.patch('/biopassport/me', { available: false });
         await stopDutyTracking();
         setAvailable(false);
+        setPausedUntil(null);
       }
     } catch (err: any) {
       toast.error(next ? t('Could not go on duty') : t('Could not go off duty'), {
@@ -278,13 +285,29 @@ export default function ResponderInbox() {
     }
   };
 
+  const pause = async (minutes: 0 | 15 | 30 | 60) => {
+    if (busy) return;
+    setBusy('duty');
+    try {
+      const { data } = await api.patch('/biopassport/me', { pauseMinutes: minutes });
+      setPausedUntil(data.pausedUntil ?? null);
+    } catch (err: any) {
+      toast.error(t('Update failed'), { description: apiError(err, 'Try again.') });
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const setStatus = async (status: Status) => {
     if (!active || busy) return;
     setBusy('status');
     try {
       await api.patch(`/emergencies/${active._id}/status`, { status });
       setActive(status === 'resolved' ? null : { ...active, status });
-      if (status === 'resolved') toast.success(t('Incident closed. Thank you.'));
+      if (status === 'resolved') {
+        toast.success(t('Incident closed. Thank you.'));
+        router.push({ pathname: '/report/[id]', params: { id: active._id } } as never);
+      }
     } catch (err: any) {
       toast.error(t('Update failed'), { description: apiError(err, 'Try again.') });
     } finally {
@@ -307,13 +330,18 @@ export default function ResponderInbox() {
   };
 
   const isRunner = !!active && active.aedRunner === me;
+  const pausedNow = !!pausedUntil && Date.parse(pausedUntil) > Date.now();
+  const left = pausedNow ? (Date.parse(pausedUntil!) - Date.now()) / 60_000 : 0;
+  const pauseKey = !pausedNow ? 'on' : left > 30 ? '60' : left > 15 ? '30' : '15';
+  const until = pausedNow ? new Date(pausedUntil!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+  const arrived = !!active && ['on_scene', 'assistance', 'handed_over'].includes(active.status);
   const distTo = (c?: LngLat) => (here && c ? formatDistance(distanceM(here, c)) : null);
 
   return (
     <AppScreen
       tone="dark"
       title={t('Responder inbox')}
-      subtitle={available ? t('On duty. Nearby SOS calls appear here instantly.') : t('Off duty. You will not receive SOS calls.')}
+      subtitle={active ? t('Responding to a call.') : !available ? t('Off duty. You will not receive SOS calls.') : pausedNow ? t('Paused until {time}. No new calls until then.', { time: until }) : t('On duty. Nearby SOS calls appear here instantly.')}
       icon={<Radio size={22} color="#fff" />}
       action={
         <Pressable onPress={() => router.back()} style={styles.iconButton} accessibilityRole="button" accessibilityLabel={t('Back')}>
@@ -335,6 +363,22 @@ export default function ResponderInbox() {
           accessibilityLabel={t('On duty')}
         />
       </Card>
+
+      {available && !active ? (
+        <View style={styles.pauseBox}>
+          <Text style={styles.pauseLabel}>{pausedNow ? t('Paused until {time}', { time: until }) : t('Need a break? Pause new calls for a while.')}</Text>
+          <Segmented<string>
+            value={pauseKey}
+            onChange={key => pause(key === 'on' ? 0 : (Number(key) as 15 | 30 | 60))}
+            options={[
+              { key: 'on', label: t('Available') },
+              { key: '15', label: t('{n} min', { n: 15 }) },
+              { key: '30', label: t('{n} min', { n: 30 }) },
+              { key: '60', label: t('{n} min', { n: 60 }) },
+            ]}
+          />
+        </View>
+      ) : null}
 
       {active ? (
         <Animated.View entering={FadeInDown.duration(220)}>
@@ -396,9 +440,22 @@ export default function ResponderInbox() {
               <Button onPress={() => setStatus('en_route')} loading={busy === 'status'}>{t("I'm on my way")}</Button>
             ) : active.status === 'en_route' ? (
               <Button onPress={() => setStatus('on_scene')} loading={busy === 'status'}>{t("I've arrived")}</Button>
+            ) : active.status === 'on_scene' ? (
+              <Button onPress={() => setStatus('assistance')} loading={busy === 'status'}>{t('Helping the patient')}</Button>
+            ) : active.status === 'assistance' ? (
+              <Button onPress={() => setStatus('handed_over')} loading={busy === 'status'}>{t('Patient handed over')}</Button>
             ) : (
-              <Button onPress={() => setStatus('resolved')} loading={busy === 'status'}>{t('Handed over, close call')}</Button>
+              <Button onPress={() => setStatus('resolved')} loading={busy === 'status'}>{t('Complete the call')}</Button>
             )}
+            {!isRunner && ['on_scene', 'assistance'].includes(active.status) ? (
+              <Button variant="ghost" onPress={() => setStatus('resolved')} disabled={busy === 'status'}>{t('Nothing more to do, complete the call')}</Button>
+            ) : null}
+            {arrived || (isRunner && active.aedStatus === 'delivered') ? (
+              <Button variant="outline" onPress={() => router.push({ pathname: '/report/[id]', params: { id: active._id } } as never)}>
+                <FileText size={16} color={colors.foreground} />
+                {t('Quick report')}
+              </Button>
+            ) : null}
           </Card>
         </Animated.View>
       ) : null}
@@ -464,6 +521,8 @@ const styles = StyleSheet.create({
   dutyCard: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderRadius: radius.lg },
   dutyTitle: { color: colors.foreground, fontSize: 16, fontWeight: '700' },
   dutyBody: { color: colors.mutedForeground, fontSize: 14, marginTop: 2 },
+  pauseBox: { gap: 8 },
+  pauseLabel: { color: colors.mutedForeground, fontSize: 13, fontWeight: '600', paddingHorizontal: 4 },
   activeCard: { padding: 16, gap: 10, borderRadius: radius.lg, borderColor: colors.primary, borderWidth: 1.5 },
   activeLabel: { color: colors.primaryStrong, fontSize: 13, fontWeight: '700' },
   activeTitle: { color: colors.foreground, fontSize: 22, fontWeight: '800' },

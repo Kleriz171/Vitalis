@@ -113,7 +113,7 @@ export const Drones = () => {
     api.get('/drones/fleet').then(r => setFleet(r.data)).catch(() => setFleet([]));
     api.get('/drones/routes').then(r => setRoutes(r.data)).catch(() => {});
     api.get('/drones').then(r => setMissions(r.data)).catch(() => {});
-    api.get('/emergencies').then(r => setEmergencies(r.data.filter((e: ActiveEmergency) => ['pending', 'assigned', 'en_route', 'on_scene'].includes(e.status)))).catch(() => {});
+    api.get('/emergencies').then(r => setEmergencies(r.data.filter((e: ActiveEmergency) => ['pending', 'assigned', 'en_route', 'on_scene', 'assistance', 'handed_over'].includes(e.status)))).catch(() => {});
 
     const onFleet = (f: FleetEntry[]) => setFleet(prev => f.map(d => ({ ...d, telemetry: d.telemetry ?? prev?.find(p => p.droneId === d.droneId)?.telemetry ?? null })));
     const onTelemetry = ({ droneId, ...t }: Telemetry & { droneId: string }) =>

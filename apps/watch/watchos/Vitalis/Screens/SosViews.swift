@@ -84,7 +84,8 @@ struct StatusView: View {
         let status = emergency?["status"] as? String
         let responder = (emergency?["responder"] as? [String: Any])?["name"] as? String
         let eta = (emergency?["etaSeconds"] as? NSNumber)?.intValue
-        let step = ["pending", "assigned", "en_route", "on_scene"].firstIndex(of: status ?? "pending") ?? 0
+        // Helping and handed over still read as "with you".
+        let step = ["assistance", "handed_over"].contains(status ?? "") ? 3 : ["pending", "assigned", "en_route", "on_scene"].firstIndex(of: status ?? "pending") ?? 0
         ScrollView {
             VStack(spacing: 8) {
                 IconTile(symbol: step == 0 ? "antenna.radiowaves.left.and.right" : step == 3 ? "cross.case.fill" : "figure.run", tint: step == 0 ? .sos : .vitalisTeal)

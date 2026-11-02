@@ -1,4 +1,4 @@
-import { Camera, CheckCircle, Drone, Eye, LockKey, SealCheck, MapPin, PersonSimpleRun, Siren, UserCheck, VideoCamera, Warning, XCircle, type Icon } from '@phosphor-icons/react';
+import { Camera, CheckCircle, Drone, FirstAid, Eye, LockKey, SealCheck, MapPin, PersonSimpleRun, Siren, UserCheck, VideoCamera, Warning, XCircle, type Icon } from '@phosphor-icons/react';
 import { Tile, type TileTone } from '../../components/ui/tile';
 import { useEffect, useState } from 'react';
 import { api } from '../../api/client';
@@ -32,6 +32,11 @@ const ACTION_TILE: Record<string, [Icon, TileTone]> = {
   assigned: [UserCheck, 'teal'],
   en_route: [PersonSimpleRun, 'mint'],
   on_scene: [MapPin, 'teal'],
+  assistance: [FirstAid, 'teal'],
+  handed_over: [UserCheck, 'teal'],
+  escalated: [Warning, 'sos'],
+  escalation_acknowledged: [CheckCircle, 'teal'],
+  report_saved: [FirstAid, 'slate'],
   resolved: [CheckCircle, 'teal'],
   cancelled: [XCircle, 'slate'],
   dispatched: [Drone, 'teal'],
@@ -52,7 +57,10 @@ const ACTION_TILE: Record<string, [Icon, TileTone]> = {
 // Plain names for what each entry records.
 const EVENT: Record<string, string> = {
   created: 'SOS received', assigned: 'Responder accepted', aed_runner_assigned: 'Defibrillator runner assigned',
-  en_route: 'Responder on the way', on_scene: 'Responder arrived', resolved: 'Call closed', cancelled: 'Call cancelled',
+  en_route: 'Responder on the way', on_scene: 'Responder arrived', assistance: 'Responder helping the patient', handed_over: 'Patient handed over',
+  resolved: 'Call completed', cancelled: 'Call cancelled', escalated: 'Unanswered SOS escalated', escalation_acknowledged: 'Escalation acknowledged',
+  report_saved: 'Responder report saved', action_called_caller: 'Operator called the caller', action_called_ambulance: 'Operator called the ambulance',
+  action_called_contact: 'Operator called the emergency contact', action_note: 'Operator added a note',
   dispatched: 'Drone sent', delivered: 'Drone delivered', aborted: 'Drone flight stopped',
   aed_to_aed: 'Runner heading to the defibrillator', aed_has_aed: 'Runner has the defibrillator', aed_delivered: 'Defibrillator delivered',
   released: 'Responder released, call sent to others',

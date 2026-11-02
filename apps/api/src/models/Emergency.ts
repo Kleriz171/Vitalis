@@ -1,6 +1,10 @@
 import { Schema, model, Types } from 'mongoose';
 
-export const EMERGENCY_STATUS = ['pending','assigned','en_route','on_scene','resolved','cancelled'] as const;
+export const EMERGENCY_STATUS = ['pending','assigned','en_route','on_scene','assistance','handed_over','resolved','cancelled'] as const;
+// The order a call moves through (Vitalis Relay). Statuses only move forward, steps may be skipped
+// (arrived without tapping "on my way"); 'resolved' is "completed". 'cancelled' is the other way out.
+export const STATUS_ORDER = ['pending','assigned','en_route','on_scene','assistance','handed_over','resolved'] as const;
+export const ACTIVE_STATUSES = ['pending','assigned','en_route','on_scene','assistance','handed_over'] as const;
 export const EMERGENCY_TYPE = ['medical','trauma','cardiac','blood_needed','rare_medicine','other'] as const;
 
 const EmergencySchema = new Schema({
@@ -30,7 +34,12 @@ const EmergencySchema = new Schema({
   silent: { type: Boolean, default: false },
   // sha256 of the live-tracking link token texted to the emergency contact (track.routes.ts).
   trackTokenHash: { type: String, select: false, index: { unique: true, sparse: true } },
-  timeline: [{ status: String, at: { type: Date, default: Date.now }, by: { type: Types.ObjectId, ref: 'User' } }],
+  // Unanswered SOS (redispatch.ts): raised once, then acknowledged by an operator.
+  escalatedAt: Date,
+  escalationAckAt: Date,
+  escalationAckBy: { type: Types.ObjectId, ref: 'User' },
+  // The incident's one chronological record: every status, escalation and operator action.
+  timeline: [{ status: String, at: { type: Date, default: Date.now }, by: { type: Types.ObjectId, ref: 'User' }, note: String }],
 }, {
   timestamps: true,
   // The link-token hash never leaves the server, even from a freshly created document.

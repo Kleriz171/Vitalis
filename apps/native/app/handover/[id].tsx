@@ -45,9 +45,17 @@ const STEP: Record<string, string> = {
   released: t('Responder did not move, re-alerted'),
   en_route: t('Responder on the way'),
   on_scene: t('Responder on scene'),
+  assistance: t('Helping the patient'),
+  handed_over: t('Patient handed over'),
+  escalated: t('No responder yet, operators alerted'),
+  escalation_acknowledged: t('Operator took over'),
+  action_called_caller: t('Operator called the caller'),
+  action_called_ambulance: t('Operator called the ambulance'),
+  action_called_contact: t('Operator called the emergency contact'),
+  action_note: t('Operator note'),
   aed_has_aed: t('AED collected'),
   aed_delivered: t('AED at patient'),
-  resolved: t('Handed over'),
+  resolved: t('Completed'),
   cancelled: t('Cancelled'),
 };
 

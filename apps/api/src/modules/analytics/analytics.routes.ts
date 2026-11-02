@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { Emergency } from '../../models/Emergency';
+import { Emergency, ACTIVE_STATUSES } from '../../models/Emergency';
 import { User, RESPONDER_ROLES } from '../../models/User';
 import { authRequired } from '../../middleware/auth';
 import { allow } from '../../middleware/rbac';
@@ -13,10 +13,11 @@ r.get('/kpis', allow('eso', 'admin'), async (_req, res, next) => {
     const since = new Date(Date.now() - 86400000);
     const [total, active, pending, resolvedToday, onDuty, recent] = await Promise.all([
       Emergency.countDocuments(),
-      Emergency.countDocuments({ status: { $in: ['pending','assigned','en_route','on_scene'] } }),
+      Emergency.countDocuments({ status: { $in: ACTIVE_STATUSES } }),
       Emergency.countDocuments({ status: 'pending' }),
       Emergency.countDocuments({ status: 'resolved', updatedAt: { $gte: since } }),
-      User.countDocuments({ available: true, role: { $in: RESPONDER_ROLES } }),
+      // On duty and not paused: who could be alerted right now.
+      User.countDocuments({ available: true, role: { $in: RESPONDER_ROLES }, $or: [{ pausedUntil: null }, { pausedUntil: { $lte: new Date() } }] }),
       Emergency.find({ createdAt: { $gte: since }, 'timeline.status': 'assigned' }).select('createdAt timeline').lean(),
     ]);
     const byType = await Emergency.aggregate([{ $group: { _id: '$type', count: { $sum: 1 } } }]);

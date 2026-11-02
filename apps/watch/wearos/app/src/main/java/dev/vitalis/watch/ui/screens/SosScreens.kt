@@ -128,8 +128,9 @@ fun SendingScreen(reason: String, bpm: Int?, onStart: () -> Unit, onSent: () -> 
     }
 }
 
-/** Received, accepted, on the way, on scene. */
+/** Received, accepted, on the way, on scene. Helping and handed over still read as "with you". */
 private val STEPS = listOf("pending", "assigned", "en_route", "on_scene")
+private val WITH_YOU = setOf("assistance", "handed_over")
 
 @Composable
 fun StatusScreen(demoStatus: String?, onClosed: () -> Unit, onUnpaired: () -> Unit) {
@@ -156,7 +157,8 @@ fun StatusScreen(demoStatus: String?, onClosed: () -> Unit, onUnpaired: () -> Un
         }
     }
     val e = emergency
-    val step = STEPS.indexOf(e?.optString("status")).coerceAtLeast(0)
+    val status = e?.optString("status")
+    val step = if (status in WITH_YOU) 3 else STEPS.indexOf(status).coerceAtLeast(0)
     val responder = e?.optJSONObject("responder")?.optString("name")?.takeIf { it.isNotBlank() }
     val etaMin = e?.optInt("etaSeconds", 0)?.takeIf { it > 0 }?.let { (it + 59) / 60 }
     val accent = if (step == 0) VitalisColors.Sos else VitalisColors.Teal
