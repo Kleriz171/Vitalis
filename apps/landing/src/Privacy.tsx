@@ -15,7 +15,7 @@ const sq: LegalDoc = {
     {
       h: 'Çfarë ruajmë',
       li: [
-        'Llogaria: numri i telefonit, emri, data e lindjes, kontakti i urgjencës dhe gjuha e aplikacionit.',
+        'Llogaria: numri i telefonit, emri, data e lindjes, kontakti i urgjencës, rrethi i urgjencës dhe gjuha e aplikacionit.',
         'Bio Pasaporta: grupi i gjakut, alergjitë, ilaçet, sëmundjet, aftësitë e kufizuara, vaksinat dhe takimet që shtoni vetë.',
         'Vendndodhja: kur dërgoni një SOS ose paraqitje sigurie; për ndihmësit, edhe në sfond ndërsa janë në shërbim.',
         'SOS-et dhe paraqitjet e sigurisë: koha, vendi, statusi dhe kush u përgjigj. PIN-et ruhen vetëm të koduara.',
@@ -39,7 +39,7 @@ const sq: LegalDoc = {
         'Ndihmësi që pranon SOS-in tuaj: emri, mosha, grupi i gjakut, alergjitë, ilaçet, sëmundjet dhe kontakti i urgjencës.',
         'Operatorët e emergjencës së Vitalis: incidentet, vendndodhjen dhe të njëjtat fakte mjekësore që sheh ndihmësi.',
         'Administratorët e Vitalis: llogarinë dhe të dhënat tuaja, vetëm për verifikim dhe mbështetje.',
-        'Kontakti juaj i urgjencës: një SMS me link privat që tregon statusin e SOS-it, vendin dhe sa larg është ndihma. Linku skadon 2 orë pasi mbaron SOS-i. Kontakti nuk sheh kurrë emrin ose vendin e ndihmësit.',
+        'Kontakti juaj i urgjencës dhe njerëzit në rrethin tuaj të urgjencës (deri në pesë, që i zgjidhni vetë): një SMS kur dërgoni një SOS. Me lejen tuaj për secilin, SMS-i ka një link privat që tregon statusin, vendin dhe sa larg është ndihma; linku skadon 2 orë pasi mbaron SOS-i. Ata nuk shohin kurrë emrin ose vendin e ndihmësit.',
         'Askush tjetër. Nuk i shesim të dhënat dhe nuk bëjmë reklama.',
       ],
     },
@@ -87,7 +87,7 @@ const en: LegalDoc = {
     {
       h: 'What we store',
       li: [
-        'Account: phone number, name, date of birth, emergency contact and app language.',
+        'Account: phone number, name, date of birth, emergency contact, emergency circle and app language.',
         'Bio Passport: blood type, allergies, medication, conditions, disabilities, vaccinations and appointments you add.',
         'Location: when you send an SOS or a safety check-in; for responders, also in the background while on duty.',
         'SOS calls and safety check-ins: time, place, status and who responded. PINs are stored only as hashes.',
@@ -111,7 +111,7 @@ const en: LegalDoc = {
         'The responder who accepts your SOS: name, age, blood type, allergies, medication, conditions and emergency contact.',
         'Vitalis emergency operators: incidents, where they are, and the same medical facts the responder sees.',
         'Vitalis administrators: your account and records, only for verification and support.',
-        'Your emergency contact: a text with a private link showing the SOS status, the place and how far help is. The link expires 2 hours after the SOS ends. They never see the responder’s name or position.',
+        'Your emergency contact and the people in your emergency circle (up to five, chosen by you): a text when you send an SOS. Where you allow it for that person, the text has a private link showing the SOS status, the place and how far help is; it expires 2 hours after the SOS ends. They never see the responder’s name or position.',
         'Nobody else. We do not sell data or run ads.',
       ],
     },

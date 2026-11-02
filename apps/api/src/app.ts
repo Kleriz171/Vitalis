@@ -32,6 +32,7 @@ import trackRoutes from './modules/track/track.routes';
 import accountRoutes from './modules/account/account.routes';
 import watchRoutes from './modules/watch/watch.routes';
 import hospitalRoutes from './modules/hospital/hospital.routes';
+import circleRoutes from './modules/circle/circle.routes';
 import { bookingRoutes, clinicRoutes, doctorBookingRoutes } from './modules/bookings/bookings.routes';
 import mongoose from 'mongoose';
 
@@ -99,6 +100,7 @@ export function buildApp() {
   app.use('/api/aeds', aedRoutes);
   app.use('/api/push', pushRoutes);
   app.use('/api/hospital', hospitalRoutes); // hospital staff accounts
+  app.use('/api/circle', strict(30), circleRoutes); // a person's emergency circle
 
   app.use(errorHandler);
   return app;

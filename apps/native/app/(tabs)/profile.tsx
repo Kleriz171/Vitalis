@@ -15,7 +15,7 @@ import {
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useDispatch, useSelector } from 'react-redux';
 import { useRouter } from 'expo-router';
-import { Accessibility, Activity, AlertTriangle, Heart, Award, Languages, Mic, Calendar, FileText, LogOut, Phone, Pill, Syringe, User, UserCircle, X } from 'lucide-react-native';
+import { Accessibility, Activity, AlertTriangle, Heart, Award, Languages, Mic, Calendar, FileText, LogOut, Phone, Pill, Syringe, User, UserCircle, Users, X } from 'lucide-react-native';
 import { toast } from 'sonner-native';
 import { api, PRIVACY_URL } from '@/lib/api';
 import { signOut } from '@/lib/session';
@@ -548,6 +548,13 @@ export default function Profile() {
             </Button>
           </View>
         </Section>
+
+        <Row
+          icon={<Users size={18} color={colors.primary} />}
+          title={t('Emergency circle')}
+          summary={t('More people texted when you send an SOS')}
+          onPress={() => router.push('/circle' as never)}
+        />
 
         <EntryCard
           icon={<Pill size={18} color={colors.warning} />}

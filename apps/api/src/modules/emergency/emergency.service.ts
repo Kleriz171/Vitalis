@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { Emergency, ACTIVE_STATUSES, STATUS_ORDER } from '../../models/Emergency';
 import { IncidentReport } from '../../models/IncidentReport';
+import { ContactAlert } from '../../models/ContactAlert';
 import { env } from '../../config/env';
 import { logger } from '../../config/logger';
 import { sha256 } from '../../utils/hash';
@@ -45,18 +46,51 @@ const nearestAed = (coords: [number, number]) =>
   }).select('+cabinetCode').lean();
 
 /** Texts the emergency contact a live link (landing /track/:token). Silent alarms never call this. */
-async function textTrackingLink(citizenId: string, token: string) {
+// The same person is texted about at most one SOS per 10 minutes: a second press is the same emergency.
+const RECENT_ALERT_MS = 10 * 60_000;
+
+/**
+ * Text the emergency contact and the emergency circle about a new SOS, each once, each tracked
+ * (ContactAlert). People the user chose not to notify are recorded as skipped; those who may see the
+ * location get the live tracking link. Never delays or fails the SOS itself.
+ */
+async function alertCircle(emergencyId: string, citizenId: string, token: string) {
   try {
-    const u = await User.findById(citizenId).select('name emergencyContact language').lean();
-    const to = u?.emergencyContact?.phone;
-    if (!u || !to) return;
+    const u = await User.findById(citizenId).select('name emergencyContact circle language').lean();
+    if (!u) return;
+    const people = new Map<string, { name?: string; notify: boolean; shareLocation: boolean }>();
+    if (u.emergencyContact?.phone) people.set(u.emergencyContact.phone, { name: u.emergencyContact.name ?? undefined, notify: true, shareLocation: true });
+    for (const c of u.circle ?? []) if (!people.has(c.phone)) people.set(c.phone, { name: c.name, notify: c.notify !== false, shareLocation: c.shareLocation !== false });
     const link = `${env.publicWebUrl}/track/${token}`;
     const first = u.name?.split(' ')[0] ?? '';
-    await sendSms(to, u.language === 'en'
-      ? `Vitalis: ${first} sent an SOS. Responders nearby are alerted. Follow live: ${link}?l=en`
-      : `Vitalis: ${first} dërgoi një SOS. Ndihmësit pranë janë njoftuar. Ndiqeni live: ${link}`);
+    const en = u.language === 'en';
+    for (const [phone, p] of people) {
+      // Claim first: the unique (emergency, phone) index makes a retry a no-op instead of a second text.
+      try {
+        await ContactAlert.create({ emergency: emergencyId, user: citizenId, name: p.name, phone, withLocation: p.shareLocation, status: 'sending' });
+      } catch (e: any) {
+        if (e?.code === 11000) continue;
+        throw e;
+      }
+      let status: string;
+      let error: string | undefined;
+      if (!p.notify) status = 'skipped_no_consent';
+      else if (await ContactAlert.exists({ user: citizenId, phone, emergency: { $ne: emergencyId }, status: { $in: ['sent', 'simulated'] }, at: { $gte: new Date(Date.now() - RECENT_ALERT_MS) } })) status = 'skipped_recent';
+      else {
+        const text = p.shareLocation
+          ? en ? `Vitalis: ${first} sent an SOS. Responders nearby are alerted. Follow live: ${link}?l=en` : `Vitalis: ${first} dërgoi një SOS. Ndihmësit pranë janë njoftuar. Ndiqeni live: ${link}`
+          : en ? `Vitalis: ${first} sent an SOS. Responders nearby are alerted. Call them, or 112.` : `Vitalis: ${first} dërgoi një SOS. Ndihmësit pranë janë njoftuar. Telefonojini, ose 112.`;
+        try {
+          status = await sendSms(phone, text);
+        } catch (e: any) {
+          status = e?.status === 503 ? 'not_configured' : 'failed';
+          error = e?.message;
+        }
+      }
+      await ContactAlert.updateOne({ emergency: emergencyId, phone }, { $set: { status, ...(error ? { error } : {}), at: new Date() } });
+    }
   } catch (err: any) {
-    logger.error(`tracking link SMS failed: ${err?.message ?? err}`);
+    logger.error(`circle alert failed: ${err?.message ?? err}`);
   }
 }
 
@@ -126,7 +160,7 @@ export const emergencyService = {
     await blockchainService.append({
       entity: 'emergency', entityId: e._id.toString(), action: 'created', actor: citizenId,
     });
-    void textTrackingLink(citizenId, trackToken); // never delays the SOS
+    void alertCircle(String(e._id), citizenId, trackToken); // never delays the SOS
     return { emergency: e, duplicate: false };
   },
 

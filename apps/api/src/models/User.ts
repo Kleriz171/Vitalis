@@ -37,6 +37,13 @@ const UserSchema = new Schema({
   disabilities: { type: [String], default: [] },
   allergies: [String],
   emergencyContact: { name: String, phone: String },
+  // Emergency circle: up to five more people texted on an SOS, each with the person's own choices.
+  circle: [{
+    name: { type: String, required: true, maxlength: 80 },
+    phone: { type: String, required: true }, // E.164
+    notify: { type: Boolean, default: true },
+    shareLocation: { type: Boolean, default: true }, // the live tracking link, or just the alert
+  }],
   location: {
     type: { type: String, enum: ['Point'], default: 'Point' },
     coordinates: { type: [Number], default: [0, 0] },

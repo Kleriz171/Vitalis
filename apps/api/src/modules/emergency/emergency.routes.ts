@@ -1,5 +1,7 @@
 import { Router } from 'express';
-import { authRequired } from '../../middleware/auth';
+import { authRequired, AuthReq } from '../../middleware/auth';
+import { emergencyAccess } from '../../realtime/socket';
+import { ContactAlert } from '../../models/ContactAlert';
 import { allow } from '../../middleware/rbac';
 import { validate } from '../../middleware/validate';
 import { emergencyController, createEmergencySchema, statusSchema, aedStatusSchema, reportSchema, actionSchema } from './emergency.controller';
@@ -46,6 +48,15 @@ r.patch('/:id/aed', allow(...RESPONDER_ROLES), validate(aedStatusSchema), emerge
 r.get('/:id/handover', emergencyController.handover);
 r.put('/:id/report', allow(...RESPONDER_ROLES), validate(reportSchema), emergencyController.saveReport);
 r.get('/:id/reports', emergencyController.reports);
+// Who in the caller's circle was texted, and whether it worked. The caller and operators only.
+r.get('/:id/alerts', async (req: AuthReq, res, next) => {
+  try {
+    const access = await emergencyAccess(req.user!, req.params.id);
+    if (access !== 'citizen' && access !== 'operator') return res.status(403).json({ error: 'Not your emergency' });
+    const list = await ContactAlert.find({ emergency: req.params.id }).sort('at').lean();
+    res.json(list.map(a => ({ name: a.name, phone: `…${a.phone.slice(-3)}`, withLocation: a.withLocation, status: a.status, at: a.at })));
+  } catch (e) { next(e); }
+});
 r.post('/:id/escalation/ack', allow('eso'), emergencyController.acknowledgeEscalation);
 r.post('/:id/actions', allow('eso'), validate(actionSchema), emergencyController.recordAction);
 r.get('/', allow('eso', ...RESPONDER_ROLES), emergencyController.list);

@@ -296,6 +296,8 @@ export default function EmergencyScreen() {
           </Pressable>
         ) : null}
 
+        {!ended && emergency?._id ? <CircleStatus emergencyId={emergency._id} /> : null}
+
         {/* While waiting: step-by-step first aid (choking, bleeding, stroke, allergic shock, burns). */}
         {!ended ? (
           <Pressable style={styles.firstAidButton} onPress={() => router.push('/first-aid' as never)} accessibilityRole="button">
@@ -438,6 +440,9 @@ function CprCoach({ on, onToggle }: { on: boolean; onToggle: () => void }) {
 }
 
 const styles = StyleSheet.create({
+  circleBox: { borderRadius: 14, backgroundColor: colors.card, padding: 14, gap: 4 },
+  circleTitle: { fontSize: 13, fontWeight: '700', color: colors.mutedForeground },
+  circleText: { fontSize: 15, color: colors.foreground, fontWeight: '600' },
   safe: { flex: 1, backgroundColor: colors.background },
   countdownWrap: { flex: 1, paddingHorizontal: 24, paddingTop: 40, gap: 12 },
   countdownLabel: { color: '#fff', fontSize: 20, fontWeight: '600' },
@@ -509,3 +514,35 @@ const styles = StyleSheet.create({
   footerPrimary: { height: 52, borderRadius: radius.lg, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   footerPrimaryText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });
+
+type CircleAlert = { name?: string; status: 'sending' | 'sent' | 'simulated' | 'failed' | 'not_configured' | 'skipped_recent' | 'skipped_no_consent' };
+
+/** Who in the emergency circle was texted about this SOS. Checked a few times while texts go out. */
+function CircleStatus({ emergencyId }: { emergencyId: string }) {
+  const [alerts, setAlerts] = useState<CircleAlert[] | null>(null);
+  useEffect(() => {
+    let alive = true;
+    let tries = 0;
+    const load = () => api.get<CircleAlert[]>(`/emergencies/${emergencyId}/alerts`)
+      .then(({ data }) => { if (!alive) return; setAlerts(data); if (data.some(a => a.status === 'sending') && ++tries < 5) setTimeout(load, 2000); })
+      .catch(() => {});
+    const first = setTimeout(load, 1500);
+    return () => { alive = false; clearTimeout(first); };
+  }, [emergencyId]);
+  if (!alerts?.length) return null;
+  const count = (s: CircleAlert['status'][]) => alerts.filter(a => s.includes(a.status)).length;
+  const sent = count(['sent']);
+  const simulated = count(['simulated']);
+  const failed = count(['failed', 'not_configured']);
+  const line = [
+    sent ? tn(sent, '1 person texted', '{n} people texted') : null,
+    simulated ? tn(simulated, 'Test server: 1 text not sent', 'Test server: {n} texts not sent') : null,
+    failed ? tn(failed, '1 text failed, call them yourself', '{n} texts failed, call them yourself') : null,
+  ].filter(Boolean).join(' · ');
+  return line ? (
+    <View style={styles.circleBox} accessibilityRole="text">
+      <Text style={styles.circleTitle}>{t('Your emergency circle')}</Text>
+      <Text style={[styles.circleText, failed ? { color: colors.destructive } : null]}>{line}</Text>
+    </View>
+  ) : null;
+}

@@ -10,7 +10,8 @@ const twilio = {
 /** True when texts are only logged: no provider, and dev or DEMO_MODE. Real production never fakes. */
 export const smsIsFake = () => !twilio.sid && (env.nodeEnv !== 'production' || env.demoMode);
 
-export async function sendSms(to: string, body: string) {
+/** Sends a text. Returns 'sent' (accepted by the provider) or 'simulated' (dev or test demo, not sent). */
+export async function sendSms(to: string, body: string): Promise<'sent' | 'simulated'> {
   if (twilio.sid && twilio.token && twilio.from) {
     const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${twilio.sid}/Messages.json`, {
       method: 'POST',
@@ -24,12 +25,12 @@ export async function sendSms(to: string, body: string) {
       logger.error(`SMS send failed ${res.status}: ${(await res.text()).slice(0, 200)}`);
       throw Object.assign(new Error('Could not send the SMS. Try again shortly.'), { status: 502 });
     }
-    return;
+    return 'sent';
   }
   if (smsIsFake()) {
     if (env.nodeEnv === 'production') logger.info(`[sms:demo] not sent (no provider) to …${to.slice(-3)}`);
     else logger.info(`[sms:dev] to ${to}: ${body}`);
-    return;
+    return 'simulated';
   }
   throw Object.assign(new Error('SMS is not configured'), { status: 503 });
 }

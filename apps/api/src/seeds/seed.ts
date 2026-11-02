@@ -5,6 +5,7 @@ import { logger } from '../config/logger';
 import { User } from '../models/User';
 import { Hospital } from '../models/Hospital';
 import { Booking } from '../models/Booking';
+import { ContactAlert } from '../models/ContactAlert';
 import { HospitalHandover } from '../models/HospitalHandover';
 import { IncidentReport } from '../models/IncidentReport';
 import hospitalsAl from './hospitals.al.json';
@@ -129,6 +130,7 @@ async function seed() {
     Emergency.deleteMany({}),
     DoctorApplication.deleteMany({}),
     Booking.deleteMany({}),
+    ContactAlert.deleteMany({}),
     HospitalHandover.deleteMany({}),
     IncidentReport.deleteMany({}),
   ]);
