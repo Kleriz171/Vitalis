@@ -37,6 +37,20 @@ const UserSchema = new Schema({
   disabilities: { type: [String], default: [] },
   allergies: [String],
   emergencyContact: { name: String, phone: String },
+  // Medical ID QR: what it shows (the person's choice) and the link to the online emergency profile.
+  // A new token (rotate) revokes the old link; every opening of the link is in the access log.
+  medicalId: {
+    token: { type: String, select: false },
+    enabled: { type: Boolean, default: true },
+    share: {
+      bloodType: { type: Boolean, default: true },
+      allergies: { type: Boolean, default: true },
+      medications: { type: Boolean, default: true },
+      conditions: { type: Boolean, default: true },
+      contact: { type: Boolean, default: true },
+    },
+    rotatedAt: Date,
+  },
   // Emergency circle: up to five more people texted on an SOS, each with the person's own choices.
   circle: [{
     name: { type: String, required: true, maxlength: 80 },
@@ -68,6 +82,7 @@ const UserSchema = new Schema({
 UserSchema.index({ location: '2dsphere' });
 UserSchema.index({ email: 1 }, { unique: true, partialFilterExpression: { email: { $type: 'string' } } });
 UserSchema.index({ phone: 1 }, { unique: true, partialFilterExpression: { phone: { $type: 'string' } } });
+UserSchema.index({ 'medicalId.token': 1 }, { unique: true, partialFilterExpression: { 'medicalId.token': { $type: 'string' } } });
 
 UserSchema.pre('save', async function (next) {
   if (this.isModified('password')) this.password = await bcrypt.hash(this.password as string, 10);

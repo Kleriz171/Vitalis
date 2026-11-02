@@ -75,6 +75,9 @@ services:
       - type: rewrite
         source: /track/*
         destination: /index.html
+      - type: rewrite
+        source: /id/*
+        destination: /index.html
     envVars:
       - key: NODE_VERSION
         value: "24"

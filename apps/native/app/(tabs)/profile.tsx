@@ -473,6 +473,10 @@ export default function Profile() {
           <Text style={styles.passportHint}>{t('Show this during triage, intake, or when confirming matched supply requests.')}</Text>
         </Animated.View>
 
+        <Group>
+          <Row first icon={<FileText size={18} color={colors.primary} />} title={t('Medical ID')} summary={t('What the QR shows, its link, who opened your records')} onPress={() => router.push('/medical-id' as never)} />
+        </Group>
+
         {activeCertifications.length ? (
           <Group title={t('First aid certifications')}>
             {activeCertifications.map((cert: TrainingCertification, index: number) => (

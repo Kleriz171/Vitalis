@@ -44,6 +44,7 @@ run relay      "ESCALATE_AFTER_MS=1500 REDISPATCH_TICK_MS=500" "" apps/api/scrip
 run hospital   "" "" apps/api/scripts/hospital-check.ts
 run appointments "" "MONGO_URI=$MONGO_URI" apps/api/scripts/appointments-check.ts
 run circle     "" "" apps/api/scripts/circle-check.ts
+run medical-id "" "" apps/api/scripts/medicalid-check.ts
 run redispatch "REDISPATCH_TICK_MS=1000 REDISPATCH_PROGRESS_MS=3000" "" apps/api/scripts/redispatch-check.ts
 run checkin    "CHECKIN_TICK_MS=500 CHECKIN_GRACE_MS=2000" "" apps/api/scripts/checkin-check.ts
 run sms        "TWILIO_AUTH_TOKEN=test-token TWILIO_WEBHOOK_URL=$API_URL/api/sms/inbound" "TWILIO_AUTH_TOKEN=test-token" apps/api/scripts/sms-check.ts

@@ -4,6 +4,8 @@ import { authRequired, AuthReq } from '../../middleware/auth';
 import { validate } from '../../middleware/validate';
 import { User, ageOf, RESPONDER_ROLES } from '../../models/User';
 import { generateTextQR } from '../../utils/qr';
+import { randomBytes } from 'crypto';
+import { env } from '../../config/env';
 import { Allergy, Medication, Vaccination, Condition, Disability } from '../../models/HealthRecord';
 import { hasResponderCertification } from '../../models/Training';
 
@@ -14,7 +16,9 @@ type Facts = { allergies: any[]; medications: any[]; conditions: any[] };
  * language. Shown by the Bio Passport QR (readable by any camera, offline) and the watch's
  * Medical ID. The full record stays behind auth.
  */
-export function medicalLines(u: any, { allergies, medications, conditions }: Facts): string[] {
+export type Share = { bloodType?: boolean; allergies?: boolean; medications?: boolean; conditions?: boolean; contact?: boolean };
+export function medicalLines(u: any, { allergies, medications, conditions }: Facts, share: Share = {}): string[] {
+  const show = (k: keyof Share) => share[k] !== false;
   const sq = u.language !== 'en';
   const L = sq
     ? { blood: 'Gjaku', allergy: 'Alergji', meds: 'Ilaçe', cond: 'Sëmundje', ice: 'Kontakt', sev: { mild: 'e lehtë', moderate: 'mesatare', severe: 'e rëndë' } as Record<string, string> }
@@ -22,13 +26,22 @@ export function medicalLines(u: any, { allergies, medications, conditions }: Fac
   const age = ageOf(u);
   const lines = [
     `VITALIS · ${u.name}${age != null ? `, ${age}` : ''}`,
-    `${L.blood}: ${u.bloodType ?? '?'}`,
-    allergies.length ? `${L.allergy}: ${allergies.map(a => `${a.allergen} (${L.sev[a.severity] ?? a.severity})`).join(', ')}` : null,
-    medications.some(m => m.isActive) ? `${L.meds}: ${medications.filter(m => m.isActive).map(m => [m.name, m.dosage].filter(Boolean).join(' ')).join(', ')}` : null,
-    conditions.length || u.illnesses?.length ? `${L.cond}: ${[...new Set([...conditions.map(c => c.name), ...(u.illnesses ?? [])])].join(', ')}` : null,
-    u.emergencyContact?.phone ? `${L.ice}: ${u.emergencyContact.name ?? ''} ${u.emergencyContact.phone}`.replace(/\s+/g, ' ') : null,
+    show('bloodType') ? `${L.blood}: ${u.bloodType ?? '?'}` : null,
+    show('allergies') && allergies.length ? `${L.allergy}: ${allergies.map(a => `${a.allergen} (${L.sev[a.severity] ?? a.severity})`).join(', ')}` : null,
+    show('medications') && medications.some(m => m.isActive) ? `${L.meds}: ${medications.filter(m => m.isActive).map(m => [m.name, m.dosage].filter(Boolean).join(' ')).join(', ')}` : null,
+    show('conditions') && (conditions.length || u.illnesses?.length) ? `${L.cond}: ${[...new Set([...conditions.map(c => c.name), ...(u.illnesses ?? [])])].join(', ')}` : null,
+    show('contact') && u.emergencyContact?.phone ? `${L.ice}: ${u.emergencyContact.name ?? ''} ${u.emergencyContact.phone}`.replace(/\s+/g, ' ') : null,
   ].filter(Boolean);
   return lines as string[];
+}
+
+/** The person's medical ID link token, made on first use. */
+async function medicalIdToken(userId: string) {
+  const u = await User.findById(userId).select('+medicalId.token').lean();
+  if (u?.medicalId?.token) return u.medicalId.token;
+  const token = randomBytes(16).toString('hex');
+  await User.updateOne({ _id: userId, 'medicalId.token': { $exists: false } }, { $set: { 'medicalId.token': token } });
+  return (await User.findById(userId).select('+medicalId.token').lean())!.medicalId!.token!;
 }
 
 const r = Router();
@@ -45,8 +58,13 @@ r.get('/me', async (req: AuthReq, res, next) => {
       Disability.find({ user: req.user!.id }).sort('-createdAt').lean(),
     ]);
     if (!u) return res.status(404).json({ error: 'Not found' });
-    const lines = medicalLines(u, { allergies, medications, conditions });
-    const qr = await generateTextQR(lines.join('\n'));
+    // The QR shows what the person chose, plus the link to the same facts online (logged, revocable).
+    const token = await medicalIdToken(req.user!.id);
+    const share = (u.medicalId?.share ?? {}) as Share;
+    const enabled = u.medicalId?.enabled !== false;
+    const lines = medicalLines(u, { allergies, medications, conditions }, share);
+    const url = enabled ? `${env.publicWebUrl}/id/${token}` : null;
+    const qr = await generateTextQR([...lines, ...(url ? [url] : [])].join('\n'));
     res.json({
       profile: {
         id: String(u._id),
@@ -69,7 +87,32 @@ r.get('/me', async (req: AuthReq, res, next) => {
         conditions: conditions.map(c => ({ id: String(c._id), name: c.name, notes: c.notes })),
       },
       qr,
+      medicalId: { enabled, share: { bloodType: true, allergies: true, medications: true, conditions: true, contact: true, ...share }, url, preview: lines },
     });
+  } catch (e) { next(e); }
+});
+
+const shareSchema = z.object({
+  enabled: z.boolean().optional(),
+  share: z.object({ bloodType: z.boolean(), allergies: z.boolean(), medications: z.boolean(), conditions: z.boolean(), contact: z.boolean() }).partial().strict().optional(),
+}).strict();
+
+r.patch('/medical-id', validate(shareSchema), async (req: AuthReq, res, next) => {
+  try {
+    const { enabled, share } = req.body as z.infer<typeof shareSchema>;
+    const set: Record<string, unknown> = {};
+    if (enabled !== undefined) set['medicalId.enabled'] = enabled;
+    for (const [k, v] of Object.entries(share ?? {})) set[`medicalId.share.${k}`] = v;
+    await User.updateOne({ _id: req.user!.id }, { $set: set });
+    res.status(204).end();
+  } catch (e) { next(e); }
+});
+
+// A new link: the old QR and link stop working at once (lost phone, printed card handed out).
+r.post('/medical-id/rotate', async (req: AuthReq, res, next) => {
+  try {
+    await User.updateOne({ _id: req.user!.id }, { $set: { 'medicalId.token': randomBytes(16).toString('hex'), 'medicalId.rotatedAt': new Date() } });
+    res.status(204).end();
   } catch (e) { next(e); }
 });
 

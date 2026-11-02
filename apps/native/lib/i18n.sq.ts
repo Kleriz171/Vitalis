@@ -997,6 +997,27 @@ export const ui: Record<string, string> = {
   'Your emergency circle': 'Rrethi yt i urgjencës',
   '{n} people texted': '{n} persona u njoftuan me SMS',
   '{n} texts failed, call them yourself': '{n} SMS dështuan, telefonoji vetë',
+  // Medical ID settings (role expansion, phase 4)
+  'A Vitalis administrator ({name}) opened your record': 'Një administrator i Vitalis ({name}) hapi të dhënat tuaja',
+  'A clinician': 'Një mjek',
+  'Could not load your medical ID.': 'ID-ja juaj mjekësore nuk u ngarkua.',
+  'Could not save.': 'Nuk u ruajt.',
+  'Include a link in the QR': 'Përfshi një link në QR',
+  'Make a new QR': 'Krijo një QR të ri',
+  'Make a new QR?': 'Të krijohet një QR i ri?',
+  'New QR made. The old one no longer works.': 'U krijua një QR i ri. I vjetri nuk punon më.',
+  'Nobody yet.': 'Askush ende.',
+  'Online link': 'Linku online',
+  'Opens these facts online, even for a phone that cannot read text QRs. Every opening is listed below.': 'I hap këto të dhëna online, edhe në një telefon që nuk lexon QR me tekst. Çdo hapje shfaqet më poshtë.',
+  'Shown on the QR and its link': 'Shfaqen në QR dhe në linkun e tij',
+  'Someone opened your medical ID link': 'Dikush hapi linkun e ID-së suaj mjekësore',
+  'The old QR and its link stop working at once. Use this if a printed card or screenshot went somewhere it should not.': 'QR-ja e vjetër dhe linku i saj ndalojnë së punuari menjëherë. Përdoreni nëse një kartë e printuar ose një foto ekrani shkoi ku nuk duhej.',
+  'The old QR and link stop working.': 'QR-ja dhe linku i vjetër ndalojnë së punuari.',
+  'What paramedics see when they scan your QR.': 'Çfarë shohin paramedikët kur skanojnë QR-në tuaj.',
+  'What the QR says': 'Çfarë thotë QR-ja',
+  'What the QR shows, its link, who opened your records': 'Çfarë tregon QR-ja, linku i saj, kush hapi të dhënat tuaja',
+  'Who opened my records': 'Kush hapi të dhënat e mia',
+  '{name} opened your record for your consultation': '{name} hapi të dhënat tuaja për konsultën',
 };
 
 // Messages the API sends (error texts, emergency number names). Matched at runtime via t().

@@ -72,7 +72,7 @@ its own e2e check in `scripts/e2e.sh` and screenshots before anything visual is 
    ✅ 4b record (consent per booking, 30 days, AccessLog kinds clinician_record/admin_record, /account/access-log,
    summary + follow-up + PDF). ✅ 4c circle (User.circle, ContactAlert, /api/circle, /emergencies/:id/alerts,
    phone circle screen + SOS status line). Checks: appointments-check, circle-check.
-   ⏳ 4d Medical QR: per-field `medicalId.share`, link token `/id/:token` (landing page + Render rewrite route,
+   ✅ 4d Medical QR: per-field `medicalId.share`, link token `/id/:token` (landing page + Render rewrite route,
    public GET /api/medical-id/:token logged as AccessLog 'qr_profile'), rotate = revoke, phone settings screen
    and "who viewed my records" (GET /account/access-log).
 5. **Admin.** Suspension, approval history, analytics from real data, feedback, audit view, health page.

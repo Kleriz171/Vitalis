@@ -37,7 +37,8 @@
     "check:relay": "npx tsx apps/api/scripts/relay-check.ts",
     "check:hospital": "npx tsx apps/api/scripts/hospital-check.ts",
     "check:appointments": "npx tsx apps/api/scripts/appointments-check.ts",
-    "check:circle": "npx tsx apps/api/scripts/circle-check.ts"
+    "check:circle": "npx tsx apps/api/scripts/circle-check.ts",
+    "check:medical-id": "npx tsx apps/api/scripts/medicalid-check.ts"
   },
   "overrides": {
     "react": "19.2.3",
