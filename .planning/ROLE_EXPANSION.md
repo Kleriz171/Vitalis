@@ -81,5 +81,8 @@ its own e2e check in `scripts/e2e.sh` and screenshots before anything visual is 
    (?kind=access for AccessLog). admin-check in e2e.
    ✅ 5a console (suspend/restore, Audit tab). ✅ 5b feedback (Feedback model, /api/feedback, /api/admin/feedback, People →
    Feedback, phone feedback screen). ✅ 5c /analytics/platform + /admin/health (utils/jobs.ts sweep status), Reports → Platform.
-6. **Relay end to end.** One incident record through every role; permission boundaries test.
+6. **Relay end to end.** ✅ 2026-11-03. One incident record through every role; permission boundaries test.
+   Landed: relay-e2e-check (citizen + circle → responder steps + report → operator action + handover → hospital
+   acknowledge + check-in → completed; one timeline in order; consented clinician record shows the report; admin
+   audit; leak probes per role).
 7. **Polish and QA** within the existing look; screenshots per role; full e2e.

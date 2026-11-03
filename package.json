@@ -39,7 +39,8 @@
     "check:appointments": "npx tsx apps/api/scripts/appointments-check.ts",
     "check:circle": "npx tsx apps/api/scripts/circle-check.ts",
     "check:medical-id": "npx tsx apps/api/scripts/medicalid-check.ts",
-    "check:admin": "npx tsx apps/api/scripts/admin-check.ts"
+    "check:admin": "npx tsx apps/api/scripts/admin-check.ts",
+    "check:relay-e2e": "npx tsx apps/api/scripts/relay-e2e-check.ts"
   },
   "overrides": {
     "react": "19.2.3",
