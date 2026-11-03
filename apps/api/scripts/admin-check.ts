@@ -50,6 +50,19 @@ async function main() {
   assert.deepEqual([access[0].action, access[0].target.id], ['admin_record', person.user.id]);
   ok('audit: every admin action with who and why; every record opening; administrators only');
 
+  // Role changes: between staff roles only, never your own, in the audit.
+  const staffEmail = `op-${Date.now()}@vitalis.test`;
+  const op2 = (await call('POST', '/admin/staff', admin.accessToken, { email: staffEmail, password: 'Operat0r!x', firstName: 'Second', lastName: 'Operator', role: 'eso' })).data;
+  assert.equal((await call('POST', `/admin/users/${person.user.id}/role`, admin.accessToken, { role: 'admin' })).status, 404, 'a citizen is not made staff this way');
+  assert.equal((await call('POST', `/admin/users/${admin.user.id}/role`, admin.accessToken, { role: 'eso' })).status, 400, 'not yourself');
+  assert.equal((await call('POST', `/admin/users/${op2.id}/role`, admin.accessToken, { role: 'hospital' })).status, 400, 'hospital needs a hospital');
+  assert.equal((await call('POST', `/admin/users/${op2.id}/role`, operator, { role: 'admin' })).status, 403);
+  assert.equal((await call('POST', `/admin/users/${op2.id}/role`, admin.accessToken, { role: 'admin' })).status, 200);
+  const promoted = (await login(staffEmail, 'Operat0r!x')).data.accessToken;
+  assert.equal((await call('GET', '/admin/users', promoted)).status, 200, 'new role counts at once');
+  assert.equal(((await call('GET', '/admin/audit', admin.accessToken)).data as any[])[0].detail, 'eso → admin');
+  ok('role changes: staff roles only, not yourself, effective at once, audited');
+
   // A3. Feedback: anyone sends it and sees the outcome; administrators triage, assign and close it.
   const citizen = (await login('demo@vitalis.com', 'Demo1234!')).data.accessToken;
   assert.equal((await call('POST', '/feedback', citizen, { category: 'responder', message: 'hi' })).status, 400, 'too short');

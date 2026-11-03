@@ -13,7 +13,7 @@ type Kind = 'actions' | 'access';
 const ACTION: Record<string, string> = {
   staff_created: 'created a staff account for', user_removed: 'removed the account of', responder_removed: 'removed responder status from',
   suspended: 'suspended', restored: 'restored', application_approved: 'approved the application of', application_rejected: 'rejected the application of',
-  certificate_revoked: 'revoked a certificate of',
+  certificate_revoked: 'revoked a certificate of', role_changed: 'changed the role of', feedback_updated: 'updated feedback from',
   clinician_record: 'opened, for a consultation, the record of', admin_record: 'opened the record of', qr_profile: 'opened the medical ID link of',
 };
 

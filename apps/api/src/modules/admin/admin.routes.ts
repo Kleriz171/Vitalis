@@ -115,6 +115,23 @@ r.delete('/users/:id', async (req: AuthReq, res, next) => {
   } catch (e) { next(e); }
 });
 
+// Move a staff account between staff roles. Citizens and responders become staff only through a new
+// staff account; nobody changes their own role (an administrator could otherwise lock everyone out).
+const roleSchema = z.object({ role: z.enum(['eso', 'admin', 'hospital']), hospitalId: z.string().regex(/^[a-f0-9]{24}$/i).optional() }).strict()
+  .refine(b => (b.role === 'hospital') === !!b.hospitalId, { message: 'Hospital staff need a hospital, and only they', path: ['hospitalId'] });
+r.post('/users/:id/role', validate(roleSchema), async (req: AuthReq, res, next) => {
+  try {
+    if (req.params.id === req.user!.id) return res.status(400).json({ error: 'You cannot change your own role' });
+    const { role, hospitalId } = req.body as z.infer<typeof roleSchema>;
+    if (hospitalId && !(await Hospital.exists({ _id: hospitalId }))) return res.status(404).json({ error: 'No hospital with this id' });
+    const before = await User.findOne({ _id: req.params.id, role: { $in: ['eso', 'admin', 'hospital'] } }).select('role').lean();
+    if (!before) return res.status(404).json({ error: 'No staff account with this id' });
+    await User.updateOne({ _id: req.params.id }, role === 'hospital' ? { $set: { role, hospital: hospitalId } } : { $set: { role }, $unset: { hospital: 1 } });
+    await recordAdminAction(req.user!.id, 'role_changed', req.params.id, `${before.role} → ${role}`);
+    res.json({ role });
+  } catch (e) { next(e); }
+});
+
 // Suspend: no sign-in, no API, off duty, from the next request. Restore undoes it. Never yourself.
 r.post('/users/:id/suspend', validate(z.object({ reason: z.string().trim().min(3).max(300) }).strict()), async (req: AuthReq, res, next) => {
   try {

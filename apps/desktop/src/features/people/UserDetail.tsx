@@ -7,7 +7,9 @@ import { PageHeader } from '../../components/layout/CommandShell';
 import { Panel, Row as ListRow, Chip } from '../../components/ui/list';
 import { Button } from '../../components/ui/button';
 import { pushToast } from '../../components/toast/toast';
-import { RESPONDER_ROLES, roleLabel } from '../../lib/roles';
+import { RESPONDER_ROLES, STAFF_ROLES, roleLabel } from '../../lib/roles';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../store';
 
 interface UserDetail {
   user: {
@@ -56,6 +58,7 @@ export const UserDetail = () => {
   useEffect(load, [load]);
 
   // Both take effect at once: SOS alerts and going on duty follow the role in the database.
+  const me = useSelector((st: RootState) => st.auth.user);
   const act = async (question: string, request: () => Promise<unknown>, done: string) => {
     if (!window.confirm(question)) return;
     setBusy(true);
@@ -122,6 +125,22 @@ export const UserDetail = () => {
         </>}
       />
       <div className="p-6 space-y-5">
+        {STAFF_ROLES.includes(u.role) && u._id !== me?.id && (
+          <Panel title="Staff role" aside={<span className="text-[13px] text-muted-foreground">Counts from their next request</span>}>
+            <form className="flex flex-wrap items-center gap-2 p-4" onSubmit={e => {
+              e.preventDefault();
+              const f = new FormData(e.currentTarget);
+              const role = String(f.get('role'));
+              void act(`Make ${u.name} ${roleLabel(role)}?`, () => api.post(`/admin/users/${id}/role`, { role, ...(role === 'hospital' ? { hospitalId: String(f.get('hospitalId')) } : {}) }), 'Role changed');
+            }}>
+              <select name="role" defaultValue={u.role} className="h-9 rounded-md border border-input bg-transparent px-2 text-sm" aria-label="Role">
+                {STAFF_ROLES.map(r => <option key={r} value={r}>{roleLabel(r)}</option>)}
+              </select>
+              <input name="hospitalId" placeholder="Hospital id (hospital staff only)" defaultValue={(u as any).hospital ?? ''} className="h-9 w-72 rounded-md border border-input bg-transparent px-2 text-sm" aria-label="Hospital id" />
+              <Button type="submit" size="sm" className="rounded-lg" disabled={busy}>Change role</Button>
+            </form>
+          </Panel>
+        )}
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 stagger">
           <KPI icon={Drop} iconTone="teal" label="Blood type" value={u.bloodType ?? '—'} />
           <KPI icon={User} iconTone="teal" label="Age" value={u.age != null ? `${u.age}` : '—'} />
