@@ -1018,6 +1018,25 @@ export const ui: Record<string, string> = {
   'What the QR shows, its link, who opened your records': 'Çfarë tregon QR-ja, linku i saj, kush hapi të dhënat tuaja',
   'Who opened my records': 'Kush hapi të dhënat e mia',
   '{name} opened your record for your consultation': '{name} hapi të dhënat tuaja për konsultën',
+  // Feedback (role expansion, phase 5)
+  'A hospital': 'Një spital',
+  'A responder': 'Një ndihmës',
+  'About': 'Për',
+  'An emergency': 'Një urgjencë',
+  'Being looked at': 'Po shqyrtohet',
+  'Could not send.': 'Nuk u dërgua.',
+  'Feedback': 'Komente',
+  'Message': 'Mesazhi',
+  'Privacy': 'Privatësia',
+  'Received': 'U mor',
+  'Resolved': 'U zgjidh',
+  'Sent before': 'Dërguar më parë',
+  'Sent. Thank you, we read every message.': 'U dërgua. Faleminderit, i lexojmë të gjitha mesazhet.',
+  'Something else': 'Diçka tjetër',
+  'Tell the Vitalis team what worked and what did not. In an emergency, call 127 or 112.': 'Tregojini ekipit të Vitalis çfarë funksionoi dhe çfarë jo. Në urgjencë, telefononi 127 ose 112.',
+  'Tell the team what worked and what did not': 'Tregojini ekipit çfarë funksionoi dhe çfarë jo',
+  'The app': 'Aplikacioni',
+  'What happened?': 'Çfarë ndodhi?',
 };
 
 // Messages the API sends (error texts, emergency number names). Matched at runtime via t().

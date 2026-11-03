@@ -34,6 +34,7 @@ import watchRoutes from './modules/watch/watch.routes';
 import hospitalRoutes from './modules/hospital/hospital.routes';
 import circleRoutes from './modules/circle/circle.routes';
 import medicalIdRoutes from './modules/medicalId/medicalId.routes';
+import { adminFeedbackRoutes, feedbackRoutes } from './modules/feedback/feedback.routes';
 import { bookingRoutes, clinicRoutes, doctorBookingRoutes } from './modules/bookings/bookings.routes';
 import mongoose from 'mongoose';
 
@@ -96,7 +97,9 @@ export function buildApp() {
   app.use('/api/supply', supplyRoutes);
   app.use('/api/training', trainingRoutes);
   app.use('/api/ai', strict(15), aiRoutes);
+  app.use('/api/admin/feedback', adminFeedbackRoutes); // before /api/admin
   app.use('/api/admin', adminRoutes);
+  app.use('/api/feedback', strict(10), feedbackRoutes);
   app.use('/api/doctor-applications', doctorApplicationsRoutes);
   app.use('/api/aeds', aedRoutes);
   app.use('/api/push', pushRoutes);

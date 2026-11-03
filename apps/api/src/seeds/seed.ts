@@ -8,6 +8,7 @@ import { Booking } from '../models/Booking';
 import { ContactAlert } from '../models/ContactAlert';
 import { AccessLog } from '../models/AccessLog';
 import { AdminAction } from '../models/AdminAction';
+import { Feedback } from '../models/Feedback';
 import { HospitalHandover } from '../models/HospitalHandover';
 import { IncidentReport } from '../models/IncidentReport';
 import hospitalsAl from './hospitals.al.json';
@@ -135,6 +136,7 @@ async function seed() {
     ContactAlert.deleteMany({}),
     AccessLog.deleteMany({}),
     AdminAction.deleteMany({}),
+    Feedback.deleteMany({}),
     HospitalHandover.deleteMany({}),
     IncidentReport.deleteMany({}),
   ]);

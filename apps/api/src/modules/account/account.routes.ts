@@ -24,6 +24,7 @@ import { Aed } from '../../models/Aed';
 import { AccessLog } from '../../models/AccessLog';
 import { Booking } from '../../models/Booking';
 import { ContactAlert } from '../../models/ContactAlert';
+import { Feedback } from '../../models/Feedback';
 import { logger } from '../../config/logger';
 
 // The person's own data: export everything, or erase it (privacy policy, landing /privacy).
@@ -106,6 +107,7 @@ r.delete('/', validate(z.object({ confirm: z.literal('DELETE') }).strict()), asy
       Booking.deleteMany({ patient: id }), // their consultations and the summaries written for them
       AccessLog.deleteMany({ subject: id }),
       ContactAlert.deleteMany({ user: id }), // the circle's numbers
+      Feedback.deleteMany({ author: id }),
       Notification.deleteMany({ user: id }),
       Responder.deleteMany({ user: id }),
       VideoSession.updateMany({ participants: id }, { $pull: { participants: id } }),

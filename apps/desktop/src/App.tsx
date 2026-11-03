@@ -12,6 +12,7 @@ import { Users } from './features/people/Users';
 import { UserDetail } from './features/people/UserDetail';
 import { DoctorApplications } from './features/people/DoctorApplications';
 import { Audit } from './features/people/Audit';
+import { FeedbackPage } from './features/people/Feedback';
 import { HospitalPage } from './features/hospital/Hospital';
 import { Incoming } from './features/hospital/Incoming';
 import { ClinicCalendar } from './features/clinic/Calendar';
@@ -40,6 +41,7 @@ export const App = () => (
         <Route path="admin/users/:id" element={<UserDetail />} />
         <Route path="admin/doctor-applications" element={<DoctorApplications />} />
         <Route path="admin/audit" element={<Audit />} />
+        <Route path="admin/feedback" element={<FeedbackPage />} />
         <Route path="hospital" element={<HospitalPage />} />
         <Route path="hospital/incoming" element={<Incoming />} />
         <Route path="clinic" element={<ClinicCalendar />} />

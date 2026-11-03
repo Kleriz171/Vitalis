@@ -475,6 +475,7 @@ export default function Profile() {
 
         <Group>
           <Row first icon={<FileText size={18} color={colors.primary} />} title={t('Medical ID')} summary={t('What the QR shows, its link, who opened your records')} onPress={() => router.push('/medical-id' as never)} />
+          <Row icon={<FileText size={18} color={colors.info} />} title={t('Feedback')} summary={t('Tell the team what worked and what did not')} onPress={() => router.push('/feedback' as never)} />
         </Group>
 
         {activeCertifications.length ? (
