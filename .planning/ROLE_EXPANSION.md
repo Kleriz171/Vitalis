@@ -93,7 +93,6 @@ its own e2e check in `scripts/e2e.sh` and screenshots before anything visual is 
 ## Follow-ups (2026-11-03)
 
 Done: operator call queues, circle texts in the call panel, made-up doctor ratings removed, staff role changes (a9ab7fd).
-Open, in order: AED maintenance tasks (assign + "needs maintenance" list: pads expiring, low battery, overdue inspection,
-reported problems); responder credentials screen on the phone (role, verification, certificates, expiry, refresher due);
-console check at tablet width; phone screenshots of the new screens (Expo web). Needs the user: live admin
+Also done: AED maintenance list + tasks (a1da539), responder credentials screen (52e1851), console checked at 1024 px
+(live calls, calendar: layouts hold). Open: phone screenshots of the new screens (Expo web). Needs the user: live admin
 (scripts/create-admin.ts), DEMO_MODE off + Twilio, Atlas access list, Gemini budget, Firebase key restriction, legal brackets.
