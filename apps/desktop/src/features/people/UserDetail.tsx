@@ -17,6 +17,8 @@ interface UserDetail {
     firstName?: string;
     lastName?: string;
     role: string;
+    suspendedAt?: string;
+    suspendedReason?: string;
     bloodType?: string;
     age?: number;
     gender?: string;
@@ -72,6 +74,22 @@ export const UserDetail = () => {
     () => api.post(`/admin/users/${id}/remove-responder`),
     'Responder status removed',
   );
+  // ponytail: native prompt for the reason; a dialog component when the console gets one.
+  const suspend = async () => {
+    const reason = window.prompt('Why suspend this account? They lose access at once and see this reason nowhere; it goes in the audit log.')?.trim();
+    if (!reason || reason.length < 3) return;
+    setBusy(true);
+    try {
+      await api.post(`/admin/users/${id}/suspend`, { reason });
+      pushToast({ tone: 'success', title: 'Account suspended' });
+      load();
+    } catch (err: any) {
+      pushToast({ tone: 'error', title: 'Could not suspend', body: err?.response?.data?.error });
+    } finally {
+      setBusy(false);
+    }
+  };
+  const restore = () => act('Restore this account? They can sign in again at once.', () => api.post(`/admin/users/${id}/restore`), 'Account restored');
   const revoke = (c: UserDetail['certifications'][number]) => act(
     `Revoke "${c.badgeLabel}"? Its QR code will show as revoked, and passing the quiz again will not restore it.`,
     () => api.post(`/training/certifications/${c._id}/revoke`, {}),
@@ -88,13 +106,16 @@ export const UserDetail = () => {
     <>
       <PageHeader icon={IdentificationCard}
         title={u.name}
-        subtitle={`${u.phone ?? u.email ?? 'No contact'} · ${roleLabel(u.role)}`}
+        subtitle={`${u.phone ?? u.email ?? 'No contact'} · ${roleLabel(u.role)}${u.suspendedAt ? ` · Suspended: ${u.suspendedReason ?? ''}` : ''}`}
         actions={<>
           {RESPONDER_ROLES.includes(u.role) ? (
             <button onClick={removeResponder} disabled={busy} className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-white/[0.12] text-white text-sm font-medium hover:bg-white/[0.2] transition-colors disabled:opacity-60">
               <UserMinus size={15} /> Remove responder status
             </button>
           ) : null}
+          <button onClick={u.suspendedAt ? restore : suspend} disabled={busy} className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-white/[0.12] text-white text-sm font-medium hover:bg-white/[0.2] transition-colors disabled:opacity-60">
+            {u.suspendedAt ? 'Restore account' : 'Suspend account'}
+          </button>
           <Link to="/command/admin/users" className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-white/[0.12] text-white text-sm font-medium hover:bg-white/[0.2] transition-colors">
             <ArrowLeft size={14} /> Back to users
           </Link>

@@ -22,6 +22,7 @@ interface AdminUser {
   role: string;
   createdAt: string;
   hospital?: { _id: string; name: string };
+  suspendedAt?: string;
 }
 
 const ROLE_TILE: Record<string, [Icon, TileTone]> = {
@@ -188,6 +189,7 @@ export const Users = () => {
                 title={<Link to={`/command/admin/users/${u._id}`} className="hover:underline underline-offset-2">{u.name}</Link>}
                 summary={u.hospital ? `${u.email} · ${u.hospital.name}` : u.email}
                 right={<>
+                  {u.suspendedAt && <Chip tone="sos">Suspended</Chip>}
                   <Chip tone={STAFF_ROLES.includes(u.role) ? 'teal' : 'muted'}>{roleLabel(u.role)}</Chip>
                   <Link to={`/command/admin/users/${u._id}`}><Button variant="outline" size="sm" className="rounded-lg">View</Button></Link>
                   {u._id !== me?.id ? <Button variant="ghost" size="sm" className="rounded-lg text-muted-foreground hover:text-destructive" onClick={() => remove(u._id)}>Remove</Button> : null}

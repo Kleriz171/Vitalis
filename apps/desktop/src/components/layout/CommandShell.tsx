@@ -37,6 +37,7 @@ const SECTIONS: Section[] = [
   { label: 'People', icon: UsersThree, to: '/command/admin/users', roles: ['admin'], tabs: [
     { to: '/command/admin/users', label: 'Users' },
     { to: '/command/admin/doctor-applications', label: 'Applications' },
+    { to: '/command/admin/audit', label: 'Audit' },
   ] },
   { label: 'Reports', icon: ChartBar, to: '/command/analytics', roles: ['admin'], tabs: [
     { to: '/command/analytics', label: 'Overview' },
