@@ -43,6 +43,7 @@ export default function RootLayout() {
               <Stack.Screen name="circle" options={{ animation: 'slide_from_right' }} />
               <Stack.Screen name="medical-id" options={{ animation: 'slide_from_right' }} />
               <Stack.Screen name="feedback" options={{ animation: 'slide_from_right' }} />
+              <Stack.Screen name="credentials" options={{ animation: 'slide_from_right' }} />
               <Stack.Screen name="assistant" options={{ animation: 'slide_from_right' }} />
               <Stack.Screen name="checkin" options={{ animation: 'slide_from_right' }} />
               <Stack.Screen name="fall" options={{ presentation: 'fullScreenModal', animation: 'fade', gestureEnabled: false }} />
@@ -105,7 +106,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!hydrated) return;
-    const inProtected = ['(tabs)', 'emergency', 'responder-inbox', 'aeds', 'handover', 'assistant', 'training', 'doctor-application', 'checkin', 'fall', 'report', 'book', 'consultations', 'circle', 'medical-id', 'feedback'].includes(segments[0] as string);
+    const inProtected = ['(tabs)', 'emergency', 'responder-inbox', 'aeds', 'handover', 'assistant', 'training', 'doctor-application', 'checkin', 'fall', 'report', 'book', 'consultations', 'circle', 'medical-id', 'feedback', 'credentials'].includes(segments[0] as string);
     if (!token && inProtected) router.replace('/');
   }, [hydrated, token, segments, router]);
 

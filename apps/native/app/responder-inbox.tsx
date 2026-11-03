@@ -364,6 +364,10 @@ export default function ResponderInbox() {
         />
       </Card>
 
+      <Pressable onPress={() => router.push('/credentials' as never)} accessibilityRole="button" style={styles.credLink}>
+        <Text style={styles.credText}>{t('My credentials and refreshers')} ›</Text>
+      </Pressable>
+
       {available && !active ? (
         <View style={styles.pauseBox}>
           <Text style={styles.pauseLabel}>{pausedNow ? t('Paused until {time}', { time: until }) : t('Need a break? Pause new calls for a while.')}</Text>
@@ -522,6 +526,8 @@ const styles = StyleSheet.create({
   dutyTitle: { color: colors.foreground, fontSize: 16, fontWeight: '700' },
   dutyBody: { color: colors.mutedForeground, fontSize: 14, marginTop: 2 },
   pauseBox: { gap: 8 },
+  credLink: { alignSelf: 'flex-start', paddingHorizontal: 4, paddingVertical: 2 },
+  credText: { color: colors.primary, fontSize: 14, fontWeight: '600' },
   pauseLabel: { color: colors.mutedForeground, fontSize: 13, fontWeight: '600', paddingHorizontal: 4 },
   activeCard: { padding: 16, gap: 10, borderRadius: radius.lg, borderColor: colors.primary, borderWidth: 1.5 },
   activeLabel: { color: colors.primaryStrong, fontSize: 13, fontWeight: '700' },

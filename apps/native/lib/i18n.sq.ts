@@ -1037,6 +1037,22 @@ export const ui: Record<string, string> = {
   'Tell the team what worked and what did not': 'Tregojini ekipit çfarë funksionoi dhe çfarë jo',
   'The app': 'Aplikacioni',
   'What happened?': 'Çfarë ndodhi?',
+  // Responder credentials (role expansion, follow-up)
+  'Courses, quizzes and refreshers': 'Kurse, kuize dhe rifreskime',
+  'Documents checked on {date}': 'Dokumentet u kontrolluan më {date}',
+  'Expired': 'Ka skaduar',
+  'Expired on {date}. Retake the course to go on duty again.': 'Skadoi më {date}. Bëje sërish kursin për të hyrë në shërbim.',
+  'My credentials': 'Kualifikimet e mia',
+  'My credentials and refreshers': 'Kualifikimet dhe rifreskimet e mia',
+  'No certificates yet. The CPR and defibrillator courses are free in the Training tab.': 'Ende pa certifikata. Kurset e masazhit të zemrës dhe të defibrilatorit janë falas te skeda Trajnimi.',
+  'Refresher due': 'Duhet rifreskim',
+  'Revoked': 'Anuluar',
+  'Revoked by Vitalis. Passing the course again does not restore it.': 'Anuluar nga Vitalis. Kalimi sërish i kursit nuk e rikthen.',
+  'Training certificates': 'Certifikatat e trajnimit',
+  'Valid': 'E vlefshme',
+  'Valid until {date}. Refresher from {from}.': 'E vlefshme deri më {date}. Rifreskimi nga {from}.',
+  'Valid until {date}. Retake the course before then.': 'E vlefshme deri më {date}. Bëje sërish kursin para kësaj date.',
+  'Verified by Vitalis': 'Verifikuar nga Vitalis',
 };
 
 // Messages the API sends (error texts, emergency number names). Matched at runtime via t().
