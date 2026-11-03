@@ -31,6 +31,8 @@ const AedSchema = new Schema({
     reportedBy: { type: Types.ObjectId, ref: 'User' },
   },
   verifiedAt: Date,
+  // The open maintenance job, if any (one per device): what to do, who, by when.
+  task: { note: String, assignee: { type: Types.ObjectId, ref: 'User' }, dueAt: Date, assignedAt: Date },
   verifiedBy: { type: Types.ObjectId, ref: 'User' },
   reportedBy: { type: Types.ObjectId, ref: 'User' },
 }, { timestamps: true });

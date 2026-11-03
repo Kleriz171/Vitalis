@@ -3,6 +3,7 @@ import { Defibrillator } from '../../components/ui/aed-icon';
 import { KPI } from '../../components/widgets/KPI';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../../api/client';
+import { Maintenance } from './Maintenance';
 import { Chip, Panel, Row } from '../../components/ui/list';
 import { Button } from '../../components/ui/button';
 import { Skeleton } from '../../components/ui/skeleton';
@@ -100,6 +101,7 @@ export const Defibrillators = () => {
     <>
       <PageHeader icon={Defibrillator} title="Defibrillators" subtitle="Public defibrillators. Helpers are only sent to fetch the ones listed here." />
       <div className="p-6 space-y-5">
+        <Maintenance />
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 stagger">
           <KPI icon={Defibrillator} iconTone="deep" label="Registered defibrillators" value={counts.all} />
           <KPI icon={ShieldWarning} iconTone={counts.unverified ? 'sos' : 'teal'} label="Waiting for review" value={counts.unverified} tone={counts.unverified ? 'rose' : 'teal'} />

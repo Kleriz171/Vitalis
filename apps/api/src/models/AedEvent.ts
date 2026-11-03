@@ -8,7 +8,7 @@ import { Schema, model, Types } from 'mongoose';
  */
 export const AED_EVENTS = [
   'code_given', 'code_viewed', 'code_changed', 'picked_up', 'delivered', 'returned',
-  'verified', 'problem', 'battery', 'door_opened', 'door_closed',
+  'verified', 'problem', 'battery', 'door_opened', 'door_closed', 'task_assigned', 'task_done',
 ] as const;
 
 const AedEventSchema = new Schema({

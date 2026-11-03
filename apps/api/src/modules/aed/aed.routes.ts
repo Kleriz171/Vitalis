@@ -5,6 +5,7 @@ import { env } from '../../config/env';
 import { authRequired, AuthReq } from '../../middleware/auth';
 import { allow } from '../../middleware/rbac';
 import { validate } from '../../middleware/validate';
+import { User } from '../../models/User';
 import { Aed } from '../../models/Aed';
 import { AedEvent, recordAedEvent } from '../../models/AedEvent';
 import { getIO } from '../../realtime/socket';
@@ -149,6 +150,57 @@ const editSchema = z.object({
   // The cabinet's keypad code; null removes it (an unlocked cabinet).
   cabinetCode: z.string().regex(/^\d{4,8}$/, 'The code is 4 to 8 digits').nullable().optional(),
 }).strict();
+
+// Devices that need someone: pads expired or expiring within 30 days, battery under 25%, a reported
+// problem, or no inspection for 180 days. With the open task and the operators it can go to.
+r.get('/maintenance', allow('eso'), async (_req, res, next) => {
+  try {
+    const now = Date.now();
+    const [aeds, operators] = await Promise.all([
+      Aed.find().populate('task.assignee', 'name').lean(),
+      User.find({ role: 'eso', suspendedAt: null }).select('name').lean(),
+    ]);
+    const due = aeds.map((a: any) => {
+      const reasons: string[] = [];
+      if (a.padsExpireAt && +new Date(a.padsExpireAt) < now) reasons.push('pads_expired');
+      else if (a.padsExpireAt && +new Date(a.padsExpireAt) < now + 30 * 86_400_000) reasons.push('pads_expiring');
+      if (a.battery?.percent != null && a.battery.percent < 25) reasons.push('battery_low');
+      if (a.status === 'needs_check' || a.status === 'out_of_service') reasons.push('problem');
+      const inspected = Math.max(+new Date(a.verifiedAt ?? 0), +new Date(a.battery?.at ?? 0));
+      if (now - inspected > 180 * 86_400_000) reasons.push('inspection_overdue');
+      return { id: String(a._id), name: a.name, placement: a.placement, status: a.status, padsExpireAt: a.padsExpireAt, battery: a.battery?.percent ?? null, lastInspectionAt: inspected ? new Date(inspected) : null, reasons,
+        task: a.task?.note ? { note: a.task.note, assignee: a.task.assignee ? { id: String(a.task.assignee._id), name: a.task.assignee.name } : null, dueAt: a.task.dueAt, assignedAt: a.task.assignedAt } : null };
+    }).filter(a => a.reasons.length || a.task);
+    res.json({ due, operators: operators.map(o => ({ id: String(o._id), name: o.name })) });
+  } catch (e) { next(e); }
+});
+
+const taskSchema = z.object({
+  note: z.string().trim().min(3).max(300),
+  assigneeId: z.string().regex(/^[a-f0-9]{24}$/i).optional(),
+  dueAt: z.string().datetime().optional(),
+}).strict();
+
+r.post('/:id/task', allow('eso'), validate(taskSchema), async (req: AuthReq, res, next) => {
+  try {
+    const { note, assigneeId, dueAt } = req.body as z.infer<typeof taskSchema>;
+    if (assigneeId && !(await User.exists({ _id: assigneeId, role: 'eso' }))) return res.status(400).json({ error: 'Assign to an operator' });
+    const a = await Aed.findByIdAndUpdate(req.params.id, { $set: { task: { note, assignee: assigneeId, dueAt, assignedAt: new Date() } } }, { new: true }).lean();
+    if (!a) return res.status(404).json({ error: 'Not found' });
+    await recordAedEvent(a._id, 'task_assigned', { by: req.user!.id, detail: note });
+    res.status(201).json({ ok: true });
+  } catch (e) { next(e); }
+});
+
+// Done: the task closes; checking the device itself stays "Mark as checked" (verify) or an edit.
+r.post('/:id/task/done', allow('eso'), validate(z.object({ note: z.string().trim().max(300).optional() }).strict()), async (req: AuthReq, res, next) => {
+  try {
+    const a = await Aed.findOneAndUpdate({ _id: req.params.id, 'task.note': { $exists: true } }, { $unset: { task: 1 } }).lean();
+    if (!a) return res.status(409).json({ error: 'No open task on this device' });
+    await recordAedEvent(a._id, 'task_done', { by: req.user!.id, detail: req.body.note ?? (a as any).task?.note });
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
 
 r.patch('/:id', allow('eso'), validate(editSchema), async (req: AuthReq, res, next) => {
   try {

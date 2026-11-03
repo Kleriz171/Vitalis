@@ -158,6 +158,23 @@ async function main() {
   ok('the code never went out in a live event');
 
   opSock.close();
+  // Maintenance: devices that need someone, with reasons; one open task per device; operators only.
+  assert.equal((await call('GET', '/aeds/maintenance', citizen)).status, 403);
+  const m = (await call('GET', '/aeds/maintenance', op)).data;
+  assert.ok(m.operators.some((o: any) => o.name === 'Aleks Operator'));
+  const needy = m.due.find((d: any) => d.reasons.length);
+  assert.ok(needy, 'seeded devices include one that needs attention');
+  const opId = m.operators.find((o: any) => o.name === 'Aleks Operator').id;
+  assert.equal((await call('POST', `/aeds/${needy.id}/task`, op, { note: 'Replace pads', assigneeId: '0'.repeat(24) })).status, 400);
+  assert.equal((await call('POST', `/aeds/${needy.id}/task`, op, { note: 'Replace pads and check the battery', assigneeId: opId, dueAt: new Date(Date.now() + 3 * 86_400_000).toISOString() })).status, 201);
+  const withTask = (await call('GET', '/aeds/maintenance', op)).data.due.find((d: any) => d.id === needy.id);
+  assert.deepEqual([withTask.task.note, withTask.task.assignee.name], ['Replace pads and check the battery', 'Aleks Operator']);
+  assert.equal((await call('POST', `/aeds/${needy.id}/task/done`, op, {})).status, 200);
+  assert.equal((await call('POST', `/aeds/${needy.id}/task/done`, op, {})).status, 409);
+  const logged = ((await call('GET', `/aeds/${needy.id}/events`, op)).data as any[]).map(e => e.type);
+  assert.ok(logged.includes('task_assigned') && logged.includes('task_done'));
+  ok('maintenance: reasons per device, one task per device assigned to an operator, closed once, in the device log');
+
   console.log('\nAll defibrillator checks passed.');
   process.exit(0);
 }
