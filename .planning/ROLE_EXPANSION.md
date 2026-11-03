@@ -79,7 +79,7 @@ its own e2e check in `scripts/e2e.sh` and screenshots before anything visual is 
    ✅ 5a API: suspension (User.suspendedAt; currentRole/socket/issueTokens refuse), AdminAction log (staff created,
    removed, responder removed, suspended, restored, applications decided, certificates revoked), GET /admin/audit
    (?kind=access for AccessLog). admin-check in e2e.
-   ⏳ 5a console UI: Suspend/Restore on UserDetail, "Suspended" chip on Users, Audit page (admin section).
-   ⏳ 5b feedback (model, phone submit, admin triage page). ⏳ 5c platform analytics + system health page.
+   ✅ 5a console (suspend/restore, Audit tab). ✅ 5b feedback (Feedback model, /api/feedback, /api/admin/feedback, People →
+   Feedback, phone feedback screen). ✅ 5c /analytics/platform + /admin/health (utils/jobs.ts sweep status), Reports → Platform.
 6. **Relay end to end.** One incident record through every role; permission boundaries test.
 7. **Polish and QA** within the existing look; screenshots per role; full e2e.

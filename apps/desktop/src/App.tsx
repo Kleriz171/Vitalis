@@ -8,6 +8,7 @@ import { Defibrillators } from './features/equipment/Defibrillators';
 import { Drones } from './features/equipment/Drones';
 import { CallLog } from './features/reports/CallLog';
 import { ReportsOverview } from './features/reports/Overview';
+import { Platform } from './features/reports/Platform';
 import { Users } from './features/people/Users';
 import { UserDetail } from './features/people/UserDetail';
 import { DoctorApplications } from './features/people/DoctorApplications';
@@ -37,6 +38,7 @@ export const App = () => (
         <Route path="drones" element={<Drones />} />
         <Route path="ledger" element={<CallLog />} />
         <Route path="analytics" element={<ReportsOverview />} />
+        <Route path="platform" element={<Platform />} />
         <Route path="admin/users" element={<Users />} />
         <Route path="admin/users/:id" element={<UserDetail />} />
         <Route path="admin/doctor-applications" element={<DoctorApplications />} />

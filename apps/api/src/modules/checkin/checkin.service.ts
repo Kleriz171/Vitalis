@@ -1,3 +1,4 @@
+import { jobRan } from '../../utils/jobs';
 import bcrypt from 'bcryptjs';
 import { CheckIn } from '../../models/CheckIn';
 import { Emergency } from '../../models/Emergency';
@@ -182,7 +183,7 @@ export function startCheckInSweep() {
   const timer = setInterval(async () => {
     if (running) return;
     running = true;
-    try { await sweepCheckIns(); } catch (err: any) { logger.error(`check-in sweep: ${err?.message}`); }
+    try { await sweepCheckIns(); jobRan('checkins'); } catch (err: any) { jobRan('checkins', err); logger.error(`check-in sweep: ${err?.message}`); }
     finally { running = false; }
   }, CHECKIN.tickMs);
   timer.unref();

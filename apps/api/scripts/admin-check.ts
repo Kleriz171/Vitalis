@@ -70,6 +70,20 @@ async function main() {
   assert.deepEqual([mine.status, mine.resolution], ['resolved', 'Cabinet locations added to the responder training.']);
   ok('feedback: sent by anyone, triaged, assigned and resolved by administrators, history kept, outcome visible to the author');
 
+  // A2 / A5. Platform numbers and measured health, administrators only.
+  assert.equal((await call('GET', '/analytics/platform', operator)).status, 403);
+  assert.equal((await call('GET', '/admin/health', operator)).status, 403);
+  const p = (await call('GET', '/analytics/platform', admin.accessToken)).data;
+  assert.ok(p.users >= 8 && p.responders >= 3 && p.clinicians === 1 && p.staff >= 3);
+  assert.ok(p.aeds.registered > 0 && p.hospitals.participating === 1 && p.hospitals.total > 50);
+  assert.equal(p.activity.signups.length, 14);
+  assert.ok(p.activity.signups.at(-1).n >= 2, 'today’s sign-ups counted');
+  const h = (await call('GET', '/admin/health', admin.accessToken)).data;
+  assert.equal(h.database.status, 'connected');
+  assert.ok(h.database.pingMs >= 0 && h.api.status === 'up');
+  assert.equal(h.integrations.sms, 'simulated (no provider)');
+  ok('platform numbers from the database; health measured, integrations without credentials say so');
+
   console.log('\nAll admin checks passed.');
 }
 

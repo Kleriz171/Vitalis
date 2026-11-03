@@ -1,6 +1,10 @@
 import { Router } from 'express';
 import { Emergency, ACTIVE_STATUSES } from '../../models/Emergency';
-import { User, RESPONDER_ROLES } from '../../models/User';
+import { User, RESPONDER_ROLES, STAFF_ROLES } from '../../models/User';
+import { Doctor } from '../../models/Doctor';
+import { Aed } from '../../models/Aed';
+import { Hospital } from '../../models/Hospital';
+import { Booking } from '../../models/Booking';
 import { authRequired } from '../../middleware/auth';
 import { allow } from '../../middleware/rbac';
 
@@ -108,6 +112,46 @@ r.get('/top-callers', allow('admin'), async (_req, res, next) => {
       email: byId.get(String(r._id))?.email ?? '',
       count: r.count,
     })));
+  } catch (e) { next(e); }
+});
+
+// Platform numbers for administrators, all counted from the database at request time.
+r.get('/platform', allow('admin'), async (_req, res, next) => {
+  try {
+    const since30 = new Date(Date.now() - 30 * 86_400_000);
+    const since14 = new Date(Date.now() - 14 * 86_400_000);
+    const [users, responders, clinicians, staff, active, completed30, cancelled30, escalated30, unanswered30, aeds, aedsOk, hospitals, staffedHospitals, bookings30, accepted, signups, sos] = await Promise.all([
+      User.countDocuments(),
+      User.countDocuments({ role: { $in: RESPONDER_ROLES } }),
+      Doctor.countDocuments({ user: { $ne: null } }),
+      User.countDocuments({ role: { $in: STAFF_ROLES } }),
+      Emergency.countDocuments({ status: { $in: ACTIVE_STATUSES } }),
+      Emergency.countDocuments({ status: 'resolved', createdAt: { $gte: since30 } }),
+      Emergency.countDocuments({ status: 'cancelled', createdAt: { $gte: since30 } }),
+      Emergency.countDocuments({ escalatedAt: { $gte: since30 } }),
+      // Ended without anyone ever accepting.
+      Emergency.countDocuments({ createdAt: { $gte: since30 }, status: { $in: ['resolved', 'cancelled'] }, 'timeline.status': { $ne: 'assigned' } }),
+      Aed.countDocuments(),
+      Aed.countDocuments({ status: 'ok' }),
+      Hospital.countDocuments(),
+      User.distinct('hospital', { role: 'hospital', hospital: { $ne: null } }).then(x => x.length),
+      Booking.countDocuments({ createdAt: { $gte: since30 } }),
+      Emergency.find({ createdAt: { $gte: since30 }, 'timeline.status': 'assigned' }).select('createdAt timeline').lean(),
+      User.aggregate([{ $match: { createdAt: { $gte: since14 } } }, { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: 'Europe/Tirane' } }, n: { $sum: 1 } } }]),
+      Emergency.aggregate([{ $match: { createdAt: { $gte: since14 } } }, { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: 'Europe/Tirane' } }, n: { $sum: 1 } } }]),
+    ]);
+    const waits = accepted.map((e: any) => (+new Date(e.timeline.find((t: any) => t.status === 'assigned').at) - +new Date(e.createdAt)) / 1000).sort((a, b) => a - b);
+    const median = waits.length ? Math.round(waits.length % 2 ? waits[(waits.length - 1) / 2] : (waits[waits.length / 2 - 1] + waits[waits.length / 2]) / 2) : null;
+    const days = Array.from({ length: 14 }, (_, i) => new Date(Date.now() - (13 - i) * 86_400_000).toLocaleDateString('en-CA', { timeZone: 'Europe/Tirane' }));
+    const byDay = (rows: any[]) => days.map(d => ({ date: d, n: rows.find(r => r._id === d)?.n ?? 0 }));
+    res.json({
+      users, responders, clinicians, staff,
+      incidents: { active, completed30, cancelled30, escalated30, unanswered30, medianAcceptSeconds30: median },
+      aeds: { registered: aeds, ready: aedsOk },
+      hospitals: { total: hospitals, participating: staffedHospitals },
+      bookings30,
+      activity: { signups: byDay(signups), sos: byDay(sos) },
+    });
   } catch (e) { next(e); }
 });
 

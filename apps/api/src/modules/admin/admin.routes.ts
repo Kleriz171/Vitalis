@@ -1,4 +1,9 @@
 import { Router } from 'express';
+import mongoose from 'mongoose';
+import { env } from '../../config/env';
+import { jobs, startedAt } from '../../utils/jobs';
+import { ContactAlert } from '../../models/ContactAlert';
+import { fleetSnapshot } from '../../realtime/drones';
 import { z } from 'zod';
 import { User } from '../../models/User';
 import { Medication, Allergy, Vaccination, Appointment, Condition, Disability } from '../../models/HealthRecord';
@@ -142,6 +147,33 @@ r.get('/audit', async (req, res, next) => {
       actor: x.actor ? { name: x.actor.name, role: x.actor.role } : null,
       target: (x.target ?? x.subject) ? { id: String((x.target ?? x.subject)._id), name: (x.target ?? x.subject).name } : null,
     })));
+  } catch (e) { next(e); }
+});
+
+// Measured health: what this API process sees now. Integrations without credentials say so.
+r.get('/health', async (_req, res, next) => {
+  try {
+    const t0 = Date.now();
+    await mongoose.connection.db!.admin().ping();
+    const dbMs = Date.now() - t0;
+    const day = new Date(Date.now() - 86_400_000);
+    const texts = await ContactAlert.aggregate([{ $match: { at: { $gte: day } } }, { $group: { _id: '$status', n: { $sum: 1 } } }]);
+    const smsProvider = !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_FROM);
+    res.json({
+      api: { status: 'up', since: startedAt, version: (process.env.RENDER_GIT_COMMIT ?? 'local').slice(0, 7), node: process.version, demoMode: env.demoMode },
+      database: { status: 'connected', pingMs: dbMs },
+      jobs,
+      texts24h: Object.fromEntries(texts.map(t => [t._id, t.n])),
+      integrations: {
+        sms: smsProvider ? 'configured' : env.demoMode || env.nodeEnv !== 'production' ? 'simulated (no provider)' : 'not configured',
+        push: 'Expo push service (delivery not tracked)',
+        assistant: env.geminiApiKey ? 'configured' : 'not configured',
+        roadEta: env.osrmUrl ? 'configured' : 'straight-line estimate (no OSRM)',
+        aedCabinets: env.aedDeviceKey ? 'configured' : 'not configured',
+        droneBridges: env.droneBridgeKey ? `${fleetSnapshot().filter((d: any) => d.online).length} online` : 'not configured',
+        mediaStore: env.mediaBucket ? 'Firebase Storage' : 'MongoDB (GridFS)',
+      },
+    });
   } catch (e) { next(e); }
 });
 

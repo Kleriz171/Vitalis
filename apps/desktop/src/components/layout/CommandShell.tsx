@@ -42,6 +42,7 @@ const SECTIONS: Section[] = [
   ] },
   { label: 'Reports', icon: ChartBar, to: '/command/analytics', roles: ['admin'], tabs: [
     { to: '/command/analytics', label: 'Overview' },
+    { to: '/command/platform', label: 'Platform' },
     { to: '/command/ledger', label: 'Call log' },
   ] },
 ];

@@ -1,3 +1,4 @@
+import { jobRan } from '../../utils/jobs';
 import { Emergency } from '../../models/Emergency';
 import { User } from '../../models/User';
 import { haversineKm } from '../../utils/geo';
@@ -137,7 +138,7 @@ export function startRedispatch() {
   const timer = setInterval(async () => {
     if (running) return; // a slow sweep must not overlap the next one
     running = true;
-    try { await sweepStalledResponders(); await sweepUnanswered(); } catch (err: any) { logger.error(`redispatch sweep: ${err?.message}`); }
+    try { await sweepStalledResponders(); await sweepUnanswered(); jobRan('redispatch'); } catch (err: any) { jobRan('redispatch', err); logger.error(`redispatch sweep: ${err?.message}`); }
     finally { running = false; }
   }, REDISPATCH.tickMs);
   timer.unref();

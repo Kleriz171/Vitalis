@@ -1,3 +1,4 @@
+import { jobRan } from '../../utils/jobs';
 import { Types } from 'mongoose';
 import { Booking, SLOT_MIN } from '../../models/Booking';
 import { Doctor } from '../../models/Doctor';
@@ -155,7 +156,7 @@ export function startBookingReminders() {
   const timer = setInterval(async () => {
     if (running) return;
     running = true;
-    try { await sweepReminders(); } catch (err: any) { logger.error(`booking reminders: ${err?.message}`); }
+    try { await sweepReminders(); jobRan('booking_reminders'); } catch (err: any) { jobRan('booking_reminders', err); logger.error(`booking reminders: ${err?.message}`); }
     finally { running = false; }
   }, 60_000);
   timer.unref();
