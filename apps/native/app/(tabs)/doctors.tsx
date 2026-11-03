@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { MessageCircle, Search, Star, Stethoscope, UserPlus, Video, CalendarPlus, Calendar } from 'lucide-react-native';
+import { MessageCircle, Search, Stethoscope, UserPlus, Video, CalendarPlus, Calendar } from 'lucide-react-native';
 import { toast } from 'sonner-native';
 import { api } from '@/lib/api';
 import { AppScreen } from '@/components/AppScreen';
@@ -21,8 +21,6 @@ interface Doctor {
   specialty: string;
   biography?: string;
   experience?: number;
-  rating?: number;
-  reviewCount?: number;
   bookable?: boolean;
   availableOnline?: boolean;
   phone?: string;
@@ -146,22 +144,12 @@ export default function Doctors() {
               title={doctor.name}
               summary={[
                 t(doctor.specialty),
-                doctor.rating != null ? `★ ${doctor.rating.toFixed(1)}` : null,
                 doctor.availableOnline ? t('Online') : null,
               ].filter(Boolean).join(' · ')}
               open={openId === doctor.id}
               onToggle={() => setOpenId(openId === doctor.id ? null : doctor.id)}
             >
-              <View style={styles.metaRow}>
-                <Star size={14} color={colors.warning} fill={colors.warning} />
-                <Text style={styles.meta}>
-                  {[
-                    doctor.rating?.toFixed(1) ?? '—',
-                    doctor.reviewCount != null ? `(${doctor.reviewCount})` : null,
-                    doctor.experience ? tn(doctor.experience, '1 year experience', '{n} years experience') : null,
-                  ].filter(Boolean).join(' ')}
-                </Text>
-              </View>
+              {doctor.experience ? <Text style={styles.meta}>{tn(doctor.experience, '1 year experience', '{n} years experience')}</Text> : null}
               {doctor.biography ? <Text style={styles.bio}>{doctor.biography}</Text> : null}
               {doctor.bookable ? (
                 <Button style={styles.whatsApp} onPress={() => router.push({ pathname: '/book/[id]', params: { id: doctor.id } } as never)}>
@@ -244,7 +232,6 @@ const styles = StyleSheet.create({
   chipTextActive: { color: '#fff' },
   skeletonRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
   initials: { color: colors.info, fontSize: 13, fontWeight: '800' },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   meta: { color: colors.mutedForeground, fontSize: 13 },
   bio: { color: colors.foreground, fontSize: 14, lineHeight: 20 },
   whatsApp: { backgroundColor: '#25D366' },

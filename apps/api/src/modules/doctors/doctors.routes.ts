@@ -20,7 +20,8 @@ r.get('/', async (req, res, next) => {
         { biography: { $regex: pattern, $options: 'i' } },
       ];
     }
-    const docs = await Doctor.find(q).sort('-rating').limit(50).lean();
+    // Clinicians who take bookings first. No ratings: Vitalis has no review system, so none are shown.
+    const docs = await Doctor.find(q).sort({ user: -1, name: 1 }).limit(50).lean();
     res.json(docs.map(d => ({
       id: String(d._id),
       name: d.name,
@@ -28,8 +29,6 @@ r.get('/', async (req, res, next) => {
       imageUrl: d.imageUrl,
       biography: d.biography,
       experience: d.experience,
-      rating: d.rating,
-      reviewCount: d.reviewCount,
       priceConsultation: d.priceConsultation,
       availableOnline: d.availableOnline,
       availableNow: d.availableNow,
@@ -43,7 +42,7 @@ r.get('/:id', async (req, res, next) => {
   try {
     const d = await Doctor.findById(req.params.id).lean();
     if (!d) return res.status(404).json({ error: 'Not found' });
-    const { user, workingHours, daysOff, consultationTypes, ...rest } = d as any;
+    const { user, workingHours, daysOff, consultationTypes, rating, reviewCount, ...rest } = d as any;
     res.json({
       ...rest,
       id: String(d._id),

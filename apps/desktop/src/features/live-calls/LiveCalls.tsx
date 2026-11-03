@@ -91,6 +91,15 @@ const clock = (s: number) => {
   return h ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 };
 const STEPS = ['pending', 'assigned', 'en_route', 'on_scene', 'assistance', 'handed_over'];
+// Status queues over the open calls. Escalated = nobody accepted within a minute and no operator has acknowledged it yet.
+type Queue = 'all' | 'waiting' | 'escalated' | 'responding' | 'handed_over';
+const QUEUES: [Queue, string, (e: Emergency) => boolean][] = [
+  ['all', 'All', () => true],
+  ['waiting', 'Waiting', e => e.status === 'pending'],
+  ['escalated', 'Escalated', e => e.status === 'pending' && !!e.escalatedAt && !e.escalationAckAt],
+  ['responding', 'Responding', e => ['assigned', 'en_route', 'on_scene', 'assistance'].includes(e.status)],
+  ['handed_over', 'Handed over', e => e.status === 'handed_over'],
+];
 // The phone app's habit: every kind of call has its own icon and tint.
 const TYPE_ICON: Record<string, [Icon, TileTone]> = {
   cardiac: [Heartbeat, 'sos'],
@@ -203,6 +212,7 @@ export const LiveCalls = () => {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [follow, setFollow] = useState(false);
+  const [queue, setQueue] = useState<Queue>('all');
   // Calls already there when the page opens enter one after another; later ones just slide in.
   const firstReveal = useRef(true);
   useEffect(() => {
@@ -266,7 +276,8 @@ export const LiveCalls = () => {
   const q = query.trim().toLowerCase();
   const matches = (e: Emergency) => !q || [TYPE_LABEL[e.type], STATUS_LABEL[e.status], shortId(e._id), nameOf(e.responder) ?? '']
     .some(v => (v ?? '').toLowerCase().includes(q));
-  const shownActive = active.filter(matches);
+  const inQueue = (e: Emergency, k: Queue) => k === 'all' || QUEUES.find(x => x[0] === k)![2](e);
+  const shownActive = active.filter(e => matches(e) && inQueue(e, queue));
   const shownClosed = closed.filter(matches);
 
   return (
@@ -341,13 +352,24 @@ export const LiveCalls = () => {
                 {active.length} active
               </span>
             </div>
+            <div className="shrink-0 flex flex-wrap gap-1 px-3 py-2 border-b border-border" role="tablist" aria-label="Call queues">
+              {QUEUES.map(([k, label]) => {
+                const n = active.filter(e => inQueue(e, k)).length;
+                return (
+                  <button key={k} role="tab" aria-selected={queue === k} onClick={() => setQueue(k)}
+                    className={cn('px-2.5 py-1 text-[13px] rounded-lg transition-colors', queue === k ? 'bg-primary text-primary-foreground font-semibold' : 'text-muted-foreground hover:text-foreground hover:bg-muted', k === 'escalated' && n > 0 && queue !== k && 'text-[hsl(var(--sos))] font-semibold')}>
+                    {label} <span className="num opacity-70">{n}</span>
+                  </button>
+                );
+              })}
+            </div>
             <div className="flex-1 overflow-auto">
               {loading && <div className="p-3 space-y-2">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}</div>}
               {!loading && shownActive.length === 0 && (
                 <div className="px-6 py-10 text-center border-b border-border">
                   <Tile icon={q ? MagnifyingGlass : Pulse} tone="teal" size="lg" round className="mx-auto" />
-                  <p className="mt-3 font-bold">{q ? 'No calls match' : 'All quiet'}</p>
-                  <p className="text-sm text-muted-foreground mt-1 text-pretty">{q ? `Nothing active matches “${query}”.` : 'A new SOS appears here and on the map the moment it is sent.'}</p>
+                  <p className="mt-3 font-bold">{q ? 'No calls match' : queue !== 'all' && active.length ? 'None in this queue' : 'All quiet'}</p>
+                  <p className="text-sm text-muted-foreground mt-1 text-pretty">{q ? `Nothing active matches “${query}”.` : queue !== 'all' && active.length ? 'Other queues have open calls.' : 'A new SOS appears here and on the map the moment it is sent.'}</p>
                 </div>
               )}
               <AnimatePresence>
@@ -573,6 +595,7 @@ const IncidentPanel = ({ incident, onClose, onChanged }: { incident: Emergency; 
                   <li className="flex items-center gap-2"><span className={cn('w-2 h-2 rounded-full', h.aedRunner ? 'bg-[hsl(var(--teal))]' : 'bg-muted-foreground/40')} />{h.aedRunner ? <><span className="font-medium">{h.aedRunner.name}</span><span className="text-muted-foreground">fetching a defibrillator{h.aed ? ` from ${h.aed.name}` : ''}</span></> : 'No defibrillator runner yet'}</li>
                 )}
                 <DroneLink emergencyId={incident._id} />
+                <CircleAlerts emergencyId={incident._id} />
               </ul>
             </section>
 
@@ -779,6 +802,25 @@ const HospitalHandoverSection = ({ incident, reportCount }: { incident: Emergenc
         </ul>
       )}
     </section>
+  );
+};
+
+const ALERT_LABEL: Record<string, string> = {
+  sending: 'sending…', sent: 'texted', simulated: 'not sent (test server)', failed: 'text failed', not_configured: 'not sent (no SMS provider)',
+  skipped_recent: 'already texted minutes ago', skipped_no_consent: 'not texted (caller’s choice)',
+};
+
+/** Who in the caller's emergency circle was texted about this call. */
+const CircleAlerts = ({ emergencyId }: { emergencyId: string }) => {
+  const [alerts, setAlerts] = useState<{ name?: string; phone: string; status: string }[]>([]);
+  useEffect(() => { api.get(`/emergencies/${emergencyId}/alerts`).then(r => setAlerts(r.data)).catch(() => setAlerts([])); }, [emergencyId]);
+  if (!alerts.length) return null;
+  const bad = alerts.some(a => a.status === 'failed' || a.status === 'not_configured');
+  return (
+    <li className="flex items-start gap-2">
+      <span className={cn('mt-1.5 w-2 h-2 rounded-full shrink-0', bad ? 'bg-[hsl(var(--sos))]' : 'bg-[hsl(var(--teal))]')} />
+      <span>Caller’s circle: <span className="text-muted-foreground">{alerts.map(a => `${a.name ?? a.phone} ${ALERT_LABEL[a.status] ?? a.status}`).join(' · ')}</span></span>
+    </li>
   );
 };
 
