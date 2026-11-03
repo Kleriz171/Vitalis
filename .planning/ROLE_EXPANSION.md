@@ -86,3 +86,6 @@ its own e2e check in `scripts/e2e.sh` and screenshots before anything visual is 
    acknowledge + check-in → completed; one timeline in order; consented clinician record shows the report; admin
    audit; leak probes per role).
 7. **Polish and QA** within the existing look; screenshots per role; full e2e.
+   Partly done 2026-11-03: full e2e (22 checks) green, console screenshots per role (.shots/p1..p5), live deploys
+   verified. Open: phone screens not screenshot-checked (Expo web), seeded doctor ratings in the phone directory are
+   demo values, live DB needs an admin (scripts/create-admin.ts) and a clinician with hours (Clinic settings).
